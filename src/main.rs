@@ -1,6 +1,3 @@
-mod constants;
-mod container;
-
 use std::time::{Duration, Instant};
 use frcrs::{hal_report, init_hal, observe_user_program_starting, refresh_data, telemetry};
 use frcrs::input::{Joystick, RobotState};

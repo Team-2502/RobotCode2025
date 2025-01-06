@@ -15,3 +15,26 @@ pub const BL_ENCODER: i32 = 9;
 pub const BR_DRIVE: i32 = 10;
 pub const BR_TURN: i32 = 11;
 pub const BR_ENCODER: i32 = 12;
+
+pub const HALF_FIELD_WIDTH_METERS: f64 = 4.1148; // 54/4 feet
+pub const HALF_FIELD_LENGTH_METERS: f64 = 8.2296; // 54/2 feet
+
+pub mod drivetrain {
+    use std::f64::consts::PI;
+
+    pub const SWERVE_TURN_KP: f64 = 0.3;
+
+    pub const SWERVE_ROTATIONS_TO_INCHES: f64 = (1. / 5.906) * (4. * PI);
+
+    pub const SWERVE_DRIVE_KP: f64 = 0.3;
+    pub const SWERVE_DRIVE_KI: f64 = 0.;
+    pub const SWERVE_DRIVE_KD: f64 = 0.;
+    pub const SWERVE_DRIVE_KF: f64 = 0.; // Velocity ff
+    pub const SWERVE_DRIVE_KFA: f64 = 0.; // Acceleration ff
+
+    pub const SWERVE_DRIVE_MAX_ERR: f64 = 0.15;
+    pub const SWERVE_DRIVE_SUGGESTION_ERR: f64 = 0.35;
+    pub const SWERVE_DRIVE_IE: f64 = 0.0; //0.175; // integral enable
+
+    pub const PODIUM_SHOT_ANGLE: f64 = 34.34; // degrees
+}
