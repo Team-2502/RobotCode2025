@@ -1,21 +1,22 @@
 use std::fs::File;
 use std::io::{Read, Write};
+use std::ops::Add;
 use std::time::{Duration, Instant};
-use frcrs::{alliance_station, AllianceStation};
+use frcrs::{alliance_station, AllianceStation, telemetry};
 
 use frcrs::ctre::{talon_encoder_tick, CanCoder, ControlMode, Talon};
-use frcrs::input::Joystick;
-use frcrs::limelight::Limelight;
 
 use crate::constants::drivetrain::{SWERVE_DRIVE_IE, SWERVE_DRIVE_KD, SWERVE_DRIVE_KF, SWERVE_DRIVE_KFA, SWERVE_DRIVE_KI, SWERVE_DRIVE_KP, SWERVE_ROTATIONS_TO_INCHES, SWERVE_TURN_KP};
 use crate::constants::*;
 use crate::swerve::kinematics::{ModuleState, Swerve};
 use crate::swerve::odometry::{ModuleReturn, Odometry};
 use frcrs::navx::NavX;
-use nalgebra::{Rotation2, Vector2};
+use frcrs::telemetry::Telemetry;
+use nalgebra::{Quaternion, Rotation2, Vector2};
 use serde::Deserialize;
 use serde::Serialize;
 use tokio::time::sleep;
+use uom::num_traits::FloatConst;
 use uom::si::angle::{degree, radian, revolution};
 use uom::si::f64::{Angle, Length};
 use uom::si::length::{inch, meter};
@@ -24,9 +25,20 @@ use uom::si::velocity::meter_per_second;
 use wpi_trajectory::Path;
 use crate::subsystems::Vision;
 
+#[derive(Default)]
+pub struct DrivetrainControlState {
+    pub saved_angle: Option<Angle>,
+}
+
 pub enum LineupSide {
     Left,
     Right
+}
+
+#[derive(Debug)]
+pub struct LineupTarget {
+    pub position: Vector2<f64>,
+    pub angle: Angle,
 }
 
 pub struct Drivetrain {
@@ -151,7 +163,8 @@ impl Drivetrain {
 
     pub async fn update_limelight(&mut self) {
         self.vision.update().await;
-        let dt_angle_for_vision = if (alliance_station().red()){
+
+        let dt_angle_for_vision = if (alliance_station().red()) {
             Angle::new::<degree>(self.get_angle().get::<degree>() + 180.)
         } else {
             self.get_angle()
@@ -343,50 +356,165 @@ impl Drivetrain {
         self.offset = self.get_angle();
     }
 
-    pub async fn follow_circle(drivetrain: &mut Drivetrain, dt: Duration) {
+    pub async fn lineup(&mut self, side: LineupSide, dt: Duration) {
         let mut last_error = Vector2::zeros();
         let mut i = Vector2::zeros();
 
-        let current_pos = drivetrain.odometry.position;
-        let closest = Drivetrain::closest_point_on_circle(
-            current_pos.x,
-            current_pos.y
+        if let Some(target) = self.calculate_target_lineup_position(side) {
+            let mut error_position = target.position - self.odometry.position;
+            let mut error_angle = (target.angle - self.get_angle()).get::<radian>();
+
+            if error_position.abs().max() < SWERVE_DRIVE_IE {
+                i += error_position;
+            }
+
+            error_angle *= SWERVE_TURN_KP * 0.5;
+            error_position *= -SWERVE_DRIVE_KP * 0.5;
+
+            let mut speed = error_position;
+            speed += i * -SWERVE_DRIVE_KI * dt.as_secs_f64() * 9.;
+
+            let speed_s = speed;
+            speed += (speed - last_error) * -SWERVE_DRIVE_KD * dt.as_secs_f64() * 9.;
+            last_error = speed_s;
+
+            if (alliance_station().red()) { speed.x *= -1. }
+
+            self.set_speeds(speed.x, speed.y, error_angle);
+
+            // sleep(Duration::from_millis(20)).await;
+
+            Telemetry::put_number("error_position_x", error_position.x).await;
+            Telemetry::put_number("error_position_y", error_position.y).await;
+            Telemetry::put_number("error_angle", error_angle).await;
+
+            Telemetry::put_number("target_x", target.position.x).await;
+            Telemetry::put_number("target_y", target.position.y).await;
+            Telemetry::put_number("target_angle", target.angle.get::<radian>()).await;
+
+            Telemetry::put_number("odo_x", self.odometry.position.x).await;
+            Telemetry::put_number("odo_y", self.odometry.position.y).await;
+            Telemetry::put_number("angle", self.get_angle().get::<radian>()).await;
+        }
+    }
+
+    // Find the position to line up to based on which scoring side we want.
+    // It will return a vector with the x and y coordinates of the target position.
+    // The target position will be to the side of the apriltag, half a robot length away from the edge
+    // Will account for the robot's orientation with the hexagon lineup
+    pub fn calculate_target_lineup_position(&mut self, side: LineupSide) -> Option<LineupTarget> {
+        let tag_id = self.vision.get_saved_id();
+        if tag_id == -1 {
+            return None;
+        }
+
+        let tag_position = self.vision.get_tag_position(tag_id)?;
+        let tag_coords = tag_position.coordinate?;
+        let tag_rotation = tag_position.quaternion?;
+
+        let yaw = quaternion_to_yaw(tag_rotation);
+
+        let side_distance = Length::new::<meter>(0.5);
+        let forward_distance = Length::new::<meter>(0.5);
+
+        let side_multiplier = match side {
+            LineupSide::Left => -1.0,
+            LineupSide::Right => 1.0,
+        };
+
+        let perpendicular_yaw = yaw + std::f64::consts::PI / 2.0;
+
+        let offset_x = side_distance.get::<meter>() * f64::cos(perpendicular_yaw) * side_multiplier;
+        let offset_y = side_distance.get::<meter>() * f64::sin(perpendicular_yaw) * side_multiplier;
+
+        let forward_x = forward_distance.get::<meter>() * f64::cos(yaw);
+        let forward_y = forward_distance.get::<meter>() * f64::sin(yaw);
+
+        let target_pos = Vector2::new(
+            (tag_coords.x + Length::new::<meter>(offset_x) + Length::new::<meter>(forward_x)).get::<meter>(),
+            (tag_coords.y + Length::new::<meter>(offset_y) + Length::new::<meter>(forward_y)).get::<meter>(),
         );
 
-        let position = Vector2::new(closest.x, closest.y);
-        let target_angle = Angle::new::<degree>(closest.angle);
+        let robot_angle = Angle::new::<radian>(yaw).add(Angle::new::<radian>(std::f64::consts::PI));
 
-        let mut error_position = position - current_pos;
-        let mut error_angle = 0.;
-        //let mut error_angle = (target_angle - drivetrain.get_angle()).get::<radian>();
-        if drivetrain.vision.get_id() == 4 || drivetrain.vision.get_id() == 7 {
-            error_angle = Limelight::get_tx("limelight") * (3.14 / 180.);
-        }
+        Some(LineupTarget {
+            position: target_pos,
+            angle: robot_angle,
+        })
+    }
+}
 
-        if error_position.abs().max() < SWERVE_DRIVE_IE {
-            i += error_position;
-        }
+fn quaternion_to_yaw(quaternion: Quaternion<f64>) -> f64 {
+    let w: f64 = quaternion.w;
+    let i: f64 = quaternion.i;
+    let j: f64 = quaternion.j;
+    let k: f64 = quaternion.k;
 
-        error_angle *= SWERVE_TURN_KP * 1.5;
-        error_position *= -SWERVE_DRIVE_KP;
+    let yaw = f64::atan2(2.0 * (w * k + i * j), 1.0 - 2.0 * (j * j + k * k));
 
-        let mut speed = error_position;
-        speed += i * -SWERVE_DRIVE_KI * dt.as_secs_f64() * 9.;
+    yaw.rem_euclid(2.0 * std::f64::consts::PI)
+}
 
-        let speed_s = speed;
-        speed += (speed - last_error) * -SWERVE_DRIVE_KD * dt.as_secs_f64() * 9.;
-        last_error = speed_s;
+#[cfg(test)]
+mod tests {
+    use nalgebra::{Quaternion, Vector2, Vector3};
+    use uom::ConversionFactor;
+    use uom::si::angle::radian;
+    use uom::si::f32::Angle;
+    use uom::si::f64::Length;
+    use uom::si::length::{inch, meter};
+    use crate::subsystems::{FieldPosition, LineupSide, LineupTarget};
+    use crate::subsystems::drivetrain::quaternion_to_yaw;
 
-        if(alliance_station().red()) { speed.x *= -1. }
+    #[test]
+    fn calculate_target_lineup_position() {
+        let side = LineupSide::Right;
 
-        drivetrain.set_speeds(speed.x, speed.y, error_angle);
+        let tag_position = FieldPosition {
+            coordinate: Some(Vector3::new(
+                Length::new::<meter>(13.474446),
+                Length::new::<meter>(3.3063179999999996),
+                Length::new::<meter>(0.308102),
+            )),
+            quaternion: Some(Quaternion::new(
+                -0.8660254037844387,
+                -0.0,
+                0.0,
+                0.49999999999999994,
+            )),
+        };
 
-        telemetry::put_number("cx", position.x).await;
-        telemetry::put_number("cy", position.y).await;
-        telemetry::put_number("cr", target_angle.value as f64).await;
-        telemetry::put_number("ea", error_angle).await;
-        telemetry::put_number("ce", error_position.norm()).await;
+        let tag_coords = tag_position.coordinate.unwrap();
+        let tag_rotation = tag_position.quaternion.unwrap();
 
-        sleep(Duration::from_millis(20)).await;
+        let yaw = quaternion_to_yaw(tag_rotation);
+
+        let side_distance = Length::new::<meter>(0.5);
+        let forward_distance = Length::new::<meter>(0.5);
+
+        let side_multiplier = match side {
+            LineupSide::Left => -1.0,
+            LineupSide::Right => 1.0,
+        };
+
+        let perpendicular_yaw = yaw + std::f64::consts::PI / 2.0;
+
+        let offset_x = side_distance.get::<meter>() * f64::cos(perpendicular_yaw) * side_multiplier;
+        let offset_y = side_distance.get::<meter>() * f64::sin(perpendicular_yaw) * side_multiplier;
+
+        let forward_x = forward_distance.get::<meter>() * f64::cos(yaw);
+        let forward_y = forward_distance.get::<meter>() * f64::sin(yaw);
+
+        let target_pos = Vector2::new(
+            (tag_coords.x + Length::new::<meter>(offset_x) + Length::new::<meter>(forward_x)).get::<meter>(),
+            (tag_coords.y + Length::new::<meter>(offset_y) + Length::new::<meter>(forward_y)).get::<meter>(),
+        );
+
+        let robot_angle = Angle::new::<radian>(yaw as f32);
+
+        println!("{:?}", target_pos);
+        println!("{:?}", robot_angle);
+
+        assert!(false);
     }
 }

@@ -19,6 +19,18 @@ pub const BR_ENCODER: i32 = 12;
 pub const HALF_FIELD_WIDTH_METERS: f64 = 4.1148; // 54/4 feet
 pub const HALF_FIELD_LENGTH_METERS: f64 = 8.2296; // 54/2 feet
 
+pub mod vision {
+    use nalgebra::Vector2;
+
+    pub const LIMELIGHT_PITCH_DEGREES: f64 = 20.;
+    pub const LIMELIGHT_YAW_DEGREES:f64 = 180.;
+    pub const LIMELIGHT_HEIGHT_INCHES: f64 = 15.75;
+    pub const ROBOT_CENTER_TO_LIMELIGHT_INCHES: Vector2<f64> = Vector2::new(
+        -14.45,
+        0.
+    );
+}
+
 pub mod drivetrain {
     use std::f64::consts::PI;
 
