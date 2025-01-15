@@ -22,9 +22,9 @@ pub const HALF_FIELD_LENGTH_METERS: f64 = 8.2296; // 54/2 feet
 pub mod vision {
     use nalgebra::Vector2;
 
-    pub const LIMELIGHT_PITCH_DEGREES: f64 = 20.;
+    pub const LIMELIGHT_PITCH_DEGREES: f64 = 18.1;
     pub const LIMELIGHT_YAW_DEGREES:f64 = 180.;
-    pub const LIMELIGHT_HEIGHT_INCHES: f64 = 15.75;
+    pub const LIMELIGHT_HEIGHT_INCHES: f64 = 11.75;
     pub const ROBOT_CENTER_TO_LIMELIGHT_INCHES: Vector2<f64> = Vector2::new(
         -14.45,
         0.

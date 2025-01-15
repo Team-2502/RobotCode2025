@@ -18,6 +18,7 @@ pub async fn teleop(controllers: &mut Controllers, robot: &mut Ferris, executor:
 
     if let Ok(mut drivetrain) = robot.drivetrain.try_borrow_mut() {
         drivetrain.update_limelight().await;
+        drivetrain.post_odo().await;
 
         if controllers.right_drive.get(3) {
             drivetrain.lineup(LineupSide::Left, dt).await;

@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::io::{Read, Write};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::ops::Add;
 use std::time::{Duration, Instant};
 use frcrs::{alliance_station, AllianceStation, telemetry};
@@ -111,7 +112,7 @@ impl Drivetrain {
         let bl_turn = Talon::new(BL_TURN, Some("can0".to_owned()));
         let br_turn = Talon::new(BR_TURN, Some("can0".to_owned()));
 
-        let vision = Vision::new("limelight".to_owned());
+        let vision = Vision::new(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 25, 2, 11)), 5807));
 
         for (encoder, offset) in [&fr_encoder, &fl_encoder, &bl_encoder, &br_encoder]
             .iter()
@@ -164,19 +165,18 @@ impl Drivetrain {
     pub async fn update_limelight(&mut self) {
         self.vision.update().await;
 
-        let dt_angle_for_vision = if (alliance_station().red()) {
-            Angle::new::<degree>(self.get_angle().get::<degree>() + 180.)
-        } else {
-            self.get_angle()
-        };
-        let pose = self.vision.get_position_from_tag_2d(dt_angle_for_vision);
+        let pose = self.vision.get_botpose_orb();
         self.update_odo(pose);
     }
 
-    pub fn update_odo(&mut self, pose: Option<Vector2<Length>>) {
-        if let Some(p) = pose {
-            self.odometry.set_abs(Vector2::new(p.x.value, p.y.value));
-        }
+    pub async fn post_odo(&self) {
+        Telemetry::put_number("odo_x", self.odometry.position.x).await;
+        Telemetry::put_number("odo_y", self.odometry.position.y).await;
+        Telemetry::put_number("angle", self.get_angle().get::<radian>()).await;
+    }
+
+    pub fn update_odo(&mut self, pose: Vector2<Length>) {
+        self.odometry.set_abs(Vector2::new(pose.x.value, pose.y.value));
     }
 
     pub fn write_absolute(&mut self) {
@@ -378,7 +378,7 @@ impl Drivetrain {
             speed += (speed - last_error) * -SWERVE_DRIVE_KD * dt.as_secs_f64() * 9.;
             last_error = speed_s;
 
-            if (alliance_station().red()) { speed.x *= -1. }
+            // if (alliance_station().red()) { speed.x *= -1. }
 
             self.set_speeds(speed.x, speed.y, error_angle);
 
@@ -391,10 +391,6 @@ impl Drivetrain {
             Telemetry::put_number("target_x", target.position.x).await;
             Telemetry::put_number("target_y", target.position.y).await;
             Telemetry::put_number("target_angle", target.angle.get::<radian>()).await;
-
-            Telemetry::put_number("odo_x", self.odometry.position.x).await;
-            Telemetry::put_number("odo_y", self.odometry.position.y).await;
-            Telemetry::put_number("angle", self.get_angle().get::<radian>()).await;
         }
     }
 

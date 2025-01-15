@@ -13,7 +13,10 @@ uom = { version = "0.35.0", features = ["f64"] }
 nalgebra = "0.32.3"
 wpi-trajectory = { git = "https://github.com/Speedy6451/trajectory-rs" }
 axum = "0.7.4"
+# limelightlib-rust = { git = "https://github.com/LimelightVision/limelightlib-rust.git" }
 
 [deploy]
 team_number = 2502
 executable = "target/arm-unknown-linux-gnueabi/release/RobotCode2025"
+frontend = "../../talon-board/build"
+frontend_dest = "/home/lvuser/frontend/"
