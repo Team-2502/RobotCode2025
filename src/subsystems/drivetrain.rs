@@ -24,6 +24,7 @@ use uom::si::length::{inch, meter};
 use uom::si::time::Time;
 use uom::si::velocity::meter_per_second;
 use wpi_trajectory::Path;
+use crate::constants::vision::ROBOT_CENTER_TO_LIMELIGHT_INCHES;
 use crate::subsystems::Vision;
 
 #[derive(Default)]
@@ -163,16 +164,38 @@ impl Drivetrain {
     }
 
     pub async fn update_limelight(&mut self) {
-        self.vision.update().await;
+        self.vision.update(self.get_offset().get::<degree>() + 180.).await;
 
-        let pose = self.vision.get_botpose_orb();
-        self.update_odo(pose);
+        let pose = self.vision.get_botpose();
+
+        // Calculate offset from robot center to limelight
+        let robot_center_to_limelight_unrotated: Vector2<Length> = Vector2::new(
+            Length::new::<inch>(ROBOT_CENTER_TO_LIMELIGHT_INCHES.x),
+            Length::new::<inch>(ROBOT_CENTER_TO_LIMELIGHT_INCHES.y)
+        );
+
+        // Rotate the limelight offset by drivetrain angle
+        let robot_to_limelight: Vector2<Length> = Vector2::new(
+            Length::new::<meter>(
+                robot_center_to_limelight_unrotated.x.get::<meter>() * f64::cos(self.get_offset().get::<radian>()) -
+                    robot_center_to_limelight_unrotated.y.get::<meter>() * f64::sin(self.get_offset().get::<radian>())
+            ),
+            Length::new::<meter>(
+                robot_center_to_limelight_unrotated.x.get::<meter>() * f64::sin(self.get_offset().get::<radian>()) +
+                    robot_center_to_limelight_unrotated.y.get::<meter>() * f64::cos(self.get_offset().get::<radian>())
+            )
+        );
+
+        // Will return 0, 0 if no tag found
+        if pose.x.get::<meter>() != 0.0 {
+            self.update_odo(pose + robot_to_limelight);
+        }
     }
 
     pub async fn post_odo(&self) {
         Telemetry::put_number("odo_x", self.odometry.position.x).await;
         Telemetry::put_number("odo_y", self.odometry.position.y).await;
-        Telemetry::put_number("angle", self.get_angle().get::<radian>()).await;
+        Telemetry::put_number("angle", self.get_offset().get::<radian>()).await;
     }
 
     pub fn update_odo(&mut self, pose: Vector2<Length>) {
@@ -250,8 +273,8 @@ impl Drivetrain {
     }
     pub fn set_speeds(&mut self, fwd: f64, str: f64, rot: f64) {
         //println!("ODO X: {}", self.odometry.position.x);
-        let mut transform = Vector2::new(str, -fwd);
-        transform = Rotation2::new((self.get_angle() - self.offset).get::<radian>()) * transform;
+        let mut transform = Vector2::new(-str, fwd);
+        transform = Rotation2::new(self.get_offset().get::<radian>()) * transform;
         let wheel_speeds = self.kinematics.calculate(transform, rot);
 
         //self.fr_turn.set(control_mode, amount)
@@ -262,7 +285,7 @@ impl Drivetrain {
 
         let positions = self.get_positions(&measured);
 
-        let angle = self.get_angle();
+        let angle = self.get_offset();
 
         self.odometry.calculate(positions, angle);
 
@@ -334,7 +357,7 @@ impl Drivetrain {
     }
 
     pub fn get_angle(&self) -> Angle {
-        Angle::new::<degree>(self.navx.get_angle())
+        Angle::new::<degree>(-self.navx.get_angle())
     }
 
     pub fn get_offset(&self) -> Angle {
@@ -362,14 +385,14 @@ impl Drivetrain {
 
         if let Some(target) = self.calculate_target_lineup_position(side) {
             let mut error_position = target.position - self.odometry.position;
-            let mut error_angle = (target.angle - self.get_angle()).get::<radian>();
+            let mut error_angle = (target.angle - self.get_offset()).get::<radian>();
 
             if error_position.abs().max() < SWERVE_DRIVE_IE {
                 i += error_position;
             }
 
-            error_angle *= SWERVE_TURN_KP * 0.5;
-            error_position *= -SWERVE_DRIVE_KP * 0.5;
+            error_angle *= SWERVE_TURN_KP;
+            error_position *= -SWERVE_DRIVE_KP;
 
             let mut speed = error_position;
             speed += i * -SWERVE_DRIVE_KI * dt.as_secs_f64() * 9.;
@@ -378,15 +401,18 @@ impl Drivetrain {
             speed += (speed - last_error) * -SWERVE_DRIVE_KD * dt.as_secs_f64() * 9.;
             last_error = speed_s;
 
-            // if (alliance_station().red()) { speed.x *= -1. }
+            if (alliance_station().red()) { speed.x *= -1. }
 
-            self.set_speeds(speed.x, speed.y, error_angle);
+            self.set_speeds(speed.x, -speed.y, error_angle);
 
             // sleep(Duration::from_millis(20)).await;
 
             Telemetry::put_number("error_position_x", error_position.x).await;
             Telemetry::put_number("error_position_y", error_position.y).await;
             Telemetry::put_number("error_angle", error_angle).await;
+
+            Telemetry::put_number("speed_x", speed.x).await;
+            Telemetry::put_number("speed_y", -speed.y).await;
 
             Telemetry::put_number("target_x", target.position.x).await;
             Telemetry::put_number("target_y", target.position.y).await;

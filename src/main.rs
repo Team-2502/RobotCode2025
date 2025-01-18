@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 use frcrs::{hal_report, init_hal, observe_user_program_starting, refresh_data, telemetry};
 use frcrs::input::{Joystick, RobotState};
-use frcrs::networktables::NetworkTable;
+use frcrs::networktables::{NetworkTable, SmartDashboard};
 use frcrs::telemetry::Telemetry;
 use tokio::task;
 use tokio::time::sleep;
@@ -34,6 +34,8 @@ fn main() {
         Telemetry::init(5807);
 
         NetworkTable::init();
+
+        SmartDashboard::put_field();
 
         observe_user_program_starting();
 

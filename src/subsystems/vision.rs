@@ -45,14 +45,18 @@ impl Vision {
         }
     }
     /// Updates the results from the limelight, also posts telemetry data
-    pub async fn update(&mut self) {
+    pub async fn update(&mut self, dt_angle: f64) {
         self.results = self.limelight.results().await.unwrap();
+        self.limelight.update_robot_orientation(dt_angle).await.unwrap();
 
-        if self.results.Fiducial[0].fID != -1 && self.results.Fiducial[0].fID != self.saved_id {
-            self.saved_id = self.results.Fiducial[0].fID;
+        if !self.results.Fiducial.is_empty() {
+            if self.results.Fiducial[0].fID != -1 && self.results.Fiducial[0].fID != self.saved_id {
+                self.saved_id = self.results.Fiducial[0].fID;
+            }
+
+            Telemetry::put_number("id", self.results.Fiducial[0].fID as f64).await;
         }
 
-        Telemetry::put_number("id", self.results.Fiducial[0].fID as f64).await;
         Telemetry::put_number("tx", self.results.tx).await;
         Telemetry::put_number("ty", self.results.ty).await;
         Telemetry::put_number("saved_id", self.saved_id as f64).await;
@@ -186,6 +190,13 @@ impl Vision {
         Vector2::new(
             Length::new::<meter>(self.results.botpose_orb_wpiblue[0]),
             Length::new::<meter>(self.results.botpose_orb_wpiblue[1]),
+        )
+    }
+
+    pub fn get_botpose(&self) -> Vector2<Length> {
+        Vector2::new(
+            Length::new::<meter>(self.results.botpose_wpiblue[0]),
+            Length::new::<meter>(self.results.botpose_wpiblue[1]),
         )
     }
 }

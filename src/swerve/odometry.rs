@@ -1,6 +1,7 @@
 use std::{ops::Sub, time::Instant};
 
-use frcrs::alliance_station;
+use frcrs::{alliance_station, AllianceStation};
+use frcrs::networktables::SmartDashboard;
 use nalgebra::{Rotation2, Vector2};
 use uom::si::{
     angle::radian,
@@ -88,7 +89,9 @@ impl Odometry {
 
         delta /= positions.len() as f64;
 
-        self.position += delta;
+        self.position += -delta;
         self.last_modules = positions;
+
+        SmartDashboard::set_position(self.position, angle);
     }
 }
