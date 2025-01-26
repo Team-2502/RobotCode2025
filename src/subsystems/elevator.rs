@@ -5,6 +5,7 @@ struct Elevator {
     left: Talon,
     right: Talon,
 }
+
 enum ElevatorPosition {
     Bottom,
     L2,
@@ -14,11 +15,17 @@ enum ElevatorPosition {
 
 impl Elevator {
     pub fn new() -> Self {
-        Self{
-            left: Talon::new(1, None),
-            right: Talon::new(2, None),
+        let left = Talon::new(1, None);
+        let right = Talon::new(2, None);
+
+        right.follow(&left, true);
+
+        Self {
+            left,
+            right,
         }
     }
+
     pub fn set_position(&self, position: ElevatorPosition){
         match position {
             ElevatorPosition::Bottom => {self.left.set(ControlMode::Position, elevator::BOTTOM)}
@@ -27,6 +34,7 @@ impl Elevator {
             ElevatorPosition::L4 => {self.left.set(ControlMode::Position, elevator::L4)}
         }
     }
+
     pub fn stop(&self) {
         self.left.stop();
         self.right.stop();
