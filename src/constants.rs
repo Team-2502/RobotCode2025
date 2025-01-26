@@ -50,3 +50,9 @@ pub mod drivetrain {
 
     pub const PODIUM_SHOT_ANGLE: f64 = 34.34; // degrees
 }
+pub mod elevator{
+    pub const BOTTOM: f64 = 0.0;
+    pub const L2: f64 = 0.0;
+    pub const L3: f64 = 0.0;
+    pub const L4: f64 = 0.0;
+}
