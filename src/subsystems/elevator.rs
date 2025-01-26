@@ -1,12 +1,12 @@
 use frcrs::ctre::{ControlMode, Talon};
 use crate::constants::elevator;
 
-struct Elevator {
+pub struct Elevator {
     left: Talon,
     right: Talon,
 }
 
-enum ElevatorPosition {
+pub enum ElevatorPosition {
     Bottom,
     L2,
     L3,

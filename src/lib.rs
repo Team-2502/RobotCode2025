@@ -18,7 +18,7 @@ use tokio::task::spawn_local;
 use uom::si::angle::{degree, radian};
 use crate::constants::drivetrain::SWERVE_TURN_KP;
 use crate::container::control_drivetrain;
-use crate::subsystems::{Drivetrain, DrivetrainControlState, LineupSide};
+use crate::subsystems::{Drivetrain, DrivetrainControlState, Elevator, LineupSide};
 
 #[derive(Clone)]
 pub struct Controllers {
@@ -37,6 +37,7 @@ pub struct Ferris {
     pub controllers: Controllers,
 
     pub drivetrain: Rc<RefCell<Drivetrain>>,
+    pub elevator: Rc<RefCell<Elevator>>,
 
     teleop_state: Rc<RefCell<TeleopState>>,
 }
@@ -51,6 +52,7 @@ impl Ferris {
                 operator: Joystick::new(2),
             },
             drivetrain: Rc::new(RefCell::new(Drivetrain::new())),
+            elevator: Rc::new(RefCell::new(Elevator::new())),
             teleop_state: Default::default(),
         }
     }
@@ -108,9 +110,19 @@ impl Robot for Ferris {
                 control_drivetrain(&mut drivetrain, &mut self.controllers, drivetrain_state).await;
             }
         }
+
+        if let Ok(mut elevator) = self.elevator.try_borrow_mut() {
+            if self.controllers.operator.get(3) {
+                elevator.set_speed(0.5);
+            } else if self.controllers.operator.get(4) {
+                elevator.set_speed(-0.5);
+            } else {
+                elevator.set_speed(0.0);
+            }
+        }
     }
 
     async fn test_periodic(&mut self) {
-        println!("Test periodic");
+        // println!("Test periodic");
     }
 }
