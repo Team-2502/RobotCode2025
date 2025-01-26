@@ -4,54 +4,37 @@ use tokio::time::sleep;
 use crate::constants::robotmap::climber::*;
 
 pub struct Climber {
-    fl: Solenoid,
-    fr: Solenoid,
-    bl: Solenoid,
-    br: Solenoid,
-
-    left: Solenoid,
-    right: Solenoid,
+    raise: Solenoid,
+    grab: Solenoid
 }
 
 impl Climber {
     pub fn new() -> Self {
         Self {
-            fl: Solenoid::new(ModuleType::Rev, FL),
-            fr: Solenoid::new(ModuleType::Rev, FR),
-            bl: Solenoid::new(ModuleType::Rev, BL),
-            br: Solenoid::new(ModuleType::Rev, BR),
-            left: Solenoid::new(ModuleType::Rev, LEFT),
-            right: Solenoid::new(ModuleType::Rev, RIGHT)
+            raise: Solenoid::new(ModuleType::Rev, RAISE),
+            grab: Solenoid::new(ModuleType::Rev, GRAB),
         }
     }
 
     pub fn toggle_raise(&self) {
-        self.fl.toggle();
-        self.fr.toggle();
-        self.bl.toggle();
-        self.br.toggle();
+        self.raise.toggle();
     }
 
     pub fn set_raise(&self, engaged: bool) {
-        self.fl.set(engaged);
-        self.fr.set(engaged);
-        self.bl.set(engaged);
-        self.br.set(engaged);
+        self.raise.set(engaged);
     }
 
     pub fn toggle_grab(&self) {
-        self.left.toggle();
-        self.right.toggle();
+        self.grab.toggle();
     }
 
     pub fn set_grab(&self, engaged: bool) {
-        self.left.set(engaged);
-        self.right.set(engaged);
+        self.grab.set(engaged);
     }
 
     pub async fn climb(&self) {
-        self.toggle_raise();
+        self.set_raise(true);
         sleep(Duration::from_secs(1)).await;
-        self.toggle_grab();
+        self.set_grab(true);
     }
 }

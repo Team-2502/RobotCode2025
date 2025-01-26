@@ -29,13 +29,8 @@ pub mod robotmap {
     }
 
     pub mod climber {
-        pub const FL: i32 = 0;
-        pub const FR: i32 = 1;
-        pub const BL: i32 = 2;
-        pub const BR: i32 = 3;
-
-        pub const LEFT: i32 = 4;
-        pub const RIGHT: i32 = 5;
+        pub const RAISE: i32 = 0;
+        pub const GRAB: i32 = 1;
     }
 }
 
