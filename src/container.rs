@@ -11,24 +11,24 @@ use uom::si::{
 };
 use crate::constants::drivetrain::SWERVE_TURN_KP;
 
-pub async fn teleop(controllers: &mut Controllers, robot: &mut Ferris, executor: &LocalSet, dt: Duration) {
-    let TeleopState {
-        ref mut drivetrain_state,
-    } = *robot.teleop_state.deref().borrow_mut();
-
-    if let Ok(mut drivetrain) = robot.drivetrain.try_borrow_mut() {
-        drivetrain.update_limelight().await;
-        drivetrain.post_odo().await;
-
-        if controllers.right_drive.get(3) {
-            drivetrain.lineup(LineupSide::Left).await;
-        } else if controllers.right_drive.get(4) {
-            drivetrain.lineup(LineupSide::Right).await;
-        } else {
-            control_drivetrain(&mut drivetrain, controllers, drivetrain_state).await;
-        }
-    }
-}
+// pub async fn teleop(controllers: &mut Controllers, robot: &mut Ferris, executor: &LocalSet, dt: Duration) {
+//     let TeleopState {
+//         ref mut drivetrain_state,
+//     } = *robot.teleop_state.deref().borrow_mut();
+//
+//     if let Ok(mut drivetrain) = robot.drivetrain.try_borrow_mut() {
+//         drivetrain.update_limelight().await;
+//         drivetrain.post_odo().await;
+//
+//         if controllers.right_drive.get(3) {
+//             drivetrain.lineup(LineupSide::Left).await;
+//         } else if controllers.right_drive.get(4) {
+//             drivetrain.lineup(LineupSide::Right).await;
+//         } else {
+//             control_drivetrain(&mut drivetrain, controllers, drivetrain_state).await;
+//         }
+//     }
+// }
 
 async fn control_drivetrain(
     drivetrain: &mut Drivetrain,
