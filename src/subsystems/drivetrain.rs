@@ -8,7 +8,7 @@ use frcrs::{alliance_station, AllianceStation, telemetry};
 use frcrs::ctre::{talon_encoder_tick, CanCoder, ControlMode, Talon};
 
 use crate::constants::drivetrain::{SWERVE_DRIVE_IE, SWERVE_DRIVE_KD, SWERVE_DRIVE_KF, SWERVE_DRIVE_KFA, SWERVE_DRIVE_KI, SWERVE_DRIVE_KP, SWERVE_ROTATIONS_TO_INCHES, SWERVE_TURN_KP};
-use crate::constants::*;
+use crate::constants::robotmap::swerve::*;
 use crate::swerve::kinematics::{ModuleState, Swerve};
 use crate::swerve::odometry::{ModuleReturn, Odometry};
 use frcrs::navx::NavX;

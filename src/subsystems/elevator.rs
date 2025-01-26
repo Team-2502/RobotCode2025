@@ -1,5 +1,5 @@
 use frcrs::ctre::{ControlMode, Talon};
-use crate::constants::elevator;
+use crate::constants::{elevator, robotmap};
 
 pub struct Elevator {
     left: Talon,
@@ -15,8 +15,8 @@ pub enum ElevatorPosition {
 
 impl Elevator {
     pub fn new() -> Self {
-        let left = Talon::new(1, None);
-        let right = Talon::new(2, None);
+        let left = Talon::new(robotmap::elevator::LEFT, None);
+        let right = Talon::new(robotmap::elevator::RIGHT, None);
 
         right.follow(&left, true);
 

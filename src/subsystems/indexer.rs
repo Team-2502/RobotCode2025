@@ -1,4 +1,5 @@
 use frcrs::ctre::{ControlMode, Talon};
+use crate::constants::robotmap;
 
 pub struct Indexer {
     motor: Talon,
@@ -6,7 +7,7 @@ pub struct Indexer {
 
 impl Indexer {
     pub fn new() -> Self {
-        let motor = Talon::new(3, None);
+        let motor = Talon::new(robotmap::indexer::MOTOR, None);
 
         Self {
             motor,

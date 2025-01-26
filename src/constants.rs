@@ -1,21 +1,35 @@
 pub const FPS_LIMIT: f64 = 250.;
 
-pub const FR_DRIVE: i32 = 1;
-pub const FR_TURN: i32 = 2;
-pub const FR_ENCODER: i32 = 3;
+pub mod robotmap {
+    pub mod swerve {
+        pub const FR_DRIVE: i32 = 1;
+        pub const FR_TURN: i32 = 2;
+        pub const FR_ENCODER: i32 = 3;
 
-pub const FL_DRIVE: i32 = 4;
-pub const FL_TURN: i32 = 5;
-pub const FL_ENCODER: i32 = 6;
+        pub const FL_DRIVE: i32 = 4;
+        pub const FL_TURN: i32 = 5;
+        pub const FL_ENCODER: i32 = 6;
 
-pub const BL_DRIVE: i32 = 7;
-pub const BL_TURN: i32 = 8;
-pub const BL_ENCODER: i32 = 9;
+        pub const BL_DRIVE: i32 = 7;
+        pub const BL_TURN: i32 = 8;
+        pub const BL_ENCODER: i32 = 9;
 
-pub const BR_DRIVE: i32 = 10;
-pub const BR_TURN: i32 = 11;
-pub const BR_ENCODER: i32 = 12;
+        pub const BR_DRIVE: i32 = 10;
+        pub const BR_TURN: i32 = 11;
+        pub const BR_ENCODER: i32 = 12;
+    }
 
+    pub mod elevator {
+        pub const LEFT: i32 = 1;
+        pub const RIGHT: i32 = 2;
+    }
+
+    pub mod indexer {
+        pub const MOTOR: i32 = 3;
+    }
+}
+
+// TODO: get 2025 field dimensions
 pub const HALF_FIELD_WIDTH_METERS: f64 = 4.1148; // 54/4 feet
 pub const HALF_FIELD_LENGTH_METERS: f64 = 8.2296; // 54/2 feet
 
