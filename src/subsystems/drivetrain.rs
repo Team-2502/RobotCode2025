@@ -2,10 +2,9 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::ops::Add;
-use std::time::{Duration, Instant};
-use frcrs::{alliance_station, AllianceStation, telemetry};
+use frcrs::alliance_station;
 
-use frcrs::ctre::{talon_encoder_tick, CanCoder, ControlMode, Talon};
+use frcrs::ctre::{talon_encoder_tick, CanCoder, ControlMode, Talon, Pigeon};
 
 use crate::constants::drivetrain::{SWERVE_DRIVE_IE, SWERVE_DRIVE_KD, SWERVE_DRIVE_KF, SWERVE_DRIVE_KFA, SWERVE_DRIVE_KI, SWERVE_DRIVE_KP, SWERVE_ROTATIONS_TO_INCHES, SWERVE_TURN_KP};
 use crate::constants::robotmap::swerve::*;
@@ -16,14 +15,10 @@ use frcrs::telemetry::Telemetry;
 use nalgebra::{Quaternion, Rotation2, Vector2};
 use serde::Deserialize;
 use serde::Serialize;
-use tokio::time::sleep;
 use uom::num_traits::FloatConst;
 use uom::si::angle::{degree, radian, revolution};
 use uom::si::f64::{Angle, Length};
 use uom::si::length::{inch, meter};
-use uom::si::time::Time;
-use uom::si::velocity::meter_per_second;
-use wpi_trajectory::Path;
 use crate::constants::vision::ROBOT_CENTER_TO_LIMELIGHT_INCHES;
 use crate::subsystems::Vision;
 
@@ -45,7 +40,7 @@ pub struct LineupTarget {
 }
 
 pub struct Drivetrain {
-    navx: NavX,
+    pigeon: Pigeon,
 
     fr_drive: Talon,
     fr_turn: Talon,
@@ -139,7 +134,7 @@ impl Drivetrain {
         };
 
         let dt = Self {
-            navx: NavX::new(),
+            pigeon: Pigeon::new(PIGEON, Some("can0".to_owned())),
 
             fr_drive: Talon::new(FR_DRIVE, Some("can0".to_owned())),
             fr_turn,
@@ -365,9 +360,9 @@ impl Drivetrain {
 
     pub fn get_angle(&self) -> Angle {
         if alliance_station().red() {
-            Angle::new::<degree>(-self.navx.get_angle() + 180.)
+            Angle::new::<degree>(-self.pigeon.get_rotation().z + 180.)
         } else {
-            Angle::new::<degree>(-self.navx.get_angle())
+            Angle::new::<degree>(-self.pigeon.get_rotation().z)
         }
     }
 
@@ -383,7 +378,7 @@ impl Drivetrain {
     }
 
     pub fn reset_angle(&self) {
-        self.navx.reset_angle()
+        self.pigeon.reset();
     }
 
     pub fn reset_heading(&mut self) {

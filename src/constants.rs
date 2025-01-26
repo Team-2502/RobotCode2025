@@ -2,6 +2,8 @@ pub const FPS_LIMIT: f64 = 250.;
 
 pub mod robotmap {
     pub mod swerve {
+        pub const PIGEON: i32 = 13;
+
         pub const FR_DRIVE: i32 = 1;
         pub const FR_TURN: i32 = 2;
         pub const FR_ENCODER: i32 = 3;
