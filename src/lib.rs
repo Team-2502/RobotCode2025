@@ -2,21 +2,19 @@ pub mod subsystems;
 pub mod swerve;
 pub mod constants;
 pub mod container;
+pub mod auto;
 
 use std::cell::RefCell;
 use std::future::Future;
 use std::ops::Deref;
-use std::pin::Pin;
 use std::rc::Rc;
 use std::sync::Arc;
-use tokio::sync::Mutex;
 use frcrs::input::Joystick;
-use frcrs::{deadzone, Robot, TaskManager};
+use frcrs::{Robot, TaskManager};
 use frcrs::networktables::NetworkTable;
 use frcrs::telemetry::Telemetry;
 use tokio::task::spawn_local;
-use uom::si::angle::{degree, radian};
-use crate::constants::drivetrain::SWERVE_TURN_KP;
+use crate::auto::Auto;
 use crate::container::control_drivetrain;
 use crate::subsystems::{Climber, Drivetrain, DrivetrainControlState, Elevator, Indexer, LineupSide};
 
@@ -32,6 +30,7 @@ struct TeleopState {
     drivetrain_state: DrivetrainControlState,
 }
 
+#[derive(Clone)]
 pub struct Ferris {
     pub task_manager: TaskManager,
     pub controllers: Controllers,
@@ -42,6 +41,8 @@ pub struct Ferris {
     pub climber: Arc<Rc<RefCell<Climber>>>,
 
     teleop_state: Rc<RefCell<TeleopState>>,
+
+    auto_handle: Option<tokio::task::AbortHandle>,
 }
 
 impl Ferris {
@@ -59,16 +60,21 @@ impl Ferris {
             climber: Arc::new(Rc::new(RefCell::new(Climber::new()))),
 
             teleop_state: Default::default(),
+
+            auto_handle: None,
         }
     }
 }
 
 
 impl Robot for Ferris {
-    fn robot_init(&mut self) {
+    async fn robot_init(&mut self) {
         Telemetry::init(5807);
 
         NetworkTable::init();
+
+        Telemetry::put_string("auto chooser", serde_json::to_string(&Auto::names()).unwrap()).await;
+        Telemetry::put_string("selected auto",  Auto::Nothing.name().to_string()).await;
     }
 
     fn disabled_init(&mut self) {
@@ -92,10 +98,26 @@ impl Robot for Ferris {
             drivetrain.update_limelight().await;
             drivetrain.post_odo().await;
         }
+
+        if let Some(handle) = self.auto_handle.take() {
+            handle.abort();
+        }
     }
 
     async fn autonomous_periodic(&mut self) {
-        // println!("Autonomous periodic");
+        if self.auto_handle.is_none() {
+            let f = self.clone();
+
+            if let Some(selected_auto) = Telemetry::get("selected auto").await {
+                let chosen = Auto::from_dashboard(selected_auto.as_str());
+
+                let auto_task = Auto::run_auto(f, chosen);
+                let handle = spawn_local(auto_task).abort_handle();
+                self.auto_handle = Some(handle);
+            } else {
+                eprintln!("Failed to get selected auto from telemetry.");
+            }
+        }
     }
 
     async fn teleop_periodic(&mut self) {
