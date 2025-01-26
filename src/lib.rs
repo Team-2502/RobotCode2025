@@ -18,7 +18,7 @@ use tokio::task::spawn_local;
 use uom::si::angle::{degree, radian};
 use crate::constants::drivetrain::SWERVE_TURN_KP;
 use crate::container::control_drivetrain;
-use crate::subsystems::{Drivetrain, DrivetrainControlState, Elevator, Indexer, LineupSide};
+use crate::subsystems::{Climber, Drivetrain, DrivetrainControlState, Elevator, Indexer, LineupSide};
 
 #[derive(Clone)]
 pub struct Controllers {
@@ -39,6 +39,7 @@ pub struct Ferris {
     pub drivetrain: Rc<RefCell<Drivetrain>>,
     pub elevator: Rc<RefCell<Elevator>>,
     pub indexer: Rc<RefCell<Indexer>>,
+    pub climber: Arc<Rc<RefCell<Climber>>>,
 
     teleop_state: Rc<RefCell<TeleopState>>,
 }
@@ -55,6 +56,7 @@ impl Ferris {
             drivetrain: Rc::new(RefCell::new(Drivetrain::new())),
             elevator: Rc::new(RefCell::new(Elevator::new())),
             indexer: Rc::new(RefCell::new(Indexer::new())),
+            climber: Arc::new(Rc::new(RefCell::new(Climber::new()))),
 
             teleop_state: Default::default(),
         }
@@ -132,6 +134,42 @@ impl Robot for Ferris {
             } else {
                 indexer.set_speed(0.0);
             }
+        }
+
+        // TODO: make more ergonomic, maybe move away from frcrs task manager in favor for abort handle in ferris struct
+        // Untested
+        let climber = Arc::clone(&self.climber);
+        let climb = {
+            let climber = Arc::clone(&climber);
+            move || {
+                let climber = Arc::clone(&climber);
+                async move {
+                    if let Ok(mut climber) = climber.try_borrow_mut() {
+                        climber.climb().await;
+                    };
+                }
+            }
+        };
+
+        let climber = Arc::clone(&self.climber);
+        let cancel_climb = {
+            let climber = Arc::clone(&climber);
+            move || {
+                let climber = Arc::clone(&climber);
+                async move {
+                    if let Ok(mut climber) = climber.try_borrow_mut() {
+                        climber.set_raise(false);
+                        climber.set_grab(false);
+                    };
+                }
+            }
+        };
+
+        if self.controllers.operator.get(8) {
+            self.task_manager.run_task(climb);
+        } else {
+            self.task_manager.run_task(cancel_climb);
+            self.task_manager.abort_task(climb);
         }
     }
 
