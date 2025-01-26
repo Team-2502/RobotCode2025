@@ -44,26 +44,20 @@ pub struct Drivetrain {
 
     fr_drive: Talon,
     fr_turn: Talon,
-    fr_encoder: CanCoder,
 
     fl_drive: Talon,
     fl_turn: Talon,
-    fl_encoder: CanCoder,
 
     bl_drive: Talon,
     bl_turn: Talon,
-    bl_encoder: CanCoder,
 
     br_drive: Talon,
     br_turn: Talon,
-    br_encoder: CanCoder,
 
     kinematics: Swerve,
     pub odometry: Odometry,
 
     pub offset: Angle,
-
-    absolute_offsets: Offsets,
 
     pub vision: Vision,
 }
@@ -98,34 +92,12 @@ impl Offsets {
 
 impl Drivetrain {
     pub fn new() -> Self {
-        let mut absolute_offsets = Offsets::load();
-        let fr_encoder = CanCoder::new(FR_ENCODER, Some("can0".to_owned()));
-        let fl_encoder = CanCoder::new(FL_ENCODER, Some("can0".to_owned()));
-        let bl_encoder = CanCoder::new(BL_ENCODER, Some("can0".to_owned()));
-        let br_encoder = CanCoder::new(BR_ENCODER, Some("can0".to_owned()));
-
         let fr_turn = Talon::new(FR_TURN, Some("can0".to_owned()));
         let fl_turn = Talon::new(FL_TURN, Some("can0".to_owned()));
         let bl_turn = Talon::new(BL_TURN, Some("can0".to_owned()));
         let br_turn = Talon::new(BR_TURN, Some("can0".to_owned()));
 
         let vision = Vision::new(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 25, 2, 11)), 5807));
-
-        for (encoder, offset) in [&fr_encoder, &fl_encoder, &bl_encoder, &br_encoder]
-            .iter()
-            .zip(absolute_offsets.offsets.iter_mut())
-        {
-            *offset -= encoder.get_absolute();
-        }
-
-        for (turn, offset) in [&fr_turn, &fl_turn, &bl_turn, &br_turn]
-            .iter()
-            .zip(absolute_offsets.offsets.iter_mut())
-        {
-            *offset -= turn.get_position();
-            *offset = 0.;
-            dbg!(offset);
-        }
 
         let offset = if alliance_station().red() {
             Angle::new::<degree>(180.)
@@ -138,26 +110,20 @@ impl Drivetrain {
 
             fr_drive: Talon::new(FR_DRIVE, Some("can0".to_owned())),
             fr_turn,
-            fr_encoder,
 
             fl_drive: Talon::new(FL_DRIVE, Some("can0".to_owned())),
             fl_turn,
-            fl_encoder,
 
             bl_drive: Talon::new(BL_DRIVE, Some("can0".to_owned())),
             bl_turn,
-            bl_encoder,
 
             br_drive: Talon::new(BR_DRIVE, Some("can0".to_owned())),
             br_turn,
-            br_encoder,
 
             kinematics: Swerve::rectangle(Length::new::<inch>(22.5), Length::new::<inch>(23.5)),
             odometry: Odometry::new(),
 
             offset,
-
-            absolute_offsets,
 
             vision,
         };
@@ -204,23 +170,6 @@ impl Drivetrain {
         self.odometry.set_abs(Vector2::new(pose.x.value, pose.y.value));
     }
 
-    pub fn write_absolute(&mut self) {
-        let mut offsets = Offsets::load();
-        for (encoder, offset) in [
-            &self.fr_encoder,
-            &self.fl_encoder,
-            &self.bl_encoder,
-            &self.br_encoder,
-        ]
-            .iter()
-            .zip(offsets.offsets.iter_mut())
-        {
-            *offset = encoder.get_absolute();
-        }
-
-        offsets.store();
-    }
-
     pub fn stop(&self) {
         self.fr_drive.stop();
         self.fr_turn.stop();
@@ -260,14 +209,12 @@ impl Drivetrain {
     fn get_speeds(&self) -> Vec<ModuleState> {
         let mut speeds = Vec::new();
 
-        for (module, offset) in [&self.fr_turn, &self.fl_turn, &self.bl_turn, &self.br_turn]
+        for (module) in [&self.fr_turn, &self.fl_turn, &self.bl_turn, &self.br_turn]
             .iter()
-            .zip(self.absolute_offsets.offsets.iter())
         {
             speeds.push(ModuleState {
                 speed: 0.,
                 angle: Angle::new::<talon_encoder_tick>(-module.get_position())
-                    + Angle::new::<degree>(*offset),
             });
         }
 
@@ -297,9 +244,7 @@ impl Drivetrain {
             .into_iter()
             .zip(measured.iter())
             .map(|(calculated, measured)| calculated.optimize(measured))
-            .zip(self.absolute_offsets.offsets.iter())
-            .map(|(mut state, offset)| {
-                state.angle -= Angle::new::<degree>(*offset);
+            .map(|(mut state)| {
                 state
             })
             .collect();
