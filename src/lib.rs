@@ -5,14 +5,19 @@ pub mod container;
 
 use std::cell::RefCell;
 use std::future::Future;
+use std::ops::Deref;
 use std::pin::Pin;
 use std::rc::Rc;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use frcrs::input::Joystick;
-use frcrs::{Robot, TaskManager};
+use frcrs::{deadzone, Robot, TaskManager};
 use frcrs::networktables::NetworkTable;
 use frcrs::telemetry::Telemetry;
+use tokio::task::spawn_local;
+use uom::si::angle::{degree, radian};
+use crate::constants::drivetrain::SWERVE_TURN_KP;
+use crate::container::control_drivetrain;
 use crate::subsystems::{Drivetrain, DrivetrainControlState, LineupSide};
 
 #[derive(Clone)]
@@ -31,7 +36,7 @@ pub struct Ferris {
     pub task_manager: TaskManager,
     pub controllers: Controllers,
 
-    pub drivetrain: Arc<Mutex<Drivetrain>>,
+    pub drivetrain: Rc<RefCell<Drivetrain>>,
 
     teleop_state: Rc<RefCell<TeleopState>>,
 }
@@ -45,7 +50,7 @@ impl Ferris {
                 right_drive: Joystick::new(0),
                 operator: Joystick::new(2),
             },
-            drivetrain: Arc::new(Mutex::new(Drivetrain::new())),
+            drivetrain: Rc::new(RefCell::new(Drivetrain::new())),
             teleop_state: Default::default(),
         }
     }
@@ -76,7 +81,10 @@ impl Robot for Ferris {
     }
 
     async fn disabled_periodic(&mut self) {
-        // println!("Disabled periodic");
+        if let Ok(mut drivetrain) = self.drivetrain.try_borrow_mut() {
+            drivetrain.update_limelight().await;
+            drivetrain.post_odo().await;
+        }
     }
 
     async fn autonomous_periodic(&mut self) {
@@ -84,46 +92,25 @@ impl Robot for Ferris {
     }
 
     async fn teleop_periodic(&mut self) {
-        let drivetrain = Arc::clone(&self.drivetrain);
-        let dt_update = {
-            let drivetrain = Arc::clone(&drivetrain);
-            move || {
-                let drivetrain = Arc::clone(&drivetrain);
-                async move {
-                    let mut drivetrain = drivetrain.lock().await;
-                    drivetrain.update_limelight().await;
-                    drivetrain.post_odo().await;
-                }
+        let TeleopState {
+            ref mut drivetrain_state,
+        } = *self.teleop_state.deref().borrow_mut();
+
+        if let Ok(mut drivetrain) = self.drivetrain.try_borrow_mut() {
+            drivetrain.update_limelight().await;
+            drivetrain.post_odo().await;
+
+            if self.controllers.right_drive.get(3) {
+                drivetrain.lineup(LineupSide::Left).await;
+            } else if self.controllers.right_drive.get(4) {
+                drivetrain.lineup(LineupSide::Right).await;
+            } else {
+                control_drivetrain(&mut drivetrain, &mut self.controllers, drivetrain_state).await;
             }
-        };
-
-        self.task_manager.run_task(dt_update);
-
-        let drivetrain = Arc::clone(&self.drivetrain);
-        if self.controllers.right_drive.get(3) {
-            self.task_manager.run_task(lineup_task(drivetrain, LineupSide::Left));
-        } else {
-            self.task_manager.abort_task(lineup_task(drivetrain, LineupSide::Left));
-        }
-
-        let drivetrain = Arc::clone(&self.drivetrain);
-        if self.controllers.right_drive.get(4) {
-            self.task_manager.run_task(lineup_task(drivetrain, LineupSide::Right));
-        } else {
-            self.task_manager.abort_task(lineup_task(drivetrain, LineupSide::Right));
         }
     }
 
     async fn test_periodic(&mut self) {
         println!("Test periodic");
-    }
-}
-
-fn lineup_task(drivetrain: Arc<Mutex<Drivetrain>>, side: LineupSide) -> impl FnMut() -> Pin<Box<dyn Future<Output = ()> + Send>> {
-    move || {
-        let drivetrain = Arc::clone(&drivetrain);
-        Box::pin(async move {
-            drivetrain.lock().await.lineup(side).await;
-        })
     }
 }

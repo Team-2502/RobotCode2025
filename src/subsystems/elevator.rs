@@ -35,6 +35,10 @@ impl Elevator {
         }
     }
 
+    pub fn set_speed(&self, speed: f64) {
+        self.left.set(ControlMode::Percent, speed);
+    }
+
     pub fn stop(&self) {
         self.left.stop();
         self.right.stop();

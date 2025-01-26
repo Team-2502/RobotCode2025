@@ -30,7 +30,7 @@ use crate::constants::drivetrain::SWERVE_TURN_KP;
 //     }
 // }
 
-async fn control_drivetrain(
+pub async fn control_drivetrain(
     drivetrain: &mut Drivetrain,
     controllers: &mut Controllers,
     state: &mut DrivetrainControlState,
