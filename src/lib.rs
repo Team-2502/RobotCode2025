@@ -18,7 +18,7 @@ use tokio::task::spawn_local;
 use uom::si::angle::{degree, radian};
 use crate::constants::drivetrain::SWERVE_TURN_KP;
 use crate::container::control_drivetrain;
-use crate::subsystems::{Drivetrain, DrivetrainControlState, Elevator, LineupSide};
+use crate::subsystems::{Drivetrain, DrivetrainControlState, Elevator, Indexer, LineupSide};
 
 #[derive(Clone)]
 pub struct Controllers {
@@ -38,6 +38,7 @@ pub struct Ferris {
 
     pub drivetrain: Rc<RefCell<Drivetrain>>,
     pub elevator: Rc<RefCell<Elevator>>,
+    pub indexer: Rc<RefCell<Indexer>>,
 
     teleop_state: Rc<RefCell<TeleopState>>,
 }
@@ -53,6 +54,8 @@ impl Ferris {
             },
             drivetrain: Rc::new(RefCell::new(Drivetrain::new())),
             elevator: Rc::new(RefCell::new(Elevator::new())),
+            indexer: Rc::new(RefCell::new(Indexer::new())),
+
             teleop_state: Default::default(),
         }
     }
@@ -118,6 +121,16 @@ impl Robot for Ferris {
                 elevator.set_speed(-0.5);
             } else {
                 elevator.set_speed(0.0);
+            }
+        }
+
+        if let Ok(mut indexer) = self.indexer.try_borrow_mut() {
+            if self.controllers.operator.get(1) {
+                indexer.set_speed(0.5);
+            } else if self.controllers.operator.get(2) {
+                indexer.set_speed(-0.5);
+            } else {
+                indexer.set_speed(0.0);
             }
         }
     }
