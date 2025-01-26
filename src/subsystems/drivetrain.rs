@@ -131,6 +131,12 @@ impl Drivetrain {
             dbg!(offset);
         }
 
+        let offset = if alliance_station().red() {
+            Angle::new::<degree>(180.)
+        } else {
+            Angle::new::<degree>(0.)
+        };
+
         let dt = Self {
             navx: NavX::new(),
 
@@ -153,7 +159,7 @@ impl Drivetrain {
             kinematics: Swerve::rectangle(Length::new::<inch>(22.5), Length::new::<inch>(23.5)),
             odometry: Odometry::new(),
 
-            offset: Angle::new::<degree>(0.),
+            offset,
 
             absolute_offsets,
 
@@ -271,15 +277,17 @@ impl Drivetrain {
 
         speeds
     }
+
+    fn normalize_angle(angle: f64) -> f64 {
+        ((angle % 360.0) + 360.0) % 360.0
+    }
+
     pub fn set_speeds(&mut self, fwd: f64, str: f64, rot: f64) {
         //println!("ODO X: {}", self.odometry.position.x);
         let mut transform = Vector2::new(-str, fwd);
-        transform = Rotation2::new(self.get_offset().get::<radian>()) * transform;
+        transform = Rotation2::new(-self.get_offset().get::<radian>() + std::f64::consts::PI) * transform;
+
         let wheel_speeds = self.kinematics.calculate(transform, rot);
-
-        //self.fr_turn.set(control_mode, amount)
-
-        //self.fr_turn.set(ControlMode::Position, (0.).talon_encoder_ticks());
 
         let measured = self.get_speeds();
 
@@ -288,8 +296,6 @@ impl Drivetrain {
         let angle = self.get_offset();
 
         self.odometry.calculate(positions, angle);
-
-        //println!("angle fr {}", measured[0].angle.get::<revolution>());
 
         let wheel_speeds: Vec<ModuleState> = wheel_speeds
             .into_iter()
@@ -357,7 +363,11 @@ impl Drivetrain {
     }
 
     pub fn get_angle(&self) -> Angle {
-        Angle::new::<degree>(-self.navx.get_angle())
+        if alliance_station().red() {
+            Angle::new::<degree>(-self.navx.get_angle() + 180.)
+        } else {
+            Angle::new::<degree>(-self.navx.get_angle())
+        }
     }
 
     pub fn get_offset(&self) -> Angle {
@@ -379,7 +389,7 @@ impl Drivetrain {
         self.offset = self.get_angle();
     }
 
-    pub async fn lineup(&mut self, side: LineupSide, dt: Duration) {
+    pub async fn lineup(&mut self, side: LineupSide) {
         let mut last_error = Vector2::zeros();
         let mut i = Vector2::zeros();
 
@@ -395,17 +405,13 @@ impl Drivetrain {
             error_position *= -SWERVE_DRIVE_KP;
 
             let mut speed = error_position;
-            speed += i * -SWERVE_DRIVE_KI * dt.as_secs_f64() * 9.;
 
             let speed_s = speed;
-            speed += (speed - last_error) * -SWERVE_DRIVE_KD * dt.as_secs_f64() * 9.;
             last_error = speed_s;
 
             if (alliance_station().red()) { speed.x *= -1. }
 
             self.set_speeds(speed.x, -speed.y, error_angle);
-
-            // sleep(Duration::from_millis(20)).await;
 
             Telemetry::put_number("error_position_x", error_position.x).await;
             Telemetry::put_number("error_position_y", error_position.y).await;
@@ -457,7 +463,9 @@ impl Drivetrain {
             (tag_coords.y + Length::new::<meter>(offset_y) + Length::new::<meter>(forward_y)).get::<meter>(),
         );
 
-        let robot_angle = Angle::new::<radian>(yaw).add(Angle::new::<radian>(std::f64::consts::PI));
+        let mut robot_angle = Angle::new::<radian>(yaw).add(Angle::new::<radian>(std::f64::consts::PI));
+
+        robot_angle = Angle::new::<degree>(calculate_relative_target(self.get_offset().get::<degree>(), robot_angle.get::<degree>()));
 
         Some(LineupTarget {
             position: target_pos,
@@ -477,16 +485,40 @@ fn quaternion_to_yaw(quaternion: Quaternion<f64>) -> f64 {
     yaw.rem_euclid(2.0 * std::f64::consts::PI)
 }
 
+/// Normalize an angle to the range 0 to 360 degrees.
+fn normalize_angle_360(angle: f64) -> f64 {
+    let mut normalized = angle % 360.0;
+    if normalized < 0.0 {
+        normalized += 360.0;
+    }
+    normalized
+}
+
+/// Get the target angle in relation to the robot's current angle.
+/// Ensures the target angle is mapped to the same rotational "circle" as the robot's angle.
+fn calculate_relative_target(current: f64, target: f64) -> f64 {
+    let target_relative = target + (current / 360.0).floor() * 360.0;
+
+    // Ensure the relative target is the closest possible to the current angle
+    if target_relative - current > 180.0 {
+        target_relative - 360.0
+    } else if target_relative - current < -180.0 {
+        target_relative + 360.0
+    } else {
+        target_relative
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use nalgebra::{Quaternion, Vector2, Vector3};
     use uom::ConversionFactor;
-    use uom::si::angle::radian;
+    use uom::si::angle::{degree, radian};
     use uom::si::f32::Angle;
     use uom::si::f64::Length;
     use uom::si::length::{inch, meter};
     use crate::subsystems::{FieldPosition, LineupSide, LineupTarget};
-    use crate::subsystems::drivetrain::quaternion_to_yaw;
+    use crate::subsystems::drivetrain::{calculate_relative_target, quaternion_to_yaw};
 
     #[test]
     fn calculate_target_lineup_position() {
@@ -538,5 +570,14 @@ mod tests {
         println!("{:?}", robot_angle);
 
         assert!(false);
+    }
+
+    #[test]
+    fn angle_in_scope() {
+        let current_angle = 800.0;
+        let target_angle = 250.0;
+
+        let relative_angle = calculate_relative_target(current_angle, target_angle);
+        assert_eq!(relative_angle, 970.0);
     }
 }

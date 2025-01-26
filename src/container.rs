@@ -21,9 +21,9 @@ pub async fn teleop(controllers: &mut Controllers, robot: &mut Ferris, executor:
         drivetrain.post_odo().await;
 
         if controllers.right_drive.get(3) {
-            drivetrain.lineup(LineupSide::Left, dt).await;
+            drivetrain.lineup(LineupSide::Left).await;
         } else if controllers.right_drive.get(4) {
-            drivetrain.lineup(LineupSide::Right, dt).await;
+            drivetrain.lineup(LineupSide::Right).await;
         } else {
             control_drivetrain(&mut drivetrain, controllers, drivetrain_state).await;
         }
