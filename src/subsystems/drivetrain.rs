@@ -6,16 +6,16 @@ use frcrs::alliance_station;
 
 use frcrs::ctre::{talon_encoder_tick, CanCoder, ControlMode, Talon, Pigeon};
 
-use crate::constants::drivetrain::{SWERVE_DRIVE_IE, SWERVE_DRIVE_KD, SWERVE_DRIVE_KF, SWERVE_DRIVE_KFA, SWERVE_DRIVE_KI, SWERVE_DRIVE_KP, SWERVE_ROTATIONS_TO_INCHES, SWERVE_TURN_KP};
+use crate::constants::drivetrain::{SWERVE_DRIVE_IE, SWERVE_DRIVE_KP, SWERVE_ROTATIONS_TO_INCHES, SWERVE_TURN_KP};
 use crate::constants::robotmap::swerve::*;
 use crate::swerve::kinematics::{ModuleState, Swerve};
 use crate::swerve::odometry::{ModuleReturn, Odometry};
-use frcrs::navx::NavX;
+
 use frcrs::telemetry::Telemetry;
 use nalgebra::{Quaternion, Rotation2, Vector2};
 use serde::Deserialize;
 use serde::Serialize;
-use uom::num_traits::FloatConst;
+
 use uom::si::angle::{degree, radian, revolution};
 use uom::si::f64::{Angle, Length};
 use uom::si::length::{inch, meter};
@@ -405,7 +405,7 @@ impl Drivetrain {
             let speed_s = speed;
             last_error = speed_s;
 
-            if (alliance_station().red()) { speed.x *= -1. }
+            if alliance_station().red() { speed.x *= -1. }
 
             self.set_speeds(speed.x, -speed.y, error_angle);
 
@@ -508,12 +508,12 @@ fn calculate_relative_target(current: f64, target: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use nalgebra::{Quaternion, Vector2, Vector3};
-    use uom::ConversionFactor;
-    use uom::si::angle::{degree, radian};
+    
+    use uom::si::angle::{radian};
     use uom::si::f32::Angle;
     use uom::si::f64::Length;
-    use uom::si::length::{inch, meter};
-    use crate::subsystems::{FieldPosition, LineupSide, LineupTarget};
+    use uom::si::length::{meter};
+    use crate::subsystems::{FieldPosition, LineupSide};
     use crate::subsystems::drivetrain::{calculate_relative_target, quaternion_to_yaw};
 
     #[test]

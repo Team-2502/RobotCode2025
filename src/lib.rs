@@ -5,7 +5,7 @@ pub mod container;
 pub mod auto;
 
 use std::cell::RefCell;
-use std::future::Future;
+
 use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -138,7 +138,7 @@ impl Robot for Ferris {
             }
         }
 
-        if let Ok(mut elevator) = self.elevator.try_borrow_mut() {
+        if let Ok(elevator) = self.elevator.try_borrow_mut() {
             if self.controllers.operator.get(3) {
                 elevator.set_speed(0.5);
             } else if self.controllers.operator.get(4) {
@@ -148,7 +148,7 @@ impl Robot for Ferris {
             }
         }
 
-        if let Ok(mut indexer) = self.indexer.try_borrow_mut() {
+        if let Ok(indexer) = self.indexer.try_borrow_mut() {
             if self.controllers.operator.get(1) {
                 indexer.set_speed(0.5);
             } else if self.controllers.operator.get(2) {
@@ -166,7 +166,7 @@ impl Robot for Ferris {
             move || {
                 let climber = Arc::clone(&climber);
                 async move {
-                    if let Ok(mut climber) = climber.try_borrow_mut() {
+                    if let Ok(climber) = climber.try_borrow_mut() {
                         climber.climb().await;
                     };
                 }
@@ -179,7 +179,7 @@ impl Robot for Ferris {
             move || {
                 let climber = Arc::clone(&climber);
                 async move {
-                    if let Ok(mut climber) = climber.try_borrow_mut() {
+                    if let Ok(climber) = climber.try_borrow_mut() {
                         climber.set_raise(false);
                         climber.set_grab(false);
                     };

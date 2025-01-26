@@ -1,7 +1,7 @@
 mod path;
 
 use serde::{Deserialize, Serialize};
-pub use path::*;
+
 use crate::Ferris;
 
 #[derive(Serialize, Deserialize)]
@@ -34,7 +34,7 @@ impl Auto {
         Self::iterator().iter().map(|a| a.name().to_owned()).collect()
     }
 
-    pub async fn run_auto<'a>(ferris: Ferris, chosen: Auto) {
+    pub async fn run_auto<'a>(_ferris: Ferris, chosen: Auto) {
         match chosen {
             Auto::Nothing => {}
         }

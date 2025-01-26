@@ -1,13 +1,12 @@
-use std::ops::Deref;
-use std::time::Duration;
-use tokio::task::LocalSet;
-use crate::{Controllers, Ferris, TeleopState};
-use crate::subsystems::{Drivetrain, DrivetrainControlState, LineupSide};
-use frcrs::{alliance_station, deadzone};
+
+
+
+use crate::{Controllers};
+use crate::subsystems::{Drivetrain, DrivetrainControlState};
+use frcrs::{deadzone};
 use nalgebra::ComplexField;
 use uom::si::{
     angle::{degree, radian},
-    f64::Angle,
 };
 use crate::constants::drivetrain::SWERVE_TURN_KP;
 
@@ -40,11 +39,11 @@ pub async fn control_drivetrain(
     let saved_angle = &mut state.saved_angle;
 
     let joystick_range = 0.04..1.;
-    let mut power_translate = if left_drive.get(1) { 0.0..0.3 } else { 0.0..1. };
-    let mut power_rotate = if left_drive.get(1) { 0.0..0.2 } else { 0.0..1. };
-    let mut deadly = deadzone(left_drive.get_y(), &joystick_range, &power_translate);
-    let mut deadlx = deadzone(left_drive.get_x(), &joystick_range, &power_translate);
-    let mut deadrz = deadzone(right_drive.get_z(), &joystick_range, &power_rotate);
+    let power_translate = if left_drive.get(1) { 0.0..0.3 } else { 0.0..1. };
+    let power_rotate = if left_drive.get(1) { 0.0..0.2 } else { 0.0..1. };
+    let deadly = deadzone(left_drive.get_y(), &joystick_range, &power_translate);
+    let deadlx = deadzone(left_drive.get_x(), &joystick_range, &power_translate);
+    let deadrz = deadzone(right_drive.get_z(), &joystick_range, &power_rotate);
 
 
     let hold_angle =
