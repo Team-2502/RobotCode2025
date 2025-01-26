@@ -32,6 +32,7 @@ pub struct DrivetrainControlState {
     pub saved_angle: Option<Angle>,
 }
 
+#[derive(Clone, Copy)]
 pub enum LineupSide {
     Left,
     Right
