@@ -15,8 +15,8 @@ pub enum ElevatorPosition {
 
 impl Elevator {
     pub fn new() -> Self {
-        let left = Talon::new(robotmap::elevator::LEFT, None);
-        let right = Talon::new(robotmap::elevator::RIGHT, None);
+        let left = Talon::new(robotmap::elevator::LEFT, Some("can0".to_string()));
+        let right = Talon::new(robotmap::elevator::RIGHT, Some("can0".to_string()));
 
         right.follow(&left, true);
 

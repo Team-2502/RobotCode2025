@@ -18,8 +18,8 @@ pub mod robotmap {
     }
 
     pub mod elevator {
-        pub const LEFT: i32 = 1;
-        pub const RIGHT: i32 = 2;
+        pub const LEFT: i32 = 10;
+        pub const RIGHT: i32 = 11;
     }
 
     pub mod indexer {
