@@ -6,7 +6,7 @@ use crate::Ferris;
 
 #[derive(Serialize, Deserialize)]
 pub enum Auto {
-    Nothing
+    Nothing,
 }
 
 impl Auto {
@@ -25,13 +25,14 @@ impl Auto {
     }
 
     pub fn iterator() -> Vec<Self> {
-        vec![
-            Auto::Nothing,
-        ]
+        vec![Auto::Nothing]
     }
 
     pub fn names() -> Vec<String> {
-        Self::iterator().iter().map(|a| a.name().to_owned()).collect()
+        Self::iterator()
+            .iter()
+            .map(|a| a.name().to_owned())
+            .collect()
     }
 
     pub async fn run_auto<'a>(_ferris: Ferris, chosen: Auto) {

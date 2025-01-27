@@ -1,6 +1,6 @@
 use frcrs::Robot;
 use tokio::task;
-use RobotCode2025::{Ferris};
+use RobotCode2025::Ferris;
 
 fn main() {
     let runtime = tokio::runtime::Runtime::new().unwrap();

@@ -1,6 +1,6 @@
-use std::{ops::Sub};
+use std::ops::Sub;
 
-use frcrs::{alliance_station};
+use frcrs::alliance_station;
 use frcrs::networktables::SmartDashboard;
 use nalgebra::{Rotation2, Vector2};
 use uom::si::{

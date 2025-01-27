@@ -1,12 +1,14 @@
+use frcrs::alliance_station;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::ops::Add;
-use frcrs::alliance_station;
 
-use frcrs::ctre::{talon_encoder_tick, CanCoder, ControlMode, Talon, Pigeon};
+use frcrs::ctre::{talon_encoder_tick, CanCoder, ControlMode, Pigeon, Talon};
 
-use crate::constants::drivetrain::{SWERVE_DRIVE_IE, SWERVE_DRIVE_KP, SWERVE_ROTATIONS_TO_INCHES, SWERVE_TURN_KP};
+use crate::constants::drivetrain::{
+    SWERVE_DRIVE_IE, SWERVE_DRIVE_KP, SWERVE_ROTATIONS_TO_INCHES, SWERVE_TURN_KP,
+};
 use crate::constants::robotmap::swerve::*;
 use crate::swerve::kinematics::{ModuleState, Swerve};
 use crate::swerve::odometry::{ModuleReturn, Odometry};
@@ -16,11 +18,11 @@ use nalgebra::{Quaternion, Rotation2, Vector2};
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::constants::vision::ROBOT_CENTER_TO_LIMELIGHT_INCHES;
+use crate::subsystems::Vision;
 use uom::si::angle::{degree, radian, revolution};
 use uom::si::f64::{Angle, Length};
 use uom::si::length::{inch, meter};
-use crate::constants::vision::ROBOT_CENTER_TO_LIMELIGHT_INCHES;
-use crate::subsystems::Vision;
 
 #[derive(Default)]
 pub struct DrivetrainControlState {
@@ -30,7 +32,7 @@ pub struct DrivetrainControlState {
 #[derive(Clone, Copy)]
 pub enum LineupSide {
     Left,
-    Right
+    Right,
 }
 
 #[derive(Debug)]
@@ -72,7 +74,7 @@ struct Point {
     x: f64,
     y: f64,
     distance: f64,
-    angle: f64
+    angle: f64,
 }
 
 impl Offsets {
@@ -97,7 +99,10 @@ impl Drivetrain {
         let bl_turn = Talon::new(BL_TURN, Some("can0".to_owned()));
         let br_turn = Talon::new(BR_TURN, Some("can0".to_owned()));
 
-        let vision = Vision::new(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 25, 2, 11)), 5807));
+        let vision = Vision::new(SocketAddr::new(
+            IpAddr::V4(Ipv4Addr::new(10, 25, 2, 11)),
+            5807,
+        ));
 
         let offset = if alliance_station().red() {
             Angle::new::<degree>(180.)
@@ -132,26 +137,32 @@ impl Drivetrain {
     }
 
     pub async fn update_limelight(&mut self) {
-        self.vision.update(self.get_offset().get::<degree>() + 180.).await;
+        self.vision
+            .update(self.get_offset().get::<degree>() + 180.)
+            .await;
 
         let pose = self.vision.get_botpose();
 
         // Calculate offset from robot center to limelight
         let robot_center_to_limelight_unrotated: Vector2<Length> = Vector2::new(
             Length::new::<inch>(ROBOT_CENTER_TO_LIMELIGHT_INCHES.x),
-            Length::new::<inch>(ROBOT_CENTER_TO_LIMELIGHT_INCHES.y)
+            Length::new::<inch>(ROBOT_CENTER_TO_LIMELIGHT_INCHES.y),
         );
 
         // Rotate the limelight offset by drivetrain angle
         let robot_to_limelight: Vector2<Length> = Vector2::new(
             Length::new::<meter>(
-                robot_center_to_limelight_unrotated.x.get::<meter>() * f64::cos(self.get_offset().get::<radian>()) -
-                    robot_center_to_limelight_unrotated.y.get::<meter>() * f64::sin(self.get_offset().get::<radian>())
+                robot_center_to_limelight_unrotated.x.get::<meter>()
+                    * f64::cos(self.get_offset().get::<radian>())
+                    - robot_center_to_limelight_unrotated.y.get::<meter>()
+                        * f64::sin(self.get_offset().get::<radian>()),
             ),
             Length::new::<meter>(
-                robot_center_to_limelight_unrotated.x.get::<meter>() * f64::sin(self.get_offset().get::<radian>()) +
-                    robot_center_to_limelight_unrotated.y.get::<meter>() * f64::cos(self.get_offset().get::<radian>())
-            )
+                robot_center_to_limelight_unrotated.x.get::<meter>()
+                    * f64::sin(self.get_offset().get::<radian>())
+                    + robot_center_to_limelight_unrotated.y.get::<meter>()
+                        * f64::cos(self.get_offset().get::<radian>()),
+            ),
         );
 
         // Will return 0, 0 if no tag found
@@ -167,7 +178,8 @@ impl Drivetrain {
     }
 
     pub fn update_odo(&mut self, pose: Vector2<Length>) {
-        self.odometry.set_abs(Vector2::new(pose.x.value, pose.y.value));
+        self.odometry
+            .set_abs(Vector2::new(pose.x.value, pose.y.value));
     }
 
     pub fn stop(&self) {
@@ -193,8 +205,8 @@ impl Drivetrain {
             &self.bl_drive,
             &self.br_drive,
         ]
-            .iter()
-            .zip(angles.iter())
+        .iter()
+        .zip(angles.iter())
         {
             let distance = module.get_position() * SWERVE_ROTATIONS_TO_INCHES;
             speeds.push(ModuleReturn {
@@ -209,12 +221,10 @@ impl Drivetrain {
     fn get_speeds(&self) -> Vec<ModuleState> {
         let mut speeds = Vec::new();
 
-        for (module) in [&self.fr_turn, &self.fl_turn, &self.bl_turn, &self.br_turn]
-            .iter()
-        {
+        for (module) in [&self.fr_turn, &self.fl_turn, &self.bl_turn, &self.br_turn].iter() {
             speeds.push(ModuleState {
                 speed: 0.,
-                angle: Angle::new::<talon_encoder_tick>(-module.get_position())
+                angle: Angle::new::<talon_encoder_tick>(-module.get_position()),
             });
         }
 
@@ -228,7 +238,8 @@ impl Drivetrain {
     pub fn set_speeds(&mut self, fwd: f64, str: f64, rot: f64) {
         //println!("ODO X: {}", self.odometry.position.x);
         let mut transform = Vector2::new(-str, fwd);
-        transform = Rotation2::new(-self.get_offset().get::<radian>() + std::f64::consts::PI) * transform;
+        transform =
+            Rotation2::new(-self.get_offset().get::<radian>() + std::f64::consts::PI) * transform;
 
         let wheel_speeds = self.kinematics.calculate(transform, rot);
 
@@ -244,9 +255,7 @@ impl Drivetrain {
             .into_iter()
             .zip(measured.iter())
             .map(|(calculated, measured)| calculated.optimize(measured))
-            .map(|(mut state)| {
-                state
-            })
+            .map(|(mut state)| state)
             .collect();
 
         self.fr_drive
@@ -350,7 +359,9 @@ impl Drivetrain {
             let speed_s = speed;
             last_error = speed_s;
 
-            if alliance_station().red() { speed.x *= -1. }
+            if alliance_station().red() {
+                speed.x *= -1.
+            }
 
             self.set_speeds(speed.x, -speed.y, error_angle);
 
@@ -400,13 +411,19 @@ impl Drivetrain {
         let forward_y = forward_distance.get::<meter>() * f64::sin(yaw);
 
         let target_pos = Vector2::new(
-            (tag_coords.x + Length::new::<meter>(offset_x) + Length::new::<meter>(forward_x)).get::<meter>(),
-            (tag_coords.y + Length::new::<meter>(offset_y) + Length::new::<meter>(forward_y)).get::<meter>(),
+            (tag_coords.x + Length::new::<meter>(offset_x) + Length::new::<meter>(forward_x))
+                .get::<meter>(),
+            (tag_coords.y + Length::new::<meter>(offset_y) + Length::new::<meter>(forward_y))
+                .get::<meter>(),
         );
 
-        let mut robot_angle = Angle::new::<radian>(yaw).add(Angle::new::<radian>(std::f64::consts::PI));
+        let mut robot_angle =
+            Angle::new::<radian>(yaw).add(Angle::new::<radian>(std::f64::consts::PI));
 
-        robot_angle = Angle::new::<degree>(calculate_relative_target(self.get_offset().get::<degree>(), robot_angle.get::<degree>()));
+        robot_angle = Angle::new::<degree>(calculate_relative_target(
+            self.get_offset().get::<degree>(),
+            robot_angle.get::<degree>(),
+        ));
 
         Some(LineupTarget {
             position: target_pos,
@@ -453,13 +470,13 @@ fn calculate_relative_target(current: f64, target: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use nalgebra::{Quaternion, Vector2, Vector3};
-    
-    use uom::si::angle::{radian};
+
+    use crate::subsystems::drivetrain::{calculate_relative_target, quaternion_to_yaw};
+    use crate::subsystems::{FieldPosition, LineupSide};
+    use uom::si::angle::radian;
     use uom::si::f32::Angle;
     use uom::si::f64::Length;
-    use uom::si::length::{meter};
-    use crate::subsystems::{FieldPosition, LineupSide};
-    use crate::subsystems::drivetrain::{calculate_relative_target, quaternion_to_yaw};
+    use uom::si::length::meter;
 
     #[test]
     fn calculate_target_lineup_position() {
@@ -501,8 +518,10 @@ mod tests {
         let forward_y = forward_distance.get::<meter>() * f64::sin(yaw);
 
         let target_pos = Vector2::new(
-            (tag_coords.x + Length::new::<meter>(offset_x) + Length::new::<meter>(forward_x)).get::<meter>(),
-            (tag_coords.y + Length::new::<meter>(offset_y) + Length::new::<meter>(forward_y)).get::<meter>(),
+            (tag_coords.x + Length::new::<meter>(offset_x) + Length::new::<meter>(forward_x))
+                .get::<meter>(),
+            (tag_coords.y + Length::new::<meter>(offset_y) + Length::new::<meter>(forward_y))
+                .get::<meter>(),
         );
 
         let robot_angle = Angle::new::<radian>(yaw as f32);

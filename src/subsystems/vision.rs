@@ -1,20 +1,20 @@
-use std::fs::File;
 use frcrs::limelight::{Limelight, LimelightResults};
+use std::fs::File;
 
+use crate::constants::vision;
+use crate::constants::vision::ROBOT_CENTER_TO_LIMELIGHT_INCHES;
 use frcrs::telemetry::Telemetry;
 use nalgebra::{Quaternion, Vector2, Vector3};
-use crate::constants::vision;
 use serde_json::Value;
 use uom::num::FromPrimitive;
+use uom::si::length::inch;
 use uom::si::{
     angle::{degree, radian},
     f64::{Angle, Length},
     length::meter,
 };
-use uom::si::length::inch;
-use crate::constants::vision::ROBOT_CENTER_TO_LIMELIGHT_INCHES;
 
-use std::net::{SocketAddr};
+use std::net::SocketAddr;
 
 pub struct Vision {
     tag_map_values: Value,
@@ -25,7 +25,7 @@ pub struct Vision {
 
 pub struct FieldPosition {
     pub coordinate: Option<Vector3<Length>>,
-    pub quaternion: Option<Quaternion<f64>>
+    pub quaternion: Option<Quaternion<f64>>,
 }
 
 impl Vision {
@@ -47,7 +47,10 @@ impl Vision {
     /// Updates the results from the limelight, also posts telemetry data
     pub async fn update(&mut self, dt_angle: f64) {
         self.results = self.limelight.results().await.unwrap();
-        self.limelight.update_robot_orientation(dt_angle).await.unwrap();
+        self.limelight
+            .update_robot_orientation(dt_angle)
+            .await
+            .unwrap();
 
         if !self.results.Fiducial.is_empty() {
             if self.results.Fiducial[0].fID != -1 && self.results.Fiducial[0].fID != self.saved_id {
@@ -68,7 +71,7 @@ impl Vision {
     }
     /// Gets the targeted tag's angle from the limelight's vertical centerline as of the last update
     /// Beware: will return 0 if no tag is targeted
-    pub fn get_tx(&self) -> Angle{
+    pub fn get_tx(&self) -> Angle {
         Angle::new::<degree>(self.results.tx)
     }
 
@@ -89,14 +92,19 @@ impl Vision {
     pub fn get_dist(&self) -> Option<Length> {
         match self.get_tag_position(self.get_id()) {
             Some(..) => {
-                let tag_height = self.get_tag_position(self.get_id())?.coordinate.unwrap().z.get::<inch>();
+                let tag_height = self
+                    .get_tag_position(self.get_id())?
+                    .coordinate
+                    .unwrap()
+                    .z
+                    .get::<inch>();
                 let height_diff = tag_height - vision::LIMELIGHT_HEIGHT_INCHES;
-                let pitch_to_tag: Angle = Angle::new::<degree>(vision::LIMELIGHT_PITCH_DEGREES + self.get_ty().get::<degree>());
+                let pitch_to_tag: Angle = Angle::new::<degree>(
+                    vision::LIMELIGHT_PITCH_DEGREES + self.get_ty().get::<degree>(),
+                );
                 Some(Length::new::<inch>(height_diff) / f64::tan(pitch_to_tag.get::<radian>()))
             }
-            None => {
-                None
-            }
+            None => None,
         }
     }
 
@@ -108,26 +116,41 @@ impl Vision {
         match id_json {
             Some(_usize) => {
                 let coords = Vector3::new(
-                    Length::new::<meter>(self.tag_map_values["tags"][id_json?]["pose"]["translation"]["x"].as_f64()?),
-                    Length::new::<meter>(self.tag_map_values["tags"][id_json?]["pose"]["translation"]["y"].as_f64()?),
-                    Length::new::<meter>(self.tag_map_values["tags"][id_json?]["pose"]["translation"]["z"].as_f64()?),
+                    Length::new::<meter>(
+                        self.tag_map_values["tags"][id_json?]["pose"]["translation"]["x"]
+                            .as_f64()?,
+                    ),
+                    Length::new::<meter>(
+                        self.tag_map_values["tags"][id_json?]["pose"]["translation"]["y"]
+                            .as_f64()?,
+                    ),
+                    Length::new::<meter>(
+                        self.tag_map_values["tags"][id_json?]["pose"]["translation"]["z"]
+                            .as_f64()?,
+                    ),
                 );
 
                 let quaternion = Quaternion::new(
-                    self.tag_map_values["tags"][id_json?]["pose"]["rotation"]["quaternion"]["W"].as_f64().unwrap(),
-                    self.tag_map_values["tags"][id_json?]["pose"]["rotation"]["quaternion"]["X"].as_f64().unwrap(),
-                    self.tag_map_values["tags"][id_json?]["pose"]["rotation"]["quaternion"]["Y"].as_f64().unwrap(),
-                    self.tag_map_values["tags"][id_json?]["pose"]["rotation"]["quaternion"]["Z"].as_f64().unwrap(),
+                    self.tag_map_values["tags"][id_json?]["pose"]["rotation"]["quaternion"]["W"]
+                        .as_f64()
+                        .unwrap(),
+                    self.tag_map_values["tags"][id_json?]["pose"]["rotation"]["quaternion"]["X"]
+                        .as_f64()
+                        .unwrap(),
+                    self.tag_map_values["tags"][id_json?]["pose"]["rotation"]["quaternion"]["Y"]
+                        .as_f64()
+                        .unwrap(),
+                    self.tag_map_values["tags"][id_json?]["pose"]["rotation"]["quaternion"]["Z"]
+                        .as_f64()
+                        .unwrap(),
                 );
 
                 Some(FieldPosition {
                     coordinate: Some(coords),
-                    quaternion: Some(quaternion)
+                    quaternion: Some(quaternion),
                 })
             }
-            None => {
-                None
-            }
+            None => None,
         }
     }
     /// Estimates robot position (always blue origin) given a drivetrain angle (CCW+, always blue origin) and last updates' limelight measurements
@@ -141,44 +164,44 @@ impl Vision {
 
         // Get tag position and rotation
         let tag_data = self.get_tag_position(id)?;
-        let tag_xy = Vector2::new(
-            tag_data.coordinate?.x,
-            tag_data.coordinate?.y,
-        );
+        let tag_xy = Vector2::new(tag_data.coordinate?.x, tag_data.coordinate?.y);
         let tag_quaternion = tag_data.quaternion?;
 
         let tag_yaw = Angle::new::<radian>(f64::atan2(
             2.0 * (tag_quaternion.w * tag_quaternion.k + tag_quaternion.i * tag_quaternion.j),
-            1.0 - 2.0 * (tag_quaternion.j * tag_quaternion.j + tag_quaternion.k * tag_quaternion.k)
+            1.0 - 2.0 * (tag_quaternion.j * tag_quaternion.j + tag_quaternion.k * tag_quaternion.k),
         ));
 
-        let angle_to_tag: Angle = drivetrain_angle +
-            Angle::new::<degree>(vision::LIMELIGHT_YAW_DEGREES) -
-            self.get_tx() +
-            tag_yaw;
+        let angle_to_tag: Angle =
+            drivetrain_angle + Angle::new::<degree>(vision::LIMELIGHT_YAW_DEGREES) - self.get_tx()
+                + tag_yaw;
 
         // Calculate limelight's position relative to tag
         let limelight_to_tag: Vector2<Length> = Vector2::new(
             dist * f64::cos(angle_to_tag.get::<radian>()),
-            dist * f64::sin(angle_to_tag.get::<radian>())
+            dist * f64::sin(angle_to_tag.get::<radian>()),
         );
 
         // Calculate offset from robot center to limelight
         let robot_center_to_limelight_unrotated: Vector2<Length> = Vector2::new(
             Length::new::<inch>(ROBOT_CENTER_TO_LIMELIGHT_INCHES.x),
-            Length::new::<inch>(ROBOT_CENTER_TO_LIMELIGHT_INCHES.y)
+            Length::new::<inch>(ROBOT_CENTER_TO_LIMELIGHT_INCHES.y),
         );
 
         // Rotate the limelight offset by drivetrain angle
         let robot_to_limelight: Vector2<Length> = Vector2::new(
             Length::new::<meter>(
-                robot_center_to_limelight_unrotated.x.get::<meter>() * f64::cos(drivetrain_angle.get::<radian>()) -
-                    robot_center_to_limelight_unrotated.y.get::<meter>() * f64::sin(drivetrain_angle.get::<radian>())
+                robot_center_to_limelight_unrotated.x.get::<meter>()
+                    * f64::cos(drivetrain_angle.get::<radian>())
+                    - robot_center_to_limelight_unrotated.y.get::<meter>()
+                        * f64::sin(drivetrain_angle.get::<radian>()),
             ),
             Length::new::<meter>(
-                robot_center_to_limelight_unrotated.x.get::<meter>() * f64::sin(drivetrain_angle.get::<radian>()) +
-                    robot_center_to_limelight_unrotated.y.get::<meter>() * f64::cos(drivetrain_angle.get::<radian>())
-            )
+                robot_center_to_limelight_unrotated.x.get::<meter>()
+                    * f64::sin(drivetrain_angle.get::<radian>())
+                    + robot_center_to_limelight_unrotated.y.get::<meter>()
+                        * f64::cos(drivetrain_angle.get::<radian>()),
+            ),
         );
 
         // Calculate final robot position

@@ -1,11 +1,11 @@
-use std::time::Duration;
-use frcrs::solenoid::{ModuleType, Solenoid};
-use tokio::time::sleep;
 use crate::constants::robotmap::climber::*;
+use frcrs::solenoid::{ModuleType, Solenoid};
+use std::time::Duration;
+use tokio::time::sleep;
 
 pub struct Climber {
     raise: Solenoid,
-    grab: Solenoid
+    grab: Solenoid,
 }
 
 impl Climber {

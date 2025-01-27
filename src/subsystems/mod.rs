@@ -1,11 +1,11 @@
+mod climber;
 mod drivetrain;
-mod vision;
 mod elevator;
 mod indexer;
-mod climber;
+mod vision;
 
+pub use climber::*;
 pub use drivetrain::*;
-pub use vision::*;
 pub use elevator::*;
 pub use indexer::*;
-pub use climber::*;
+pub use vision::*;

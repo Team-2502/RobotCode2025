@@ -1,14 +1,9 @@
-
-
-
-use crate::{Controllers};
-use crate::subsystems::{Drivetrain, DrivetrainControlState};
-use frcrs::{deadzone};
-use nalgebra::ComplexField;
-use uom::si::{
-    angle::{degree, radian},
-};
 use crate::constants::drivetrain::SWERVE_TURN_KP;
+use crate::subsystems::{Drivetrain, DrivetrainControlState};
+use crate::Controllers;
+use frcrs::deadzone;
+use nalgebra::ComplexField;
+use uom::si::angle::{degree, radian};
 
 // pub async fn teleop(controllers: &mut Controllers, robot: &mut Ferris, executor: &LocalSet, dt: Duration) {
 //     let TeleopState {
@@ -45,9 +40,7 @@ pub async fn control_drivetrain(
     let deadlx = deadzone(left_drive.get_x(), &joystick_range, &power_translate);
     let deadrz = deadzone(right_drive.get_z(), &joystick_range, &power_rotate);
 
-
-    let hold_angle =
-        deadrz == 0. && right_drive.get(3);
+    let hold_angle = deadrz == 0. && right_drive.get(3);
 
     if !hold_angle {
         *saved_angle = Some(drivetrain.get_angle());

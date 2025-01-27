@@ -1,28 +1,30 @@
-pub mod subsystems;
-pub mod swerve;
+pub mod auto;
 pub mod constants;
 pub mod container;
-pub mod auto;
+pub mod subsystems;
+pub mod swerve;
 
 use std::cell::RefCell;
 
+use crate::auto::Auto;
+use crate::container::control_drivetrain;
+use crate::subsystems::{
+    Climber, Drivetrain, DrivetrainControlState, Elevator, Indexer, LineupSide,
+};
+use frcrs::input::Joystick;
+use frcrs::networktables::NetworkTable;
+use frcrs::telemetry::Telemetry;
+use frcrs::{Robot, TaskManager};
 use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
-use frcrs::input::Joystick;
-use frcrs::{Robot, TaskManager};
-use frcrs::networktables::NetworkTable;
-use frcrs::telemetry::Telemetry;
 use tokio::task::spawn_local;
-use crate::auto::Auto;
-use crate::container::control_drivetrain;
-use crate::subsystems::{Climber, Drivetrain, DrivetrainControlState, Elevator, Indexer, LineupSide};
 
 #[derive(Clone)]
 pub struct Controllers {
     pub left_drive: Joystick,
     pub right_drive: Joystick,
-    pub operator: Joystick
+    pub operator: Joystick,
 }
 
 #[derive(Default)]
@@ -66,15 +68,18 @@ impl Ferris {
     }
 }
 
-
 impl Robot for Ferris {
     async fn robot_init(&mut self) {
         Telemetry::init(5807);
 
         NetworkTable::init();
 
-        Telemetry::put_string("auto chooser", serde_json::to_string(&Auto::names()).unwrap()).await;
-        Telemetry::put_string("selected auto",  Auto::Nothing.name().to_string()).await;
+        Telemetry::put_string(
+            "auto chooser",
+            serde_json::to_string(&Auto::names()).unwrap(),
+        )
+        .await;
+        Telemetry::put_string("selected auto", Auto::Nothing.name().to_string()).await;
     }
 
     fn disabled_init(&mut self) {

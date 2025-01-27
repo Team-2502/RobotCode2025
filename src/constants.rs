@@ -40,12 +40,9 @@ pub mod vision {
     use nalgebra::Vector2;
 
     pub const LIMELIGHT_PITCH_DEGREES: f64 = 18.1;
-    pub const LIMELIGHT_YAW_DEGREES:f64 = 180.;
+    pub const LIMELIGHT_YAW_DEGREES: f64 = 180.;
     pub const LIMELIGHT_HEIGHT_INCHES: f64 = 11.75;
-    pub const ROBOT_CENTER_TO_LIMELIGHT_INCHES: Vector2<f64> = Vector2::new(
-        -14.45,
-        0.
-    );
+    pub const ROBOT_CENTER_TO_LIMELIGHT_INCHES: Vector2<f64> = Vector2::new(-14.45, 0.);
 }
 
 pub mod drivetrain {
@@ -67,7 +64,7 @@ pub mod drivetrain {
 
     pub const PODIUM_SHOT_ANGLE: f64 = 34.34; // degrees
 }
-pub mod elevator{
+pub mod elevator {
     pub const BOTTOM: f64 = 0.0;
     pub const L2: f64 = 0.0;
     pub const L3: f64 = 0.0;
