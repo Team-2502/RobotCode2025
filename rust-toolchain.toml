@@ -1,4 +1,5 @@
 [toolchain]
 channel = "nightly-2023-12-26"
+components = ["rustfmt", "clippy"]
 profile = "complete"
 targets = ["arm-unknown-linux-gnueabi"]
