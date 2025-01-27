@@ -13,6 +13,12 @@ pub enum ElevatorPosition {
     L4,
 }
 
+impl Default for Elevator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Elevator {
     pub fn new() -> Self {
         let left = Talon::new(robotmap::elevator::LEFT, Some("can0".to_string()));

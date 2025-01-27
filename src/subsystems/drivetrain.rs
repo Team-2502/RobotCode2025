@@ -1,10 +1,9 @@
 use frcrs::alliance_station;
-use std::fs::File;
-use std::io::{Read, Write};
+
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::ops::Add;
 
-use frcrs::ctre::{talon_encoder_tick, CanCoder, ControlMode, Pigeon, Talon};
+use frcrs::ctre::{talon_encoder_tick, ControlMode, Pigeon, Talon};
 
 use crate::constants::drivetrain::{
     SWERVE_DRIVE_IE, SWERVE_DRIVE_KP, SWERVE_ROTATIONS_TO_INCHES, SWERVE_TURN_KP,
@@ -77,18 +76,9 @@ struct Point {
     angle: f64,
 }
 
-impl Offsets {
-    const PATH: &'static str = "/home/lvuser/absolut_homosezual.json";
-    fn load() -> Self {
-        let mut file = File::open(Self::PATH).unwrap();
-        let mut buf = String::new();
-        file.read_to_string(&mut buf).unwrap();
-        serde_json::from_str(&buf).unwrap_or(Self { offsets: [0.; 4] })
-    }
-    fn store(&self) {
-        let mut file = File::create(Self::PATH).unwrap();
-        let buf = serde_json::to_string(&self).unwrap();
-        file.write_all(buf.as_bytes()).unwrap();
+impl Default for Drivetrain {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -110,7 +100,7 @@ impl Drivetrain {
             Angle::new::<degree>(0.)
         };
 
-        let dt = Self {
+        Self {
             pigeon: Pigeon::new(PIGEON, Some("can0".to_owned())),
 
             fr_drive: Talon::new(FR_DRIVE, Some("can0".to_owned())),
@@ -131,9 +121,7 @@ impl Drivetrain {
             offset,
 
             vision,
-        };
-
-        dt
+        }
     }
 
     pub async fn update_limelight(&mut self) {
@@ -210,7 +198,7 @@ impl Drivetrain {
         {
             let distance = module.get_position() * SWERVE_ROTATIONS_TO_INCHES;
             speeds.push(ModuleReturn {
-                angle: offset.angle.clone(),
+                angle: offset.angle,
                 distance: Length::new::<inch>(distance),
             });
         }
@@ -221,7 +209,7 @@ impl Drivetrain {
     fn get_speeds(&self) -> Vec<ModuleState> {
         let mut speeds = Vec::new();
 
-        for (module) in [&self.fr_turn, &self.fl_turn, &self.bl_turn, &self.br_turn].iter() {
+        for module in [&self.fr_turn, &self.fl_turn, &self.bl_turn, &self.br_turn].iter() {
             speeds.push(ModuleState {
                 speed: 0.,
                 angle: Angle::new::<talon_encoder_tick>(-module.get_position()),
@@ -255,7 +243,6 @@ impl Drivetrain {
             .into_iter()
             .zip(measured.iter())
             .map(|(calculated, measured)| calculated.optimize(measured))
-            .map(|(mut state)| state)
             .collect();
 
         self.fr_drive

@@ -5,6 +5,12 @@ pub struct Indexer {
     motor: Talon,
 }
 
+impl Default for Indexer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Indexer {
     pub fn new() -> Self {
         let motor = Talon::new(robotmap::indexer::MOTOR, None);

@@ -8,6 +8,12 @@ pub struct Climber {
     grab: Solenoid,
 }
 
+impl Default for Climber {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Climber {
     pub fn new() -> Self {
         Self {

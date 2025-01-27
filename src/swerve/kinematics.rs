@@ -31,9 +31,9 @@ impl ModuleState {
             self.speed *= -1.;
 
             if difference > 0. {
-                difference = -180. + difference;
+                difference += -180.;
             } else {
-                difference = 180. + difference;
+                difference += 180.;
             }
         }
 

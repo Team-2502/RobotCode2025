@@ -1,3 +1,5 @@
+#![warn(non_snake_case)]
+
 use frcrs::Robot;
 use tokio::task;
 use RobotCode2025::Ferris;

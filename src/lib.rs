@@ -47,6 +47,12 @@ pub struct Ferris {
     auto_handle: Option<tokio::task::AbortHandle>,
 }
 
+impl Default for Ferris {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Ferris {
     pub fn new() -> Self {
         Ferris {

@@ -17,10 +17,10 @@ pub struct ModuleReturn {
     pub angle: Angle,
 }
 
-impl Into<Vector2<f64>> for ModuleReturn {
-    fn into(self) -> Vector2<f64> {
-        let angle = self.angle.get::<radian>();
-        let distance = self.distance.get::<meter>();
+impl From<ModuleReturn> for Vector2<f64> {
+    fn from(val: ModuleReturn) -> Self {
+        let angle = val.angle.get::<radian>();
+        let distance = val.distance.get::<meter>();
 
         Rotation2::new(-angle) * Vector2::x() * distance
     }
@@ -40,6 +40,12 @@ impl Sub for ModuleReturn {
 pub struct Odometry {
     last_modules: Vec<ModuleReturn>,
     pub position: Vector2<f64>,
+}
+
+impl Default for Odometry {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Odometry {
@@ -82,10 +88,7 @@ impl Odometry {
             module.angle += angle;
         }
 
-        let mut delta: Vector2<f64> = deltas
-            .into_iter()
-            .map(|d| Into::<Vector2<f64>>::into(d))
-            .sum();
+        let mut delta: Vector2<f64> = deltas.into_iter().map(Into::<Vector2<f64>>::into).sum();
 
         delta /= positions.len() as f64;
 

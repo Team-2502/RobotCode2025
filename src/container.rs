@@ -47,8 +47,8 @@ pub async fn control_drivetrain(
     }
 
     let rot = if hold_angle {
-        if let Some(ref saved_angle) = (saved_angle).as_ref() {
-            let error = drivetrain.get_angle() - **saved_angle;
+        if let Some(saved_angle) = (saved_angle).as_ref() {
+            let error = drivetrain.get_angle() - *saved_angle;
             -error.get::<radian>() * SWERVE_TURN_KP
         } else {
             0.
