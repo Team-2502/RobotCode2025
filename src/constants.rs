@@ -23,7 +23,7 @@ pub mod robotmap {
     }
 
     pub mod indexer {
-        pub const MOTOR: i32 = 1;
+        pub const MOTOR: i32 = 12;
     }
 
     pub mod climber {
