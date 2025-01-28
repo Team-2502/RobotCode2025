@@ -42,5 +42,15 @@ impl Climber {
         self.set_raise(true);
         sleep(Duration::from_secs(1)).await;
         self.set_grab(true);
+        sleep(Duration::from_secs_f64(0.25)).await;
+        self.set_raise(false);
+    }
+
+    pub async fn reverse_climb(&self) {
+        self.set_raise(true);
+        sleep(Duration::from_secs_f64(0.25)).await;
+        self.set_grab(false);
+        sleep(Duration::from_secs_f64(0.25)).await;
+        self.set_raise(false);
     }
 }
