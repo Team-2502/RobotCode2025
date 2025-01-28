@@ -72,6 +72,20 @@ impl Ferris {
             auto_handle: None,
         }
     }
+
+    pub fn stop(&self) {
+        if let Ok(drivetrain) = self.drivetrain.try_borrow() {
+            drivetrain.stop();
+        }
+
+        if let Ok(elevator) = self.elevator.try_borrow() {
+            elevator.stop();
+        }
+
+        if let Ok(indexer) = self.indexer.try_borrow() {
+            indexer.stop();
+        }
+    }
 }
 
 impl Robot for Ferris {
@@ -105,6 +119,8 @@ impl Robot for Ferris {
     }
 
     async fn disabled_periodic(&mut self) {
+        &self.stop();
+
         if let Ok(mut drivetrain) = self.drivetrain.try_borrow_mut() {
             drivetrain.update_limelight().await;
             drivetrain.post_odo().await;
