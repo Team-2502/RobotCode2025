@@ -24,6 +24,7 @@ pub mod robotmap {
 
     pub mod indexer {
         pub const MOTOR: i32 = 12;
+        pub const DISTANCE: i32 =0;
     }
 
     pub mod climber {
@@ -70,3 +71,4 @@ pub mod elevator {
     pub const L3: f64 = 0.0;
     pub const L4: f64 = 39.7;
 }
+
