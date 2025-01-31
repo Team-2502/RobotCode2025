@@ -26,7 +26,7 @@ impl Indexer {
 
     pub async fn intake_coral(&self) {
         while self.laser_can.get_measurement() > robotmap::indexer::DISTANCE {
-            self.motor.set(ControlMode::Percent, 1.0); //may be -1
+            self.motor.set(ControlMode::Percent, 1.0); //may be -1 need to test
         }
         self.motor.stop();
     }
