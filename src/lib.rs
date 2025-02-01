@@ -122,7 +122,7 @@ impl Robot for Ferris {
         &self.stop();
 
         if let Ok(mut drivetrain) = self.drivetrain.try_borrow_mut() {
-            drivetrain.update_limelight().await;
+            //drivetrain.update_limelight().await;
             drivetrain.post_odo().await;
         }
 
@@ -153,7 +153,7 @@ impl Robot for Ferris {
         } = *self.teleop_state.deref().borrow_mut();
 
         if let Ok(mut drivetrain) = self.drivetrain.try_borrow_mut() {
-            drivetrain.update_limelight().await;
+            //drivetrain.update_limelight().await;
             drivetrain.post_odo().await;
 
             if self.controllers.right_drive.get(3) {
@@ -176,10 +176,10 @@ impl Robot for Ferris {
         }
 
         if let Ok(indexer) = self.indexer.try_borrow_mut() {
-            if self.controllers.operator.get(1) {
-                indexer.set_speed(0.5);
-            } else if self.controllers.operator.get(2) {
-                indexer.set_speed(-0.5);
+            if self.controllers.operator.get(2) {
+                indexer.set_speed(0.3);
+            } else if self.controllers.operator.get(1) {
+                indexer.set_speed(-0.1);
             } else {
                 indexer.set_speed(0.0);
             }
