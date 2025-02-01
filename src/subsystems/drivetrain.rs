@@ -224,12 +224,12 @@ impl Drivetrain {
     }
 
     pub fn set_speeds(&mut self, fwd: f64, str: f64, rot: f64) {
-        //println!("ODO X: {}", self.odometry.position.x);
+        println!("ODO XY: {}, {}", self.odometry.position.x, self.odometry.position.y);
         let mut transform = Vector2::new(-str, fwd);
         transform =
-            Rotation2::new(-self.get_offset().get::<radian>() + std::f64::consts::PI) * transform;
+            Rotation2::new(self.get_offset().get::<radian>()) * transform;
 
-        let wheel_speeds = self.kinematics.calculate(transform, rot);
+        let wheel_speeds = self.kinematics.calculate(transform, -rot);
 
         let measured = self.get_speeds();
 
@@ -301,9 +301,9 @@ impl Drivetrain {
 
     pub fn get_angle(&self) -> Angle {
         if alliance_station().red() {
-            Angle::new::<degree>(-self.pigeon.get_rotation().z + 180.)
+            Angle::new::<radian>(-self.pigeon.get_rotation().z + 180.)
         } else {
-            Angle::new::<degree>(-self.pigeon.get_rotation().z)
+            Angle::new::<radian>(-self.pigeon.get_rotation().z)
         }
     }
 
