@@ -106,7 +106,7 @@ impl Robot for Ferris {
 
     async fn disabled_periodic(&mut self) {
         if let Ok(mut drivetrain) = self.drivetrain.try_borrow_mut() {
-            drivetrain.update_limelight().await;
+            //drivetrain.update_limelight().await;
             drivetrain.post_odo().await;
         }
 
@@ -137,7 +137,7 @@ impl Robot for Ferris {
         } = *self.teleop_state.deref().borrow_mut();
 
         if let Ok(mut drivetrain) = self.drivetrain.try_borrow_mut() {
-            drivetrain.update_limelight().await;
+            //drivetrain.update_limelight().await;
             drivetrain.post_odo().await;
 
             if self.controllers.right_drive.get(3) {
