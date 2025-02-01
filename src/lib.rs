@@ -160,10 +160,10 @@ impl Robot for Ferris {
         }
 
         if let Ok(indexer) = self.indexer.try_borrow_mut() {
-            if self.controllers.operator.get(1) {
-                indexer.set_speed(0.5);
-            } else if self.controllers.operator.get(2) {
-                indexer.set_speed(-0.5);
+            if self.controllers.operator.get(2) {
+                indexer.set_speed(0.3);
+            } else if self.controllers.operator.get(1) {
+                indexer.set_speed(-0.1);
             } else {
                 indexer.set_speed(0.0);
             }
