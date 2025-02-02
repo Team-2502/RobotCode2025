@@ -4,6 +4,7 @@ use frcrs::laser_can::LaserCan;
 use std::time::Duration;
 use std::time::Instant;
 use tokio::time::sleep;
+use crate::constants;
 
 pub struct Indexer {
     motor: Talon,
@@ -30,7 +31,7 @@ impl Indexer {
     pub async fn intake_coral(&self) {
         let mut last_loop = Instant::now();
 
-        while self.laser_can.get_measurement() > robotmap::indexer::DISTANCE {
+        while self.laser_can.get_measurement() > constants::indexer::LASER_TRIP_DISTANCE_MM {
             self.motor.set(ControlMode::Percent, -0.3); 
 
             // Cap at 250 hz
@@ -41,6 +42,7 @@ impl Indexer {
         }
         self.motor.stop();
     }
+    pub fn get_laser_dist(&self) -> i32 {self.laser_can.get_measurement()}
 
     pub fn stop(&self) {
         self.motor.stop();

@@ -24,7 +24,6 @@ pub mod robotmap {
 
     pub mod indexer {
         pub const MOTOR: i32 = 12;
-        pub const DISTANCE: i32 = 0;
     }
 
     pub mod climber {
@@ -72,6 +71,9 @@ pub mod elevator {
     pub const L4: f64 = 39.7; // unit is rotations
     pub const ELEVATOR_TRAPEZOID_DT_MS: u64 = 50; // Currently unused TODO: update this comment when elevator trapezoidal move is async
     pub const POSITION_TOLERANCE: f64 = 0.25; // Currently unused TODO: update this comment when elevator trapezoidal move is async
+}
+pub mod indexer {
+    pub const LASER_TRIP_DISTANCE_MM: i32 = 100;
 }
 pub mod joystick_map {
     // Joystick IDs (set in driver station)
