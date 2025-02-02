@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::cmp::PartialEq;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -7,6 +8,7 @@ use ::frcrs::led::Led;
 use tokio::task::{AbortHandle, spawn_local};
 use tokio::time::sleep;
 
+#[derive(Clone, PartialEq)]
 pub enum LedStatus {
     Disabled
 }
@@ -15,6 +17,7 @@ pub enum LedStatus {
 pub struct LedSubsystem {
     led: Led,
     handle: Option<AbortHandle>,
+    current_state: LedStatus,
 }
 
 impl LedSubsystem {
@@ -23,11 +26,18 @@ impl LedSubsystem {
 
         Self {
             led,
-            handle: None
+            handle: None,
+            current_state: LedStatus::Disabled,
         }
     }
 
     pub fn set_state(&mut self, state: LedStatus) {
+        if state == self.current_state {
+            return;
+        } else {
+            self.current_state = state;
+        }
+
         if let Some(handle) = self.handle.take() {
             handle.abort();
         }
