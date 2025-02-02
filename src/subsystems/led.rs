@@ -1,42 +1,64 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use crate::constants::robotmap;
 use ::frcrs::led::Led;
+use tokio::task::{AbortHandle, spawn_local};
+use tokio::time::sleep;
 
-pub struct led {
-    led: Led,
+pub enum LedStatus {
+    Disabled
 }
 
-impl led {
+#[derive(Clone)]
+pub struct LedSubsystem {
+    led: Led,
+    handle: Option<AbortHandle>,
+}
+
+impl LedSubsystem {
     pub fn init() -> Self {
         let led = Led::new(robotmap::led::PORT, robotmap::led::COUNT);
-        Self { led }
-    }
 
-    pub fn set(&self, idx: i32, r: i32, g: i32, b: i32) {
-        self.led.set_rgb(idx, r, g, b);
-    }
-
-    pub fn flush(&self) {
-        self.led.flush();
-    }
-
-    //level = what branch level robot is at, set led strip to some fraction of total depending on branch
-    pub async fn elevator_led_update(&self, level: i32) {
-        self.led.flush().await;
-
-        match level {
-            1 => self.solid_height(1),
-            2 => self.solid_height(2),
-            3 => self.solid_height(3),
-            4 => self.solid_height(4),
-            _ => println!("level {} not supported", level),
+        Self {
+            led,
+            handle: None
         }
     }
 
-    fn solid_height(&self, level: i32) {
-        for i in { robotmap::led::COUNT } * { level / 4 } {
-            self.led.set_rgb(i, 0, 255, 0);
+    pub fn set_state(&mut self, state: LedStatus) {
+        if let Some(handle) = self.handle.take() {
+            handle.abort();
+        }
+
+        let mut led_clone = self.led.clone();
+
+        let future = match state {
+            LedStatus::Disabled => {
+                async move {
+                    LedSubsystem::disabled(&mut led_clone).await;
+                }
+            }
+        };
+
+        let handle = spawn_local(future).abort_handle();
+
+        self.handle = Some(handle);
+    }
+
+    async fn disabled(led: &mut Led) {
+        loop {
+            for i in (0..=robotmap::led::COUNT).step_by(2) {
+                led.set_rgb(i, 255, 0, 0);
+            }
+
+            for i in (1..=robotmap::led::COUNT).step_by(2) {
+                led.set_rgb(i, 0, 0, 0);
+            }
+
+            led.set_data();
+            sleep(Duration::from_secs_f64(0.5)).await;
         }
     }
-    //want to make fn that will adjust ledstrip according to reefside limelight detections
-    //pub fn limelight_led_update(&self, ) {}
 }
