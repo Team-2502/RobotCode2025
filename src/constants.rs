@@ -72,3 +72,26 @@ pub mod elevator {
     pub const ELEVATOR_TRAPEZOID_DT_MS: u64 = 50; // Currently unused TODO: update this comment when elevator trapezoidal move is async
     pub const POSITION_TOLERANCE: f64 = 0.25; // Currently unused TODO: update this comment when elevator trapezoidal move is async
 }
+pub mod joystick_map {
+    // Joystick IDs (set in driver station)
+    pub const RIGHT_DRIVE: i32 = 0;
+    pub const LEFT_DRIVE: i32 = 1;
+    pub const OPERATOR: i32 = 2;
+
+    //Right drive
+    pub const LINEUP_LEFT: usize = 3;
+    pub const LINEUP_RIGHT: usize = 4;
+
+    //Left drive
+    pub const INDEXER_IN: usize = 1;
+    pub const INDEXER_OUT: usize = 2;
+
+    //Operator
+    pub const ELEVATOR_TRAPEZOID_TO_STORED_TARGET: usize = 1;
+    pub const ELEVATOR_UP_MANUAL: usize = 3;
+    pub const ELEVATOR_DOWN_MANUAL: usize = 4;
+    pub const CLIMB_FULL: usize = 8;
+    pub const SET_TARGET_L2: usize = 14;
+    pub const SET_TARGET_L3: usize = 15;
+    pub const SET_TARGET_L4: usize = 16;
+}
