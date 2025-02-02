@@ -163,7 +163,10 @@ impl Robot for Ferris {
                 control_drivetrain(&mut drivetrain, &mut self.controllers, drivetrain_state).await;
             }
         }
+
+
         if let Ok(mut elevator) = self.elevator.try_borrow_mut() {
+            // Setting the target position
             if self.controllers.operator.get(14){
                 elevator.set_target(ElevatorPosition::L2);
             } else if self.controllers.operator.get(15){
@@ -171,11 +174,13 @@ impl Robot for Ferris {
             } else if self.controllers.operator.get(16) {
                 elevator.set_target(ElevatorPosition::L4);
             }
-            if self.controllers.operator.get(3) {
+
+            // Setting the actual elevator operation
+            if self.controllers.operator.get(3) { // Manual up
                 elevator.set_speed(0.1);
-            } else if self.controllers.operator.get(4) {
-                elevator.set_speed(-0.10);
-            } else if self.controllers.operator.get(1) {
+            } else if self.controllers.operator.get(4) { // Manual down
+                elevator.set_speed(-0.1);
+            } else if self.controllers.operator.get(1) { // Trapezoidal to stored target
                 elevator.run_to_target_trapezoid();
             } else {
                 elevator.set_speed(0.0);
@@ -183,9 +188,9 @@ impl Robot for Ferris {
         }
 
         if let Ok(indexer) = self.indexer.try_borrow_mut() {
-            if self.controllers.left_drive.get(2) {
+            if self.controllers.left_drive.get(2) { // Out the front
                 indexer.set_speed(0.3);
-            } else if self.controllers.left_drive.get(1) {
+            } else if self.controllers.left_drive.get(1) { // In, score out the left
                 indexer.set_speed(-0.5);
             } else {
                 indexer.set_speed(0.0);
