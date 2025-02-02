@@ -31,7 +31,7 @@ impl Indexer {
         let mut last_loop = Instant::now();
 
         while self.laser_can.get_measurement() > robotmap::indexer::DISTANCE {
-            self.motor.set(ControlMode::Percent, 1.0); //may be -1 need to test
+            self.motor.set(ControlMode::Percent, -0.3); 
 
             // Cap at 250 hz
             let elapsed = last_loop.elapsed().as_secs_f64();
