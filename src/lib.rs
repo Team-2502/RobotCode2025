@@ -5,12 +5,10 @@ pub mod subsystems;
 pub mod swerve;
 
 use std::cell::RefCell;
-
+use std::cmp::PartialEq;
 use crate::auto::Auto;
 use crate::container::control_drivetrain;
-use crate::subsystems::{
-    Climber, Drivetrain, DrivetrainControlState, Elevator, Indexer, LineupSide,
-};
+use crate::subsystems::{Climber, Drivetrain, DrivetrainControlState, Elevator, ElevatorPosition, Indexer, LineupSide};
 use frcrs::input::Joystick;
 use frcrs::networktables::NetworkTable;
 use frcrs::telemetry::Telemetry;
@@ -19,6 +17,7 @@ use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
 use tokio::task::spawn_local;
+use uom::si::angle::degree;
 
 #[derive(Clone)]
 pub struct Controllers {
@@ -164,22 +163,30 @@ impl Robot for Ferris {
                 control_drivetrain(&mut drivetrain, &mut self.controllers, drivetrain_state).await;
             }
         }
-
-        if let Ok(elevator) = self.elevator.try_borrow_mut() {
+        if let Ok(mut elevator) = self.elevator.try_borrow_mut() {
+            if self.controllers.operator.get(14){
+                elevator.set_target(ElevatorPosition::L2);
+            } else if self.controllers.operator.get(15){
+                elevator.set_target(ElevatorPosition::L3);
+            } else if self.controllers.operator.get(16) {
+                elevator.set_target(ElevatorPosition::L4);
+            }
             if self.controllers.operator.get(3) {
-                elevator.set_speed(0.5);
+                elevator.set_speed(0.1);
             } else if self.controllers.operator.get(4) {
-                elevator.set_speed(-0.5);
+                elevator.set_speed(-0.10);
+            } else if self.controllers.operator.get(1) {
+                elevator.run_to_target_trapezoid();
             } else {
                 elevator.set_speed(0.0);
             }
         }
 
         if let Ok(indexer) = self.indexer.try_borrow_mut() {
-            if self.controllers.operator.get(2) {
+            if self.controllers.left_drive.get(2) {
                 indexer.set_speed(0.3);
-            } else if self.controllers.operator.get(1) {
-                indexer.set_speed(-0.1);
+            } else if self.controllers.left_drive.get(1) {
+                indexer.set_speed(-0.5);
             } else {
                 indexer.set_speed(0.0);
             }

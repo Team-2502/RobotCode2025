@@ -66,7 +66,9 @@ pub mod drivetrain {
 }
 pub mod elevator {
     pub const BOTTOM: f64 = 0.0;
-    pub const L2: f64 = 0.0;
-    pub const L3: f64 = 0.0;
+    pub const L2: f64 = 1.;
+    pub const L3: f64 = 15.75;
     pub const L4: f64 = 39.7;
+    pub const ELEVATOR_TRAPEZOID_DT_MS: u64 = 50;
+    pub const POSITION_TOLERANCE: f64 = 0.25;
 }
