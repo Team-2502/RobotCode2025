@@ -4,17 +4,17 @@ pub mod container;
 pub mod subsystems;
 pub mod swerve;
 
-use std::cell::RefCell;
-
 use crate::auto::Auto;
 use crate::container::control_drivetrain;
 use crate::subsystems::{
-    Climber, Drivetrain, DrivetrainControlState, Elevator, Indexer, LineupSide,
+    Climber, Drivetrain, DrivetrainControlState, Elevator, ElevatorPosition, Indexer, LineupSide,
 };
 use frcrs::input::Joystick;
 use frcrs::networktables::NetworkTable;
 use frcrs::telemetry::Telemetry;
 use frcrs::{Robot, TaskManager};
+use std::cell::RefCell;
+use std::cmp::PartialEq;
 use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -58,9 +58,9 @@ impl Ferris {
         Ferris {
             task_manager: TaskManager::new(),
             controllers: Controllers {
-                left_drive: Joystick::new(1),
-                right_drive: Joystick::new(0),
-                operator: Joystick::new(2),
+                left_drive: Joystick::new(constants::joystick_map::LEFT_DRIVE),
+                right_drive: Joystick::new(constants::joystick_map::RIGHT_DRIVE),
+                operator: Joystick::new(constants::joystick_map::OPERATOR),
             },
             drivetrain: Rc::new(RefCell::new(Drivetrain::new())),
             elevator: Rc::new(RefCell::new(Elevator::new())),
@@ -156,30 +156,87 @@ impl Robot for Ferris {
             //drivetrain.update_limelight().await;
             drivetrain.post_odo().await;
 
-            if self.controllers.right_drive.get(3) {
+            if self
+                .controllers
+                .right_drive
+                .get(constants::joystick_map::LINEUP_LEFT)
+            {
                 drivetrain.lineup(LineupSide::Left).await;
-            } else if self.controllers.right_drive.get(4) {
+            } else if self
+                .controllers
+                .right_drive
+                .get(constants::joystick_map::LINEUP_RIGHT)
+            {
                 drivetrain.lineup(LineupSide::Right).await;
             } else {
                 control_drivetrain(&mut drivetrain, &mut self.controllers, drivetrain_state).await;
             }
         }
 
-        if let Ok(elevator) = self.elevator.try_borrow_mut() {
-            if self.controllers.operator.get(3) {
-                elevator.set_speed(0.5);
-            } else if self.controllers.operator.get(4) {
-                elevator.set_speed(-0.5);
+        if let Ok(mut elevator) = self.elevator.try_borrow_mut() {
+            // Setting the target position
+            if self
+                .controllers
+                .operator
+                .get(constants::joystick_map::SET_TARGET_L2)
+            {
+                elevator.set_target(ElevatorPosition::L2);
+            } else if self
+                .controllers
+                .operator
+                .get(constants::joystick_map::SET_TARGET_L3)
+            {
+                elevator.set_target(ElevatorPosition::L3);
+            } else if self
+                .controllers
+                .operator
+                .get(constants::joystick_map::SET_TARGET_L4)
+            {
+                elevator.set_target(ElevatorPosition::L4);
+            }
+
+            // Setting the actual elevator operation
+            if self
+                .controllers
+                .operator
+                .get(constants::joystick_map::ELEVATOR_UP_MANUAL)
+            {
+                // Manual up
+                elevator.set_speed(0.1);
+            } else if self
+                .controllers
+                .operator
+                .get(constants::joystick_map::ELEVATOR_DOWN_MANUAL)
+            {
+                // Manual down
+                elevator.set_speed(-0.1);
+            } else if self
+                .controllers
+                .operator
+                .get(constants::joystick_map::ELEVATOR_TRAPEZOID_TO_STORED_TARGET)
+            {
+                // Trapezoidal to stored target
+                elevator.run_to_target_trapezoid();
             } else {
                 elevator.set_speed(0.0);
             }
         }
 
         if let Ok(indexer) = self.indexer.try_borrow_mut() {
-            if self.controllers.operator.get(2) {
+            if self
+                .controllers
+                .left_drive
+                .get(constants::joystick_map::INDEXER_OUT)
+            {
+                // Out the front
                 indexer.set_speed(0.3);
-            } else if self.controllers.operator.get(1) {
-                indexer.set_speed(-0.1);
+            } else if self
+                .controllers
+                .left_drive
+                .get(constants::joystick_map::INDEXER_IN)
+            {
+                // In, score out the left
+                indexer.set_speed(-0.5);
             } else {
                 indexer.set_speed(0.0);
             }
@@ -214,7 +271,11 @@ impl Robot for Ferris {
             }
         };
 
-        if self.controllers.operator.get(8) {
+        if self
+            .controllers
+            .operator
+            .get(constants::joystick_map::CLIMB_FULL)
+        {
             self.task_manager.run_task(climb);
         } else {
             self.task_manager.run_task(cancel_climb);
