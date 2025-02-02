@@ -3,6 +3,7 @@ use frcrs::ctre::{ControlMode, Talon};
 use std::fmt::Display;
 use std::time::Duration;
 use tokio::time::sleep;
+use crate::constants;
 
 pub struct Elevator {
     left: Talon,
@@ -50,6 +51,8 @@ impl Elevator {
     pub fn get_target(&self) -> ElevatorPosition {
         self.target
     }
+    /// in rotations, from left motor
+    pub fn get_position(&self) -> f64 {self.left.get_position()}
 
     /// Runs a trapezoidal (motion magic) profile on the elevator krakens to move the elevator to its stored target position.
     /// Most of the interesting stuff for this is in the elevator krakens' configurations (set in pheonix tuner).

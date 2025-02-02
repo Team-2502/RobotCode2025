@@ -8,7 +8,7 @@ use crate::constants;
 
 pub struct Indexer {
     motor: Talon,
-    laser_can: LaserCan,
+    //laser_can: LaserCan,
 }
 
 impl Default for Indexer {
@@ -20,15 +20,16 @@ impl Default for Indexer {
 impl Indexer {
     pub fn new() -> Self {
         let motor = Talon::new(robotmap::indexer::MOTOR, None);
+        //let laser_can = LaserCan::new(robotmap::indexer::LASER_CAN);
 
-        Self { motor, laser_can }
+        Self { motor, /*laser_can*/ }
     }
 
     pub fn set_speed(&self, speed: f64) {
         self.motor.set(ControlMode::Percent, speed);
     }
 
-    pub async fn intake_coral(&self) {
+    /*pub async fn intake_coral(&self) {
         let mut last_loop = Instant::now();
 
         while self.laser_can.get_measurement() > constants::indexer::LASER_TRIP_DISTANCE_MM {
@@ -41,8 +42,8 @@ impl Indexer {
             last_loop = Instant::now();
         }
         self.motor.stop();
-    }
-    pub fn get_laser_dist(&self) -> i32 {self.laser_can.get_measurement()}
+    }*/
+    /*pub fn get_laser_dist(&self) -> i32 {self.laser_can.get_measurement()}*/
 
     pub fn stop(&self) {
         self.motor.stop();

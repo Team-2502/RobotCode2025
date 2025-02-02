@@ -24,6 +24,7 @@ pub mod robotmap {
 
     pub mod indexer {
         pub const MOTOR: i32 = 12;
+        pub const LASER_CAN: i32 = 13;
     }
 
     pub mod climber {
@@ -91,6 +92,7 @@ pub mod joystick_map {
 
     //Operator
     pub const ELEVATOR_TRAPEZOID_TO_STORED_TARGET: usize = 1;
+    pub const ELEVATOR_TRAPEZOID_TO_STORED_TARGET_ASYNC: usize = 2;
     pub const ELEVATOR_UP_MANUAL: usize = 3;
     pub const ELEVATOR_DOWN_MANUAL: usize = 4;
     pub const CLIMB_FULL: usize = 8;

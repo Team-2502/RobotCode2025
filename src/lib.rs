@@ -19,6 +19,7 @@ use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
 use tokio::task::spawn_local;
+use crate::constants::elevator;
 
 #[derive(Clone)]
 pub struct Controllers {
@@ -45,6 +46,7 @@ pub struct Ferris {
     teleop_state: Rc<RefCell<TeleopState>>,
 
     auto_handle: Option<tokio::task::AbortHandle>,
+    elevator_trapezoid_handle: Option<tokio::task::AbortHandle>,
 }
 
 impl Default for Ferris {
@@ -70,6 +72,7 @@ impl Ferris {
             teleop_state: Default::default(),
 
             auto_handle: None,
+            elevator_trapezoid_handle: None,
         }
     }
 
@@ -223,6 +226,7 @@ impl Robot for Ferris {
         }
 
         if let Ok(indexer) = self.indexer.try_borrow_mut() {
+            //println!("laser dist: {}", indexer.get_laser_dist());
             if self
                 .controllers
                 .left_drive
@@ -240,6 +244,21 @@ impl Robot for Ferris {
             } else {
                 indexer.set_speed(0.0);
             }
+        }
+
+        if self.controllers.operator.get(constants::joystick_map::ELEVATOR_TRAPEZOID_TO_STORED_TARGET_ASYNC) {
+            //println!("button pressed");
+            if self.elevator_trapezoid_handle.is_none() {
+                //println!("Took elevator_trapezoid_handle");
+                let f = self.clone();
+                //println!("Cloned ferris");
+                let handle = spawn_local(elevator_move_to_target_async(f)).abort_handle();
+                //println!("Spawned task");
+                self.elevator_trapezoid_handle = Some(handle);
+            }
+        } else if let Some(handle) = self.elevator_trapezoid_handle.take() {
+            handle.abort();
+            //println!("Aborted elevator_trapezoid");
         }
 
         // TODO: make more ergonomic, maybe move away from frcrs task manager in favor for abort handle in ferris struct
@@ -285,5 +304,23 @@ impl Robot for Ferris {
 
     async fn test_periodic(&mut self) {
         // println!("Test periodic");
+    }
+}
+pub async fn elevator_move_to_target_async(robot: Ferris) {
+    //println!("Called elevator_move_to_target_async");
+    if let Ok(mut elevator) = robot.elevator.try_borrow_mut() {
+        //println!("Borrowed elevator");
+        let target_position = match elevator.get_target() {
+            ElevatorPosition::Bottom => elevator::BOTTOM,
+            ElevatorPosition::L2 => elevator::L2,
+            ElevatorPosition::L3 => elevator::L3,
+            ElevatorPosition::L4 => elevator::L4,
+        };
+        //println!("Error: {}", (elevator.get_position() - target_position).abs());
+        //println!("{}", (elevator.get_position() - target_position).abs() > elevator::POSITION_TOLERANCE);
+        while (elevator.get_position() - target_position).abs() > elevator::POSITION_TOLERANCE {
+            elevator.run_to_target_trapezoid();;
+        }
+        //println!("End of elevator_move_to_target_async");
     }
 }
