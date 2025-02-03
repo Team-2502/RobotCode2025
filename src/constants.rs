@@ -70,8 +70,8 @@ pub mod elevator {
     pub const L2: f64 = 1.; // unit is rotations
     pub const L3: f64 = 15.75; // unit is rotations
     pub const L4: f64 = 39.7; // unit is rotations
-    pub const ELEVATOR_TRAPEZOID_DT_MS: u64 = 50; // Currently unused TODO: update this comment when elevator trapezoidal move is async
-    pub const POSITION_TOLERANCE: f64 = 0.25; // Currently unused TODO: update this comment when elevator trapezoidal move is async
+    pub const ELEVATOR_TRAPEZOID_DT_MS: u64 = 50; // sleep.await this long in between updating the elevator trapezoidal when running its async function
+    pub const POSITION_TOLERANCE: f64 = 0.25; // unit is rotations. finish elevator async move when within this distance of target
 }
 pub mod indexer {
     pub const LASER_TRIP_DISTANCE_MM: i32 = 100;

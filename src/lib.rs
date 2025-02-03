@@ -247,18 +247,23 @@ impl Robot for Ferris {
         }
 
         if self.controllers.operator.get(constants::joystick_map::ELEVATOR_TRAPEZOID_TO_STORED_TARGET_ASYNC) {
-            //println!("button pressed");
+            // If no abort handle is stored, this function isn't already running
+            // (prevents duplicate tasks)
             if self.elevator_trapezoid_handle.is_none() {
-                //println!("Took elevator_trapezoid_handle");
+                // Clone Ferris
+                // Functions called this way need to:
+                // be defined in the free space (not any impl block of lib)
+                // and take a robot struct to do their work with
+                // This prevents issues with values passing out of scope & such
                 let f = self.clone();
-                //println!("Cloned ferris");
+                // Start a task from the async function's returned future and set handle to the abort handle for that task
                 let handle = spawn_local(elevator_move_to_target_async(f)).abort_handle();
-                //println!("Spawned task");
+                // Store the abort handle in the Ferris struct
                 self.elevator_trapezoid_handle = Some(handle);
             }
         } else if let Some(handle) = self.elevator_trapezoid_handle.take() {
+            // If the button is no longer held, use the stored abort handle to abort the task & regain full robot control
             handle.abort();
-            //println!("Aborted elevator_trapezoid");
         }
 
         // TODO: make more ergonomic, maybe move away from frcrs task manager in favor for abort handle in ferris struct
@@ -307,7 +312,7 @@ impl Robot for Ferris {
     }
 }
 pub async fn elevator_move_to_target_async(robot: Ferris) {
-    //println!("Called elevator_move_to_target_async");
+    println!("Called elevator_move_to_target_async");
     if let Ok(mut elevator) = robot.elevator.try_borrow_mut() {
         //println!("Borrowed elevator");
         let target_position = match elevator.get_target() {
@@ -321,6 +326,6 @@ pub async fn elevator_move_to_target_async(robot: Ferris) {
         while (elevator.get_position() - target_position).abs() > elevator::POSITION_TOLERANCE {
             elevator.run_to_target_trapezoid();;
         }
-        //println!("End of elevator_move_to_target_async");
+        println!("End of elevator_move_to_target_async");
     }
 }
