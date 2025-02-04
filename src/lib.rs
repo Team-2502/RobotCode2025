@@ -6,15 +6,14 @@ pub mod swerve;
 
 use crate::auto::Auto;
 use crate::container::control_drivetrain;
-use crate::subsystems::{
-    Climber, Drivetrain, DrivetrainControlState, Elevator, ElevatorPosition, Indexer, LineupSide,
-};
+use crate::subsystems::{Climber, Drivetrain, DrivetrainControlState, Elevator, ElevatorPosition, Indexer, LineupSide, Vision};
 use frcrs::input::Joystick;
 use frcrs::networktables::NetworkTable;
 use frcrs::telemetry::Telemetry;
 use frcrs::{Robot, TaskManager};
 use std::cell::RefCell;
 use std::cmp::PartialEq;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -154,9 +153,10 @@ impl Robot for Ferris {
         let TeleopState {
             ref mut drivetrain_state,
         } = *self.teleop_state.deref().borrow_mut();
+        
 
         if let Ok(mut drivetrain) = self.drivetrain.try_borrow_mut() {
-            //drivetrain.update_limelight().await;
+            drivetrain.update_limelight().await;
             drivetrain.post_odo().await;
 
             if self
@@ -164,13 +164,13 @@ impl Robot for Ferris {
                 .right_drive
                 .get(constants::joystick_map::LINEUP_LEFT)
             {
-                drivetrain.lineup(LineupSide::Left).await;
+                drivetrain.lineup_2d_lower();
             } else if self
                 .controllers
                 .right_drive
                 .get(constants::joystick_map::LINEUP_RIGHT)
             {
-                drivetrain.lineup(LineupSide::Right).await;
+                drivetrain.lineup_2d_upper();
             } else {
                 control_drivetrain(&mut drivetrain, &mut self.controllers, drivetrain_state).await;
             }
@@ -240,7 +240,7 @@ impl Robot for Ferris {
                 .get(constants::joystick_map::INDEXER_IN)
             {
                 // In, score out the left
-                indexer.set_speed(-0.5);
+                indexer.set_speed(-0.17);
             } else {
                 indexer.set_speed(0.0);
             }

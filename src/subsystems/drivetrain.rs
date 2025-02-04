@@ -22,6 +22,7 @@ use crate::subsystems::Vision;
 use uom::si::angle::{degree, radian, revolution};
 use uom::si::f64::{Angle, Length};
 use uom::si::length::{inch, meter};
+use crate::constants;
 
 #[derive(Default)]
 pub struct DrivetrainControlState {
@@ -60,7 +61,8 @@ pub struct Drivetrain {
 
     pub offset: Angle,
 
-    pub vision: Vision,
+    pub limelight_lower: Vision,
+    pub limelight_upper: Vision,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -89,8 +91,12 @@ impl Drivetrain {
         let bl_turn = Talon::new(BL_TURN, Some("can0".to_owned()));
         let br_turn = Talon::new(BR_TURN, Some("can0".to_owned()));
 
-        let vision = Vision::new(SocketAddr::new(
+        let limelight_lower = Vision::new(SocketAddr::new(
             IpAddr::V4(Ipv4Addr::new(10, 25, 2, 11)),
+            5807,
+        ));
+        let limelight_upper = Vision::new(SocketAddr::new(
+            IpAddr::V4(Ipv4Addr::new(10, 25, 2, 12)),
             5807,
         ));
 
@@ -120,16 +126,20 @@ impl Drivetrain {
 
             offset,
 
-            vision,
+            limelight_lower: limelight_lower,
+            limelight_upper: limelight_upper,
         }
     }
 
     pub async fn update_limelight(&mut self) {
-        self.vision
+        self.limelight_lower
+            .update(self.get_offset().get::<degree>() + 180.)
+            .await;
+        self.limelight_upper
             .update(self.get_offset().get::<degree>() + 180.)
             .await;
 
-        let pose = self.vision.get_botpose();
+        let pose = self.limelight_lower.get_botpose();
 
         // Calculate offset from robot center to limelight
         let robot_center_to_limelight_unrotated: Vector2<Length> = Vector2::new(
@@ -157,6 +167,8 @@ impl Drivetrain {
         if pose.x.get::<meter>() != 0.0 {
             self.update_odo(pose + robot_to_limelight);
         }
+        //println!("lower ll tx: {}", self.limelight_lower.get_tx().get::<degree>());
+        //println!("upper ll tx: {}", self.limelight_upper.get_tx().get::<degree>());
     }
 
     pub async fn post_odo(&self) {
@@ -372,12 +384,12 @@ impl Drivetrain {
     // The target position will be to the side of the apriltag, half a robot length away from the edge
     // Will account for the robot's orientation with the hexagon lineup
     pub fn calculate_target_lineup_position(&mut self, side: LineupSide) -> Option<LineupTarget> {
-        let tag_id = self.vision.get_saved_id();
+        let tag_id = self.limelight_lower.get_saved_id();
         if tag_id == -1 {
             return None;
         }
 
-        let tag_position = self.vision.get_tag_position(tag_id)?;
+        let tag_position = self.limelight_lower.get_tag_position(tag_id)?;
         let tag_coords = tag_position.coordinate?;
         let tag_rotation = tag_position.quaternion?;
 
@@ -418,6 +430,42 @@ impl Drivetrain {
             position: target_pos,
             angle: robot_angle,
         })
+    }
+
+    /// Lineup using tx and ty from the lower limelight
+    pub fn lineup_2d_lower(&mut self) {
+        if self.limelight_lower.get_id() != -1 {
+            let tag_position = self.limelight_lower.get_tag_position(self.limelight_lower.get_id()).unwrap();
+            let tag_rotation = tag_position.quaternion.unwrap();
+            let tag_yaw = (quaternion_to_yaw(tag_rotation) + std::f64::consts::PI) % (std::f64::consts::PI * 2.);
+            let perpendicular_yaw = tag_yaw + std::f64::consts::PI / 2.0;
+            println!("perpendicular_yaw: {}", perpendicular_yaw);
+            println!("current angle: {}", self.get_offset().get::<radian>());
+            let error_yaw = perpendicular_yaw - self.get_offset().get::<radian>();
+            self.set_speeds(
+                self.limelight_lower.get_ty().get::<degree>() * constants::drivetrain::LINEUP_2D_TY_KP,
+                self.limelight_lower.get_tx().get::<degree>() * constants::drivetrain::LINEUP_2D_TX_KP,
+                error_yaw * SWERVE_TURN_KP
+            );
+        } else {println!("can't lineup - no tag seen");}
+    }
+
+    /// Lineup using tx and ty from the upper limelight
+    pub fn lineup_2d_upper(&mut self) {
+        if self.limelight_upper.get_id() != -1 {
+            let tag_position = self.limelight_upper.get_tag_position(self.limelight_upper.get_id()).unwrap();
+            let tag_rotation = tag_position.quaternion.unwrap();
+            let tag_yaw = (quaternion_to_yaw(tag_rotation) + std::f64::consts::PI) % (std::f64::consts::PI * 2.);
+            let perpendicular_yaw = tag_yaw + std::f64::consts::PI / 2.0;
+            println!("perpendicular_yaw: {}", perpendicular_yaw);
+            println!("current angle: {}", self.get_offset().get::<radian>());
+            let error_yaw = perpendicular_yaw - self.get_offset().get::<radian>();
+            self.set_speeds(
+                self.limelight_upper.get_ty().get::<degree>() * constants::drivetrain::LINEUP_2D_TY_KP,
+                self.limelight_upper.get_tx().get::<degree>() * constants::drivetrain::LINEUP_2D_TX_KP,
+                error_yaw * SWERVE_TURN_KP
+            );
+        } else {println!("can't lineup - no tag seen");}
     }
 }
 

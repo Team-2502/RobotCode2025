@@ -16,6 +16,7 @@ use uom::si::{
 
 use std::net::SocketAddr;
 
+#[derive(Clone)]
 pub struct Vision {
     tag_map_values: Value,
     limelight: Limelight,
@@ -78,7 +79,11 @@ impl Vision {
     /// Gets the id of the targeted tag as of the last update
     /// RETURNS -1 IF NO TAG FOUND
     pub fn get_id(&self) -> i32 {
-        self.results.Fiducial[0].fID
+        if self.results.Fiducial.len() != 0 {
+            self.results.Fiducial[0].fID
+        } else {
+            -1
+        }
     }
 
     pub fn get_saved_id(&self) -> i32 {

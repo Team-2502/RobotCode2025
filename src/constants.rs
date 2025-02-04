@@ -63,7 +63,9 @@ pub mod drivetrain {
     pub const SWERVE_DRIVE_SUGGESTION_ERR: f64 = 0.35;
     pub const SWERVE_DRIVE_IE: f64 = 0.0; //0.175; // integral enable
 
-    pub const PODIUM_SHOT_ANGLE: f64 = 34.34; // degrees
+
+    pub const LINEUP_2D_TX_KP: f64 = 0.01;
+    pub const LINEUP_2D_TY_KP: f64 = -0.0025;
 }
 pub mod elevator {
     pub const BOTTOM: f64 = 0.0; // unit is rotations
