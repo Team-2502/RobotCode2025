@@ -66,6 +66,11 @@ pub mod drivetrain {
 
     pub const LINEUP_2D_TX_KP: f64 = 0.01;
     pub const LINEUP_2D_TY_KP: f64 = -0.0025;
+    pub const LINEUP_2D_TX_KS: f64 = 0.0;
+    pub const LINEUP_2D_TY_KS: f64 = 0.0;
+    pub const LINEUP_2D_TX_KD: f64 = 0.0;
+    pub const LINEUP_2D_TY_KD: f64 = 0.0;
+
 }
 pub mod elevator {
     pub const BOTTOM: f64 = 0.0; // unit is rotations

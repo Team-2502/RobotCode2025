@@ -164,13 +164,13 @@ impl Robot for Ferris {
                 .right_drive
                 .get(constants::joystick_map::LINEUP_LEFT)
             {
-                drivetrain.lineup_2d_lower();
+                drivetrain.lineup_2d(LineupSide::Left);
             } else if self
                 .controllers
                 .right_drive
                 .get(constants::joystick_map::LINEUP_RIGHT)
             {
-                drivetrain.lineup_2d_upper();
+                drivetrain.lineup_2d(LineupSide::Right);
             } else {
                 control_drivetrain(&mut drivetrain, &mut self.controllers, drivetrain_state).await;
             }

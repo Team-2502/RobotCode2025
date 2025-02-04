@@ -432,37 +432,46 @@ impl Drivetrain {
         })
     }
 
-    /// Lineup using tx and ty from the lower limelight
-    pub fn lineup_2d_lower(&mut self) {
-        if self.limelight_lower.get_id() != -1 {
-            let tag_position = self.limelight_lower.get_tag_position(self.limelight_lower.get_id()).unwrap();
+    /// Set drivetrain speeds using tx and ty from the lower limelight.
+    /// Cameras are positioned on the robot such that the tag on the base of the reef is in the exact center of the limelight's fov when the robot is fully lined up.
+    /// Uses a basic PID: tx from the limelight (horizontal position of the tag on the screen) feeds into drivetrain strafe, while ty feeds into drivetrain forward.
+    pub fn lineup_2d(&mut self, side: LineupSide) {
+        // The lower limelight points at the tag when lined up on the right, the upper when lined up on the left
+        let mut limelight = self.limelight_lower.clone();
+        match side {
+            LineupSide::Left => { limelight = self.limelight_upper.clone();}
+            LineupSide::Right => {limelight = self.limelight_lower.clone();}
+        }
+        
+        // Only try if a tag is detected
+        if limelight.get_id() != -1 {
+            // Figure out target angle from the tagmap
+            let tag_position = limelight.get_tag_position(limelight.get_id()).unwrap();
             let tag_rotation = tag_position.quaternion.unwrap();
+            // None of us actually know how the quaternions provided by said map work, this is copied code
+            // The pi stuff is to wrap the angle to the [-180, 180] range
             let tag_yaw = (quaternion_to_yaw(tag_rotation) + std::f64::consts::PI) % (std::f64::consts::PI * 2.);
+            // Tag yaw is in plane with the tag, not normal to (sticking out from) it - rotate by 90deg to fix that
             let perpendicular_yaw = tag_yaw + std::f64::consts::PI / 2.0;
-            println!("perpendicular_yaw: {}", perpendicular_yaw);
-            println!("current angle: {}", self.get_offset().get::<radian>());
             let error_yaw = perpendicular_yaw - self.get_offset().get::<radian>();
-            self.set_speeds(
-                self.limelight_lower.get_ty().get::<degree>() * constants::drivetrain::LINEUP_2D_TY_KP,
-                self.limelight_lower.get_tx().get::<degree>() * constants::drivetrain::LINEUP_2D_TX_KP,
-                error_yaw * SWERVE_TURN_KP
-            );
-        } else {println!("can't lineup - no tag seen");}
-    }
 
-    /// Lineup using tx and ty from the upper limelight
-    pub fn lineup_2d_upper(&mut self) {
-        if self.limelight_upper.get_id() != -1 {
-            let tag_position = self.limelight_upper.get_tag_position(self.limelight_upper.get_id()).unwrap();
-            let tag_rotation = tag_position.quaternion.unwrap();
-            let tag_yaw = (quaternion_to_yaw(tag_rotation) + std::f64::consts::PI) % (std::f64::consts::PI * 2.);
-            let perpendicular_yaw = tag_yaw + std::f64::consts::PI / 2.0;
-            println!("perpendicular_yaw: {}", perpendicular_yaw);
-            println!("current angle: {}", self.get_offset().get::<radian>());
-            let error_yaw = perpendicular_yaw - self.get_offset().get::<radian>();
+            // Calculate PID stuff
+            // KP - proportional: multiply the difference between where you are (tx or ty) and where you want to be (0) by a tuned constant (KP)
+            // KS - static: add a value to overcome static friction. Make sure it's in the right direction by multiplying by the proportional term divided by its absolute value (leaving only if it's positive or negative)
+            let fwd =
+                limelight.get_ty().get::<degree>() * constants::drivetrain::LINEUP_2D_TY_KP
+                + constants::drivetrain::LINEUP_2D_TY_KS * (limelight.get_ty().get::<degree>() * constants::drivetrain::LINEUP_2D_TY_KP / (limelight.get_ty().get::<degree>() * constants::drivetrain::LINEUP_2D_TY_KP).abs());
+            let str =
+                self.limelight_lower.get_tx().get::<degree>() * constants::drivetrain::LINEUP_2D_TX_KP
+                + constants::drivetrain::LINEUP_2D_TX_KS * (limelight.get_tx().get::<degree>() * constants::drivetrain::LINEUP_2D_TX_KP / (limelight.get_tx().get::<degree>() * constants::drivetrain::LINEUP_2D_TX_KP).abs());
+            let mut transform = Vector2::new(str, fwd);
+
+            // rotate by (-1 * our drivetrain angle) to undo the rotation in set_speeds that lets us drive in field-relative mode
+            // since we want to drive in robot-relative mode here
+            transform = Rotation2::new( - self.get_offset().get::<radian>()) * transform;
             self.set_speeds(
-                self.limelight_upper.get_ty().get::<degree>() * constants::drivetrain::LINEUP_2D_TY_KP,
-                self.limelight_upper.get_tx().get::<degree>() * constants::drivetrain::LINEUP_2D_TX_KP,
+                transform.y,
+                transform.x,
                 error_yaw * SWERVE_TURN_KP
             );
         } else {println!("can't lineup - no tag seen");}
