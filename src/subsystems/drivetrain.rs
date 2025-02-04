@@ -449,24 +449,30 @@ impl Drivetrain {
             let tag_position = limelight.get_tag_position(limelight.get_id()).unwrap();
             let tag_rotation = tag_position.quaternion.unwrap();
             // None of us actually know how the quaternions provided by said map work, this is copied code
-            // The pi stuff is to wrap the angle to the [-180, 180] range
+            // Flip the tag normal to be out the back of the tag and wrap to the [0, 360] range
             let tag_yaw = (quaternion_to_yaw(tag_rotation) + std::f64::consts::PI) % (std::f64::consts::PI * 2.);
-            // Tag yaw is in plane with the tag, not normal to (sticking out from) it - rotate by 90deg to fix that
+            // We score out the left, so forward-to-the-tag isn't very helpful
             let perpendicular_yaw = tag_yaw + std::f64::consts::PI / 2.0;
+
+            // Calculate errors (difference between where you are (tx, ty, or drivetrain angle) and where you want to be (0 deg, 0 deg, or perpendicular_yaw))
+            // Center of the limelight screen is (0,0) so we don't have to subtract anything for ty and tx
+            let error_ty = limelight.get_ty().get::<degree>();
+            let error_tx = limelight.get_tx().get::<degree>();
             let error_yaw = perpendicular_yaw - self.get_offset().get::<radian>();
+            println!("target yaw: {} current yaw: {}", perpendicular_yaw, self.get_offset().get::<radian>());
 
             // Calculate PID stuff
-            // KP - proportional: multiply the error (difference between where you are (tx or ty) and where you want to be (0)) by a tuned constant (KP)
+            // KP - proportional: multiply the error by a tuned constant (KP)
             // KD - derivative: subtract the error from last frame by the error from this frame (this difference is roughly proportional to the rate at which the error is changing), then multiply by a tuned constant (KD)
             // KS - static: add a value to overcome static friction. Make sure it's in the right direction by multiplying by the proportional term divided by its absolute value (leaving only if it's positive or negative)
             let fwd =
-                constants::drivetrain::LINEUP_2D_TY_KP * limelight.get_ty().get::<degree>()
-                + constants::drivetrain::LINEUP_2D_TY_KS * (limelight.get_ty().get::<degree>() * constants::drivetrain::LINEUP_2D_TY_KP / (limelight.get_ty().get::<degree>() * constants::drivetrain::LINEUP_2D_TY_KP).abs())
-                + constants::drivetrain::LINEUP_2D_TY_KD * (limelight.get_ty().get::<degree>() - limelight.get_last_results().ty);
+                constants::drivetrain::LINEUP_2D_TY_KP * error_ty
+                + constants::drivetrain::LINEUP_2D_TY_KS * (error_ty * constants::drivetrain::LINEUP_2D_TY_KP / (error_ty * constants::drivetrain::LINEUP_2D_TY_KP).abs())
+                + constants::drivetrain::LINEUP_2D_TY_KD * (error_ty) - limelight.get_last_results().ty;
             let str =
-                constants::drivetrain::LINEUP_2D_TX_KP * self.limelight_lower.get_tx().get::<degree>()
-                + constants::drivetrain::LINEUP_2D_TX_KS * (limelight.get_tx().get::<degree>() * constants::drivetrain::LINEUP_2D_TX_KP / (limelight.get_tx().get::<degree>() * constants::drivetrain::LINEUP_2D_TX_KP).abs())
-                + constants::drivetrain::LINEUP_2D_TX_KD * (limelight.get_tx().get::<degree>() - limelight.get_last_results().tx);
+                constants::drivetrain::LINEUP_2D_TX_KP * error_tx
+                + constants::drivetrain::LINEUP_2D_TX_KS * (error_tx * constants::drivetrain::LINEUP_2D_TX_KP / (error_tx * constants::drivetrain::LINEUP_2D_TX_KP).abs())
+                + constants::drivetrain::LINEUP_2D_TX_KD * (error_tx - limelight.get_last_results().tx);
             let mut transform = Vector2::new(str, fwd);
 
             // rotate by (-1 * our drivetrain angle) to undo the rotation in set_speeds that lets us drive in field-relative mode
