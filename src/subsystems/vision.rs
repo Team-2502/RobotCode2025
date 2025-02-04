@@ -21,6 +21,7 @@ pub struct Vision {
     tag_map_values: Value,
     limelight: Limelight,
     results: LimelightResults,
+    last_results: LimelightResults,
     saved_id: i32,
 }
 
@@ -42,11 +43,13 @@ impl Vision {
             tag_map_values: tag_values,
             limelight,
             results: LimelightResults::default(),
+            last_results: LimelightResults::default(),
             saved_id: 0,
         }
     }
     /// Updates the results from the limelight, also posts telemetry data
     pub async fn update(&mut self, dt_angle: f64) {
+        self.last_results = self.results.clone();
         self.results = self.limelight.results().await.unwrap();
         self.limelight
             .update_robot_orientation(dt_angle)
@@ -86,6 +89,7 @@ impl Vision {
         }
     }
 
+    pub fn get_last_results(&self) -> LimelightResults {self.last_results.clone()}
     pub fn get_saved_id(&self) -> i32 {
         self.saved_id
     }

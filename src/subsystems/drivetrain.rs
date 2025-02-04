@@ -442,7 +442,7 @@ impl Drivetrain {
             LineupSide::Left => { limelight = self.limelight_upper.clone();}
             LineupSide::Right => {limelight = self.limelight_lower.clone();}
         }
-        
+
         // Only try if a tag is detected
         if limelight.get_id() != -1 {
             // Figure out target angle from the tagmap
@@ -456,14 +456,17 @@ impl Drivetrain {
             let error_yaw = perpendicular_yaw - self.get_offset().get::<radian>();
 
             // Calculate PID stuff
-            // KP - proportional: multiply the difference between where you are (tx or ty) and where you want to be (0) by a tuned constant (KP)
+            // KP - proportional: multiply the error (difference between where you are (tx or ty) and where you want to be (0)) by a tuned constant (KP)
+            // KD - derivative: subtract the error from last frame by the error from this frame (this difference is roughly proportional to the rate at which the error is changing), then multiply by a tuned constant (KD)
             // KS - static: add a value to overcome static friction. Make sure it's in the right direction by multiplying by the proportional term divided by its absolute value (leaving only if it's positive or negative)
             let fwd =
-                limelight.get_ty().get::<degree>() * constants::drivetrain::LINEUP_2D_TY_KP
-                + constants::drivetrain::LINEUP_2D_TY_KS * (limelight.get_ty().get::<degree>() * constants::drivetrain::LINEUP_2D_TY_KP / (limelight.get_ty().get::<degree>() * constants::drivetrain::LINEUP_2D_TY_KP).abs());
+                constants::drivetrain::LINEUP_2D_TY_KP * limelight.get_ty().get::<degree>()
+                + constants::drivetrain::LINEUP_2D_TY_KS * (limelight.get_ty().get::<degree>() * constants::drivetrain::LINEUP_2D_TY_KP / (limelight.get_ty().get::<degree>() * constants::drivetrain::LINEUP_2D_TY_KP).abs())
+                + constants::drivetrain::LINEUP_2D_TY_KD * (limelight.get_ty().get::<degree>() - limelight.get_last_results().ty);
             let str =
-                self.limelight_lower.get_tx().get::<degree>() * constants::drivetrain::LINEUP_2D_TX_KP
-                + constants::drivetrain::LINEUP_2D_TX_KS * (limelight.get_tx().get::<degree>() * constants::drivetrain::LINEUP_2D_TX_KP / (limelight.get_tx().get::<degree>() * constants::drivetrain::LINEUP_2D_TX_KP).abs());
+                constants::drivetrain::LINEUP_2D_TX_KP * self.limelight_lower.get_tx().get::<degree>()
+                + constants::drivetrain::LINEUP_2D_TX_KS * (limelight.get_tx().get::<degree>() * constants::drivetrain::LINEUP_2D_TX_KP / (limelight.get_tx().get::<degree>() * constants::drivetrain::LINEUP_2D_TX_KP).abs())
+                + constants::drivetrain::LINEUP_2D_TX_KD * (limelight.get_tx().get::<degree>() - limelight.get_last_results().tx);
             let mut transform = Vector2::new(str, fwd);
 
             // rotate by (-1 * our drivetrain angle) to undo the rotation in set_speeds that lets us drive in field-relative mode
