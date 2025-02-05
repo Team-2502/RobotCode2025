@@ -152,7 +152,7 @@ impl Robot for Ferris {
             ref mut drivetrain_state,
         } = *self.teleop_state.deref().borrow_mut();
 
-        if let Ok(mut drivetrain) = self.drivetrain.try_borrow_mut() {
+        /* if let Ok(mut drivetrain) = self.drivetrain.try_borrow_mut() {
             //drivetrain.update_limelight().await;
             drivetrain.post_odo().await;
 
@@ -222,25 +222,14 @@ impl Robot for Ferris {
             }
         }
 
+
         if let Ok(indexer) = self.indexer.try_borrow_mut() {
-            if self
-                .controllers
-                .left_drive
-                .get(constants::joystick_map::INDEXER_OUT)
-            {
-                // Out the front
-                indexer.set_speed(0.3);
-            } else if self
-                .controllers
-                .left_drive
-                .get(constants::joystick_map::INDEXER_IN)
-            {
-                // In, score out the left
-                indexer.set_speed(-0.5);
-            } else {
-                indexer.set_speed(0.0);
-            }
+            control_indexer(indexer, controllers);
         }
+    ````
+
+         */
+
 
         // TODO: make more ergonomic, maybe move away from frcrs task manager in favor for abort handle in ferris struct
         // Untested
@@ -270,6 +259,18 @@ impl Robot for Ferris {
                 }
             }
         };
+
+
+
+        if let Ok(indexer) = self.indexer.try_borrow_mut() {
+            control_indexer(indexer, controllers);
+        }
+        if let Ok(drivetrain) = self.drivetrain.try_borrow_mut() {
+            control_drivetrain(drivetrain, controllers);
+        }
+        if let Ok(elevator) = self.elevator.try_borrow_mut() {
+            control_elevator(elevator, controllers);
+        }
 
         if self
             .controllers

@@ -115,7 +115,7 @@ impl Drivetrain {
             br_drive: Talon::new(BR_DRIVE, Some("can0".to_owned())),
             br_turn,
 
-            kinematics: Swerve::rectangle(Length::new::<inch>(22.5), Length::new::<inch>(23.5)),
+            kinematics: Swerve::rectangle(Length::new::<inch>(21.5), Length::new::<inch>(21.5)),
             odometry: Odometry::new(),
 
             offset,

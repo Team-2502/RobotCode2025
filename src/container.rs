@@ -24,7 +24,7 @@ use uom::si::angle::{degree, radian};
 //     }
 // }
 
-pub async fn control_drivetrain(
+pub async fn drive(
     drivetrain: &mut Drivetrain,
     controllers: &mut Controllers,
     state: &mut DrivetrainControlState,
