@@ -1,5 +1,5 @@
 use crate::constants::drivetrain::SWERVE_TURN_KP;
-use crate::subsystems::{Drivetrain, DrivetrainControlState};
+use crate::subsystems::{Drivetrain, DrivetrainControlState, SwerveControlStyle};
 use crate::Controllers;
 use frcrs::deadzone;
 use nalgebra::ComplexField;
@@ -62,7 +62,7 @@ pub async fn control_drivetrain(
         deadrz
     };
 
-    drivetrain.set_speeds(deadly, deadlx, rot);
+    drivetrain.set_speeds(deadly, deadlx, rot, SwerveControlStyle::FieldOriented);
 
     if left_drive.get(4) {
         drivetrain.reset_heading();

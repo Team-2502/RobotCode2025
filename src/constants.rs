@@ -64,10 +64,10 @@ pub mod drivetrain {
     pub const SWERVE_DRIVE_IE: f64 = 0.0; //0.175; // integral enable
 
 
-    pub const LINEUP_2D_TX_KP: f64 = 0.01;
-    pub const LINEUP_2D_TY_KP: f64 = -0.0025;
-    pub const LINEUP_2D_TX_KS: f64 = 0.0;
-    pub const LINEUP_2D_TY_KS: f64 = 0.0;
+    pub const LINEUP_2D_TX_KP: f64 = -0.006;
+    pub const LINEUP_2D_TY_KP: f64 = -0.006;
+    pub const LINEUP_2D_TX_KS: f64 = 0.00;
+    pub const LINEUP_2D_TY_KS: f64 = 0.00;
     pub const LINEUP_2D_TX_KD: f64 = 0.0;
     pub const LINEUP_2D_TY_KD: f64 = 0.0;
 

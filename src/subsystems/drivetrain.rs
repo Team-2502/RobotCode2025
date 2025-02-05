@@ -34,6 +34,11 @@ pub enum LineupSide {
     Left,
     Right,
 }
+#[derive(Clone, Copy)]
+pub enum SwerveControlStyle {
+    RobotOriented,
+    FieldOriented,
+}
 
 #[derive(Debug)]
 pub struct LineupTarget {
@@ -235,13 +240,16 @@ impl Drivetrain {
         ((angle % 360.0) + 360.0) % 360.0
     }
 
-    pub fn set_speeds(&mut self, fwd: f64, str: f64, rot: f64) {
+    pub fn set_speeds(&mut self, fwd: f64, str: f64, rot: f64, style: SwerveControlStyle) {
         /*println!(
             "ODO XY: {}, {}",
             self.odometry.position.x, self.odometry.position.y
         );*/
         let mut transform = Vector2::new(-str, fwd);
-        transform = Rotation2::new(self.get_offset().get::<radian>()) * transform;
+        match style {
+            SwerveControlStyle::FieldOriented => {transform = Rotation2::new(self.get_offset().get::<radian>()) * transform;;},
+            SwerveControlStyle::RobotOriented => {},
+        }
 
         let wheel_speeds = self.kinematics.calculate(transform, -rot);
 
@@ -364,7 +372,7 @@ impl Drivetrain {
                 speed.x *= -1.
             }
 
-            self.set_speeds(speed.x, -speed.y, error_angle);
+            self.set_speeds(speed.x, -speed.y, error_angle, SwerveControlStyle::FieldOriented);
 
             Telemetry::put_number("error_position_x", error_position.x).await;
             Telemetry::put_number("error_position_y", error_position.y).await;
@@ -456,32 +464,35 @@ impl Drivetrain {
 
             // Calculate errors (difference between where you are (tx, ty, or drivetrain angle) and where you want to be (0 deg, 0 deg, or perpendicular_yaw))
             // Center of the limelight screen is (0,0) so we don't have to subtract anything for ty and tx
-            let error_ty = limelight.get_ty().get::<degree>();
-            let error_tx = limelight.get_tx().get::<degree>();
+            let error_ty = limelight.get_ty().get::<degree>() - 2.5;
+            let error_tx = limelight.get_tx().get::<degree>() - 8.;
             let error_yaw = perpendicular_yaw - self.get_offset().get::<radian>();
-            println!("target yaw: {} current yaw: {}", perpendicular_yaw, self.get_offset().get::<radian>());
+            println!("hi3");
+
+            // Figure out correct direction for ks constants to apply in
+            let tx_dir = if constants::drivetrain::LINEUP_2D_TX_KP * error_tx > 0. {1.} else {-1.};
+            let ty_dir = if constants::drivetrain::LINEUP_2D_TY_KP * error_ty > 0. {1.} else {-1.};
 
             // Calculate PID stuff
             // KP - proportional: multiply the error by a tuned constant (KP)
             // KD - derivative: subtract the error from last frame by the error from this frame (this difference is roughly proportional to the rate at which the error is changing), then multiply by a tuned constant (KD)
-            // KS - static: add a value to overcome static friction. Make sure it's in the right direction by multiplying by the proportional term divided by its absolute value (leaving only if it's positive or negative)
-            let fwd =
-                constants::drivetrain::LINEUP_2D_TY_KP * error_ty
-                + constants::drivetrain::LINEUP_2D_TY_KS * (error_ty * constants::drivetrain::LINEUP_2D_TY_KP / (error_ty * constants::drivetrain::LINEUP_2D_TY_KP).abs())
-                + constants::drivetrain::LINEUP_2D_TY_KD * (error_ty) - limelight.get_last_results().ty;
+            // KS - static: add a value to overcome static friction.
             let str =
+                constants::drivetrain::LINEUP_2D_TY_KP * error_ty
+                + constants::drivetrain::LINEUP_2D_TY_KS * ty_dir
+                + constants::drivetrain::LINEUP_2D_TY_KD * (error_ty - limelight.get_last_results().ty);
+            let fwd =
                 constants::drivetrain::LINEUP_2D_TX_KP * error_tx
-                + constants::drivetrain::LINEUP_2D_TX_KS * (error_tx * constants::drivetrain::LINEUP_2D_TX_KP / (error_tx * constants::drivetrain::LINEUP_2D_TX_KP).abs())
-                + constants::drivetrain::LINEUP_2D_TX_KD * (error_tx - limelight.get_last_results().tx);
-            let mut transform = Vector2::new(str, fwd);
+                + constants::drivetrain::LINEUP_2D_TX_KS * tx_dir
+                + constants::drivetrain::LINEUP_2D_TX_KD * (error_tx - limelight.get_last_results().tx)
+                - constants::drivetrain::LINEUP_2D_TY_KP * error_ty;
+            let mut transform = Vector2::new(fwd, str);
 
-            // rotate by (-1 * our drivetrain angle) to undo the rotation in set_speeds that lets us drive in field-relative mode
-            // since we want to drive in robot-relative mode here
-            transform = Rotation2::new( - self.get_offset().get::<radian>()) * transform;
             self.set_speeds(
-                transform.y,
                 transform.x,
-                error_yaw * SWERVE_TURN_KP
+                transform.y,
+                error_yaw * SWERVE_TURN_KP,
+                SwerveControlStyle::RobotOriented
             );
         } else {println!("can't lineup - no tag seen");}
     }
