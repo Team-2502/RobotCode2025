@@ -38,8 +38,8 @@ pub mod robotmap {
 }
 
 // TODO: get 2025 field dimensions
-pub const HALF_FIELD_WIDTH_METERS: f64 = 4.1148; // 54/4 feet
-pub const HALF_FIELD_LENGTH_METERS: f64 = 8.2296; // 54/2 feet
+pub const HALF_FIELD_WIDTH_METERS: f64 = 4.0259; // (26ft 5in)/2 -> meters
+pub const HALF_FIELD_LENGTH_METERS: f64 = 8.7741125; // (57ft 6 7/8ths in)/2 -> meters
 
 pub mod vision {
     use nalgebra::Vector2;
@@ -66,8 +66,6 @@ pub mod drivetrain {
     pub const SWERVE_DRIVE_MAX_ERR: f64 = 0.15;
     pub const SWERVE_DRIVE_SUGGESTION_ERR: f64 = 0.35;
     pub const SWERVE_DRIVE_IE: f64 = 0.0; //0.175; // integral enable
-
-    pub const PODIUM_SHOT_ANGLE: f64 = 34.34; // degrees
 }
 pub mod elevator {
     pub const BOTTOM: f64 = 0.0;

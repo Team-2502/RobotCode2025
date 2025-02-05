@@ -11,17 +11,9 @@ impl led {
         Self { led }
     }
 
-    pub fn set(&self, idx: i32, r: i32, g: i32, b: i32) {
-        self.led.set_rgb(idx, r, g, b);
-    }
-
-    pub fn flush(&self) {
-        self.led.flush();
-    }
-
     //level = what branch level robot is at, set led strip to some fraction of total depending on branch
     pub async fn elevator_led_update(&self, level: i32) {
-        self.led.flush().await;
+        self.led.flush();
 
         match level {
             1 => self.solid_height(1),
@@ -33,8 +25,11 @@ impl led {
     }
 
     fn solid_height(&self, level: i32) {
-        for i in { robotmap::led::COUNT } * { level / 4 } {
-            self.led.set_rgb(i, 0, 255, 0);
+        let length = { robotmap::led::COUNT } * { level / 4 };
+        let mut index = 0;
+        for _i in 0..length {
+            index += 1;
+            self.led.set_rgb(index, 0, 255, 0);
         }
     }
     //want to make fn that will adjust ledstrip according to reefside limelight detections
