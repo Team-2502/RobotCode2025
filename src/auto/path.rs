@@ -1,6 +1,8 @@
 use std::{time::Duration};
+use tokio::fs::File;
 
 use nalgebra::{Vector2};
+use tokio::io::AsyncReadExt;
 use tokio::time::{Instant, sleep};
 use uom::si::{angle::{radian}, f64::{Length, Time}, length::{foot, meter}, time::{millisecond, second}, velocity::meter_per_second};
 use wpi_trajectory::{Path};
@@ -9,28 +11,58 @@ use crate::{constants::drivetrain::{SWERVE_DRIVE_IE, SWERVE_DRIVE_KD, SWERVE_DRI
 use crate::subsystems::SwerveControlStyle;
 
 // TODO: Test
-pub async fn follow_path(drivetrain: &mut Drivetrain, path: Path) {
-    follow_path_range(drivetrain, path, SWERVE_DRIVE_MAX_ERR).await
+pub async fn drive(name: &str, drivetrain: &mut Drivetrain, waypoint_index: usize) -> Result<(), Box<dyn std::error::Error>> {
+    let mut path_content = String::new();
+    File::open(format!("/home/lvuser/deploy/choreo/{}.traj", name))
+        .await?
+        .read_to_string(&mut path_content)
+        .await?;
+
+    let path = Path::from_trajectory(&path_content)?;
+    let waypoints = path.waypoints();
+
+    if waypoint_index >= waypoints.len() {
+        return Err("Waypoint index out of bounds".into());
+    }
+
+    // Get start and end times for the waypoint
+    let start_time = if waypoint_index == 0 {
+        0.0
+    } else {
+        waypoints[waypoint_index - 1]
+    };
+    let end_time = waypoints[waypoint_index];
+
+    // Follow path for this segment
+    follow_path_segment(drivetrain, path, 0., 3.4).await;
+    drivetrain.set_speeds(0., 0., 0., SwerveControlStyle::FieldOriented);
+    Ok(())
 }
 
-pub async fn follow_path_range(drivetrain: &mut Drivetrain, path: Path, max_err: f64) {
+pub async fn follow_path_segment(drivetrain: &mut Drivetrain, path: Path, start_time: f64, end_time: f64) {
     let start = Instant::now();
-
     let mut last_error = Vector2::zeros();
     let mut last_loop = Instant::now();
     let mut i = Vector2::zeros();
 
     loop {
         let now = Instant::now();
-        let dt = now-last_loop;
+        let dt = now - last_loop;
         last_loop = now;
 
-        let elapsed = Time::new::<second>(start.elapsed().as_secs_f64());
+        //println!("x: {}, y: {}", drivetrain.odometry.position.x, drivetrain.odometry.position.y);
 
-        let mut setpoint = path.get(elapsed);
+        let elapsed = start.elapsed().as_secs_f64() + start_time;
 
-        let position = Vector2::new(setpoint.x.get::<meter>(), setpoint.y.get::<meter>());
+        // Exit if we've reached the end time for this segment
+        if elapsed > end_time {
+            break;
+        }
+
+        let setpoint = path.get(Time::new::<second>(elapsed));
+
         let angle = -setpoint.heading;
+        let position = Vector2::new(setpoint.x.get::<meter>(), setpoint.y.get::<meter>());
 
         let mut error_position = position - drivetrain.odometry.position;
         let mut error_angle = (angle - drivetrain.get_angle()).get::<radian>();
@@ -39,7 +71,7 @@ pub async fn follow_path_range(drivetrain: &mut Drivetrain, path: Path, max_err:
             i += error_position;
         }
 
-        if elapsed > path.length() && error_position.abs().max() < max_err && error_angle.abs() < 0.075  {
+        if elapsed > path.length().get::<second>() && error_position.abs().max() < SWERVE_DRIVE_MAX_ERR && error_angle.abs() < 0.075  {
             break;
         }
 
@@ -65,12 +97,6 @@ pub async fn follow_path_range(drivetrain: &mut Drivetrain, path: Path, max_err:
 
         drivetrain.set_speeds(speed.x, speed.y, error_angle, SwerveControlStyle::FieldOriented);
 
-        drivetrain.update_odo(Vector2::new(
-            Length::new::<meter>(drivetrain.odometry.position.x),
-            Length::new::<meter>(drivetrain.odometry.position.y)
-        ));
-
         sleep(Duration::from_millis(20)).await;
     }
 }
-

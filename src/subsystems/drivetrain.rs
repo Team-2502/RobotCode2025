@@ -241,10 +241,11 @@ impl Drivetrain {
     }
 
     pub fn set_speeds(&mut self, fwd: f64, str: f64, rot: f64, style: SwerveControlStyle) {
-        /*println!(
+        println!(
             "ODO XY: {}, {}",
             self.odometry.position.x, self.odometry.position.y
-        );*/
+        );
+
         let mut transform = Vector2::new(-str, fwd);
         match style {
             SwerveControlStyle::FieldOriented => {transform = Rotation2::new(self.get_offset().get::<radian>()) * transform;;},
