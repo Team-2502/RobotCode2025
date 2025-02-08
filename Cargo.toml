@@ -5,13 +5,13 @@ edition = "2021"
 
 [dependencies]
 #frcrs = { git = "https://github.com/Team-2502/frcrs.git" }
-frcrs = { path = "../frcrs" }
+frcrs = { path = "../../frcrs" }
 tokio = { version = "1.36.0", features = ["rt", "full"] }
 serde = { version = "1.0.217", features = ["derive"] }
 serde_json = "1.0.134"
 uom = { version = "0.35.0", features = ["f64"] }
 nalgebra = "0.32.3"
-wpi-trajectory = { git = "https://github.com/Speedy6451/trajectory-rs" }
+wpi-trajectory = { git = "https://github.com/Sha-dos/trajectory-rs" }
 axum = "0.7.4"
 # limelightlib-rust = { git = "https://github.com/LimelightVision/limelightlib-rust.git" }
 

@@ -101,7 +101,7 @@ impl Robot for Ferris {
             serde_json::to_string(&Auto::names()).unwrap(),
         )
         .await;
-        Telemetry::put_string("selected auto", Auto::Nothing.name().to_string()).await;
+        Telemetry::put_string("selected auto", Auto::BlueTriangle.name().to_string()).await;
     }
 
     fn disabled_init(&mut self) {
@@ -144,7 +144,11 @@ impl Robot for Ferris {
                 let handle = spawn_local(auto_task).abort_handle();
                 self.auto_handle = Some(handle);
             } else {
-                eprintln!("Failed to get selected auto from telemetry.");
+                eprintln!("Failed to get selected auto from telemetry, running default");
+
+                let auto_task = Auto::run_auto(f, Auto::Nothing);
+                let handle = spawn_local(auto_task).abort_handle();
+                self.auto_handle = Some(handle);
             }
         }
     }
