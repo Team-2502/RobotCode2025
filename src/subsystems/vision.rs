@@ -89,7 +89,9 @@ impl Vision {
         }
     }
 
-    pub fn get_last_results(&self) -> LimelightResults {self.last_results.clone()}
+    pub fn get_last_results(&self) -> LimelightResults {
+        self.last_results.clone()
+    }
     pub fn get_saved_id(&self) -> i32 {
         self.saved_id
     }

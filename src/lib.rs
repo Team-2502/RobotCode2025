@@ -5,8 +5,14 @@ pub mod subsystems;
 pub mod swerve;
 
 use crate::auto::Auto;
+use crate::constants::elevator;
 use crate::container::control_drivetrain;
-use crate::subsystems::{Climber, Drivetrain, DrivetrainControlState, Elevator, ElevatorPosition, Indexer, LineupSide, Vision};
+use crate::subsystems::{
+    Climber, Drivetrain, DrivetrainControlState, Elevator, ElevatorPosition, Indexer, LineupSide,
+    Vision,
+};
+use constants::joystick_map::*;
+use frcrs::ctre::ControlMode;
 use frcrs::input::Joystick;
 use frcrs::networktables::NetworkTable;
 use frcrs::telemetry::Telemetry;
@@ -18,10 +24,8 @@ use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use frcrs::ctre::ControlMode;
-use tokio::task::{AbortHandle, spawn_local};
+use tokio::task::{spawn_local, AbortHandle};
 use tokio::time::sleep;
-use crate::constants::elevator;
 
 #[derive(Clone)]
 pub struct Controllers {
@@ -43,13 +47,14 @@ pub struct Ferris {
     pub drivetrain: Rc<RefCell<Drivetrain>>,
     pub elevator: Rc<RefCell<Elevator>>,
     pub indexer: Rc<RefCell<Indexer>>,
-    pub climber: Arc<Rc<RefCell<Climber>>>,
+    pub climber: Rc<RefCell<Climber>>,
 
     teleop_state: Rc<RefCell<TeleopState>>,
 
     auto_handle: Option<tokio::task::AbortHandle>,
     elevator_trapezoid_handle: Option<tokio::task::AbortHandle>,
     indexer_intake_handle: Option<AbortHandle>,
+    climb_handle: Option<AbortHandle>,
 }
 
 impl Default for Ferris {
@@ -70,13 +75,14 @@ impl Ferris {
             drivetrain: Rc::new(RefCell::new(Drivetrain::new())),
             elevator: Rc::new(RefCell::new(Elevator::new())),
             indexer: Rc::new(RefCell::new(Indexer::new())),
-            climber: Arc::new(Rc::new(RefCell::new(Climber::new()))),
+            climber: Rc::new(RefCell::new(Climber::new())),
 
             teleop_state: Default::default(),
 
             auto_handle: None,
             elevator_trapezoid_handle: None,
             indexer_intake_handle: None,
+            climb_handle: None,
         }
     }
 
@@ -162,162 +168,82 @@ impl Robot for Ferris {
         let TeleopState {
             ref mut drivetrain_state,
         } = *self.teleop_state.deref().borrow_mut();
-        
 
         if let Ok(mut drivetrain) = self.drivetrain.try_borrow_mut() {
-            drivetrain.update_limelight().await;
-            drivetrain.post_odo().await;
+            if let Ok(mut elevator) = self.elevator.try_borrow_mut() {
+                if let Ok(mut indexer) = self.indexer.try_borrow_mut() {
+                    drivetrain.update_limelight().await;
+                    drivetrain.post_odo().await;
 
-            if self
-                .controllers
-                .right_drive
-                .get(constants::joystick_map::LINEUP_LEFT)
-            {
-                drivetrain.lineup_2d(LineupSide::Left);
-            } else if self
-                .controllers
-                .right_drive
-                .get(constants::joystick_map::LINEUP_RIGHT)
-            {
-                drivetrain.lineup_2d(LineupSide::Right);
-            } else {
-                control_drivetrain(&mut drivetrain, &mut self.controllers, drivetrain_state).await;
-            }
-        }
+                    let side = if self.controllers.right_drive.get(LINEUP_LEFT) {
+                        LineupSide::Left
+                    } else if self.controllers.right_drive.get(LINEUP_RIGHT) {
+                        LineupSide::Right
+                    } else {
+                        LineupSide::Left
+                    };
 
-        if let Ok(mut elevator) = self.elevator.try_borrow_mut() {
-            // Setting the target position
-            if self
-                .controllers
-                .operator
-                .get(constants::joystick_map::SET_TARGET_L2)
-            {
-                elevator.set_target(ElevatorPosition::L2);
-            } else if self
-                .controllers
-                .operator
-                .get(constants::joystick_map::SET_TARGET_L3)
-            {
-                elevator.set_target(ElevatorPosition::L3);
-            } else if self
-                .controllers
-                .operator
-                .get(constants::joystick_map::SET_TARGET_L4)
-            {
-                elevator.set_target(ElevatorPosition::L4);
-            }
+                    if self.controllers.left_drive.get(SCORE_L2) {
+                        score(
+                            &mut drivetrain,
+                            &mut elevator,
+                            &mut indexer,
+                            ElevatorPosition::L2,
+                            side,
+                        )
+                    } else if self.controllers.left_drive.get(SCORE_L3) {
+                        score(
+                            &mut drivetrain,
+                            &mut elevator,
+                            &mut indexer,
+                            ElevatorPosition::L3,
+                            side,
+                        )
+                    } else if self.controllers.left_drive.get(SCORE_L4) {
+                        score(
+                            &mut drivetrain,
+                            &mut elevator,
+                            &mut indexer,
+                            ElevatorPosition::L4,
+                            side,
+                        )
+                    } else if self.controllers.right_drive.get(INTAKE) {
+                        elevator.set_target(ElevatorPosition::L2);
+                        elevator.run_to_target_trapezoid();
 
-            // Setting the actual elevator operation
-            if self
-                .controllers
-                .operator
-                .get(constants::joystick_map::ELEVATOR_UP_MANUAL)
-            {
-                // Manual up
-                elevator.set_speed(0.1);
-            } else if self
-                .controllers
-                .operator
-                .get(constants::joystick_map::ELEVATOR_DOWN_MANUAL)
-            {
-                // Manual down
-                elevator.set_speed(-0.1);
-            } else if self
-                .controllers
-                .operator
-                .get(constants::joystick_map::ELEVATOR_TRAPEZOID_TO_STORED_TARGET)
-            {
-                // Trapezoidal to stored target
-                elevator.run_to_target_trapezoid();
-            } else {
-                elevator.set_speed(0.0);
-            }
-        }
+                        if indexer.get_laser_dist() > constants::indexer::LASER_TRIP_DISTANCE_MM
+                            || indexer.get_laser_dist() == -1
+                        {
+                            indexer.set_speed(-0.25);
+                        } else {
+                            indexer.stop();
+                        }
+                    } else {
+                        control_drivetrain(
+                            &mut drivetrain,
+                            &mut self.controllers,
+                            drivetrain_state,
+                        )
+                        .await;
 
-        if let Ok(indexer) = self.indexer.try_borrow_mut() {
-            //println!("laser dist: {}", indexer.get_laser_dist());
-            if self
-                .controllers
-                .left_drive
-                .get(constants::joystick_map::INDEXER_OUT)
-            {
-                // Out the front
-                indexer.set_speed(0.3);
-            } else if self
-                .controllers
-                .left_drive
-                .get(constants::joystick_map::INDEXER_IN)
-            {
-                    if self.indexer_intake_handle.is_none() {
-                        let f = self.clone();
-                        let handle = spawn_local(Indexer::intake_coral(f.indexer)).abort_handle();
-                        self.elevator_trapezoid_handle = Some(handle);
+                        elevator.stop();
+                        indexer.stop();
+                    }
                 }
-            } else if let Some(handle) = self.elevator_trapezoid_handle.take() {
-                handle.abort();
-            } else {
-                indexer.stop();
             }
         }
 
-        if self.controllers.operator.get(constants::joystick_map::ELEVATOR_TRAPEZOID_TO_STORED_TARGET_ASYNC) {
-            // If no abort handle is stored, this function isn't already running
-            // (prevents duplicate tasks)
-            if self.elevator_trapezoid_handle.is_none() {
-                // Clone Ferris
-                // Functions called this way need to:
-                // be defined in the free space (not any impl block of lib)
-                // and take a robot struct to do their work with
-                // This prevents issues with values passing out of scope & such
+        if self.controllers.right_drive.get(CLIMB) {
+            if self.climb_handle.is_none() {
                 let f = self.clone();
-                // Start a task from the async function's returned future and set handle to the abort handle for that task
-                let handle = spawn_local(elevator_move_to_target_async(f)).abort_handle();
-                // Store the abort handle in the Ferris struct
-                self.elevator_trapezoid_handle = Some(handle);
+                let climb_task = Climber::climb(f);
+                let handle = spawn_local(climb_task).abort_handle();
+                self.climb_handle = Some(handle);
             }
-        } else if let Some(handle) = self.elevator_trapezoid_handle.take() {
-            // If the button is no longer held, use the stored abort handle to abort the task & regain full robot control
-            handle.abort();
-        }
-
-        // TODO: make more ergonomic, maybe move away from frcrs task manager in favor for abort handle in ferris struct
-        // Untested
-        let climber = Arc::clone(&self.climber);
-        let climb = {
-            let climber = Arc::clone(&climber);
-            move || {
-                let climber = Arc::clone(&climber);
-                async move {
-                    if let Ok(climber) = climber.try_borrow_mut() {
-                        climber.climb().await;
-                    };
-                }
-            }
-        };
-
-        let climber = Arc::clone(&self.climber);
-        let cancel_climb = {
-            let climber = Arc::clone(&climber);
-            move || {
-                let climber = Arc::clone(&climber);
-                async move {
-                    if let Ok(climber) = climber.try_borrow_mut() {
-                        climber.set_raise(false);
-                        climber.set_grab(false);
-                    };
-                }
-            }
-        };
-
-        if self
-            .controllers
-            .operator
-            .get(constants::joystick_map::CLIMB_FULL)
-        {
-            self.task_manager.run_task(climb);
         } else {
-            self.task_manager.run_task(cancel_climb);
-            self.task_manager.abort_task(climb);
+            if let Some(handle) = self.climb_handle.take() {
+                handle.abort();
+            }
         }
     }
 
@@ -338,8 +264,42 @@ pub async fn elevator_move_to_target_async(robot: Ferris) {
         //println!("Error: {}", (elevator.get_position() - target_position).abs());
         //println!("{}", (elevator.get_position() - target_position).abs() > elevator::POSITION_TOLERANCE);
         while (elevator.get_position() - target_position).abs() > elevator::POSITION_TOLERANCE {
-            elevator.run_to_target_trapezoid();;
+            elevator.run_to_target_trapezoid();
         }
         println!("End of elevator_move_to_target_async");
+    }
+}
+
+pub fn score(
+    drivetrain: &mut Drivetrain,
+    elevator: &mut Elevator,
+    indexer: &mut Indexer,
+    elevator_position: ElevatorPosition,
+    lineup_side: LineupSide,
+) {
+    let drivetrain_at_position = drivetrain.lineup_2d(lineup_side);
+    elevator.set_target(elevator_position);
+    let elevator_at_target = elevator.run_to_target_trapezoid();
+
+    if elevator_at_target && drivetrain_at_position {
+        if indexer.get_laser_dist() < constants::indexer::LASER_TRIP_DISTANCE_MM {
+            indexer.set_speed(-0.25);
+        } else {
+            indexer.stop();
+
+            elevator.set_target(ElevatorPosition::Bottom);
+            elevator.run_to_target_trapezoid();
+        }
+    }
+}
+
+pub fn after_score(robot: &Ferris) {
+    if let Ok(mut elevator) = robot.elevator.try_borrow_mut() {
+        if let Ok(mut indexer) = robot.indexer.try_borrow_mut() {
+            elevator.set_target(ElevatorPosition::Bottom);
+            elevator.run_to_target_trapezoid();
+
+            indexer.stop();
+        }
     }
 }

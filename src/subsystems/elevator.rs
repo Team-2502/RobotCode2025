@@ -1,9 +1,9 @@
+use crate::constants;
 use crate::constants::{elevator, robotmap};
 use frcrs::ctre::{ControlMode, Talon};
 use std::fmt::Display;
 use std::time::Duration;
 use tokio::time::sleep;
-use crate::constants;
 
 pub struct Elevator {
     left: Talon,
@@ -30,7 +30,7 @@ impl Elevator {
         let left = Talon::new(robotmap::elevator::LEFT, Some("can0".to_string()));
         let right = Talon::new(robotmap::elevator::RIGHT, Some("can0".to_string())); //should be inverted (clockwise positive) in config
 
-        //right.follow(&left, true);
+        right.follow(&left, true);
 
         Self {
             left,
@@ -52,12 +52,14 @@ impl Elevator {
         self.target
     }
     /// in rotations, from left motor
-    pub fn get_position(&self) -> f64 {self.left.get_position()}
+    pub fn get_position(&self) -> f64 {
+        self.left.get_position()
+    }
 
     /// Runs a trapezoidal (motion magic) profile on the elevator krakens to move the elevator to its stored target position.
     /// Most of the interesting stuff for this is in the elevator krakens' configurations (set in pheonix tuner).
     /// Those configuration files have been saved to Documents on the driver station laptop.
-    pub fn run_to_target_trapezoid(&mut self) {
+    pub fn run_to_target_trapezoid(&mut self) -> bool {
         //load position to run to in rotations from constants.rs
         let target_position = match self.get_target() {
             ElevatorPosition::Bottom => elevator::BOTTOM,
@@ -67,8 +69,14 @@ impl Elevator {
         };
 
         // current implementation is to just set the control mode and call this function every frame
-        self.right.set(ControlMode::MotionMagic, target_position);
+        //self.right.set(ControlMode::MotionMagic, target_position);
         self.left.set(ControlMode::MotionMagic, target_position);
+
+        if (target_position - self.right.get_position()).abs() < 1. {
+            true
+        } else {
+            false
+        }
 
         // below is for when we eventually make this function async
         /*

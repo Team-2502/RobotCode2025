@@ -1,4 +1,5 @@
 use crate::constants::robotmap::climber::*;
+use crate::Ferris;
 use frcrs::solenoid::{ModuleType, Solenoid};
 use std::time::Duration;
 use tokio::time::sleep;
@@ -38,12 +39,14 @@ impl Climber {
         self.grab.set(engaged);
     }
 
-    pub async fn climb(&self) {
-        self.set_raise(true);
-        sleep(Duration::from_secs(1)).await;
-        self.set_grab(true);
-        sleep(Duration::from_secs_f64(0.25)).await;
-        self.set_raise(false);
+    pub async fn climb(ferris: Ferris) {
+        if let Ok(climber) = ferris.climber.try_borrow_mut() {
+            climber.set_raise(true);
+            sleep(Duration::from_secs(1)).await;
+            climber.set_grab(true);
+            sleep(Duration::from_secs_f64(0.25)).await;
+            climber.set_raise(false);
+        }
     }
 
     pub async fn reverse_climb(&self) {

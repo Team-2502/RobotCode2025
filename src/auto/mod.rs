@@ -1,11 +1,11 @@
 mod path;
 
-use std::ops::Deref;
-use std::time::Duration;
+use crate::auto::path::drive;
 use nalgebra::Vector2;
 use serde::{Deserialize, Serialize};
+use std::ops::Deref;
+use std::time::Duration;
 use tokio::time::sleep;
-use crate::auto::path::drive;
 
 use crate::Ferris;
 
@@ -46,7 +46,9 @@ impl Auto {
     pub async fn run_auto<'a>(ferris: Ferris, chosen: Auto) {
         match chosen {
             Auto::Nothing => {}
-            Auto::BlueTriangle => { blue_triangle(ferris).await.expect("Failed running auto"); }
+            Auto::BlueTriangle => {
+                blue_triangle(ferris).await.expect("Failed running auto");
+            }
         }
     }
 }
@@ -56,7 +58,9 @@ pub async fn blue_triangle(robot: Ferris) -> Result<(), Box<dyn std::error::Erro
 
     let mut drivetrain = robot.drivetrain.deref().borrow_mut();
 
-    drivetrain.odometry.set_abs(Vector2::new(8.075126647949219, 2.0993127822875977));
+    drivetrain
+        .odometry
+        .set_abs(Vector2::new(8.075126647949219, 2.0993127822875977));
 
     drive("BlueTriangle", &mut drivetrain, 1).await?;
     println!("BlueTriangle.1 done");

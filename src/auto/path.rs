@@ -1,17 +1,33 @@
-use std::{time::Duration};
+use std::time::Duration;
 use tokio::fs::File;
 
-use nalgebra::{Vector2};
+use nalgebra::Vector2;
 use tokio::io::AsyncReadExt;
-use tokio::time::{Instant, sleep};
-use uom::si::{angle::{radian}, f64::{Length, Time}, length::{foot, meter}, time::{millisecond, second}, velocity::meter_per_second};
-use wpi_trajectory::{Path};
+use tokio::time::{sleep, Instant};
+use uom::si::{
+    angle::radian,
+    f64::{Length, Time},
+    length::{foot, meter},
+    time::{millisecond, second},
+    velocity::meter_per_second,
+};
+use wpi_trajectory::Path;
 
-use crate::{constants::drivetrain::{SWERVE_DRIVE_IE, SWERVE_DRIVE_KD, SWERVE_DRIVE_KF, SWERVE_DRIVE_KFA, SWERVE_DRIVE_KI, SWERVE_DRIVE_KP, SWERVE_DRIVE_MAX_ERR, SWERVE_TURN_KP}, subsystems::Drivetrain};
 use crate::subsystems::SwerveControlStyle;
+use crate::{
+    constants::drivetrain::{
+        SWERVE_DRIVE_IE, SWERVE_DRIVE_KD, SWERVE_DRIVE_KF, SWERVE_DRIVE_KFA, SWERVE_DRIVE_KI,
+        SWERVE_DRIVE_KP, SWERVE_DRIVE_MAX_ERR, SWERVE_TURN_KP,
+    },
+    subsystems::Drivetrain,
+};
 
 // TODO: Test
-pub async fn drive(name: &str, drivetrain: &mut Drivetrain, waypoint_index: usize) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn drive(
+    name: &str,
+    drivetrain: &mut Drivetrain,
+    waypoint_index: usize,
+) -> Result<(), Box<dyn std::error::Error>> {
     let mut path_content = String::new();
     File::open(format!("/home/lvuser/deploy/choreo/{}.traj", name))
         .await?
@@ -39,7 +55,12 @@ pub async fn drive(name: &str, drivetrain: &mut Drivetrain, waypoint_index: usiz
     Ok(())
 }
 
-pub async fn follow_path_segment(drivetrain: &mut Drivetrain, path: Path, start_time: f64, end_time: f64) {
+pub async fn follow_path_segment(
+    drivetrain: &mut Drivetrain,
+    path: Path,
+    start_time: f64,
+    end_time: f64,
+) {
     let start = Instant::now();
     let mut last_error = Vector2::zeros();
     let mut last_loop = Instant::now();
@@ -71,7 +92,10 @@ pub async fn follow_path_segment(drivetrain: &mut Drivetrain, path: Path, start_
             i += error_position;
         }
 
-        if elapsed > path.length().get::<second>() && error_position.abs().max() < SWERVE_DRIVE_MAX_ERR && error_angle.abs() < 0.075  {
+        if elapsed > path.length().get::<second>()
+            && error_position.abs().max() < SWERVE_DRIVE_MAX_ERR
+            && error_angle.abs() < 0.075
+        {
             break;
         }
 
@@ -83,9 +107,10 @@ pub async fn follow_path_segment(drivetrain: &mut Drivetrain, path: Path, start_
         let velocity = Vector2::new(setpoint.velocity_x, setpoint.velocity_y);
         let velocity = velocity.map(|x| x.get::<meter_per_second>());
 
-        let velocity_next = Vector2::new(setpoint.velocity_x, setpoint.velocity_y).map(|x| x.get::<meter_per_second>());
+        let velocity_next = Vector2::new(setpoint.velocity_x, setpoint.velocity_y)
+            .map(|x| x.get::<meter_per_second>());
 
-        let acceleration = (velocity_next - velocity) * 1000./20.;
+        let acceleration = (velocity_next - velocity) * 1000. / 20.;
 
         speed += velocity * -SWERVE_DRIVE_KF;
         speed += acceleration * -SWERVE_DRIVE_KFA;
@@ -93,9 +118,14 @@ pub async fn follow_path_segment(drivetrain: &mut Drivetrain, path: Path, start_
 
         let speed_s = speed;
         speed += (speed - last_error) * -SWERVE_DRIVE_KD * dt.as_secs_f64() * 9.;
-        last_error =  speed_s;
+        last_error = speed_s;
 
-        drivetrain.set_speeds(speed.x, speed.y, error_angle, SwerveControlStyle::FieldOriented);
+        drivetrain.set_speeds(
+            speed.x,
+            speed.y,
+            error_angle,
+            SwerveControlStyle::FieldOriented,
+        );
 
         sleep(Duration::from_millis(20)).await;
     }

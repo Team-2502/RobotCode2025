@@ -17,12 +17,12 @@ use nalgebra::{Quaternion, Rotation2, Vector2};
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::constants;
 use crate::constants::vision::ROBOT_CENTER_TO_LIMELIGHT_INCHES;
 use crate::subsystems::Vision;
 use uom::si::angle::{degree, radian, revolution};
 use uom::si::f64::{Angle, Length};
 use uom::si::length::{inch, meter};
-use crate::constants;
 
 #[derive(Default)]
 pub struct DrivetrainControlState {
@@ -247,8 +247,10 @@ impl Drivetrain {
         );
         let mut transform = Vector2::new(-str, fwd);
         match style {
-            SwerveControlStyle::FieldOriented => {transform = Rotation2::new(self.get_offset().get::<radian>()) * transform;;},
-            SwerveControlStyle::RobotOriented => {},
+            SwerveControlStyle::FieldOriented => {
+                transform = Rotation2::new(self.get_offset().get::<radian>()) * transform;
+            }
+            SwerveControlStyle::RobotOriented => {}
         }
 
         let wheel_speeds = self.kinematics.calculate(transform, -rot);
@@ -372,7 +374,12 @@ impl Drivetrain {
                 speed.x *= -1.
             }
 
-            self.set_speeds(speed.x, -speed.y, error_angle, SwerveControlStyle::FieldOriented);
+            self.set_speeds(
+                speed.x,
+                -speed.y,
+                error_angle,
+                SwerveControlStyle::FieldOriented,
+            );
 
             Telemetry::put_number("error_position_x", error_position.x).await;
             Telemetry::put_number("error_position_y", error_position.y).await;
@@ -443,12 +450,16 @@ impl Drivetrain {
     /// Set drivetrain speeds using tx and ty from the lower limelight.
     /// Cameras are positioned on the robot such that the tag on the base of the reef is in the exact center of the limelight's fov when the robot is fully lined up.
     /// Uses a basic PID: tx from the limelight (horizontal position of the tag on the screen) feeds into drivetrain strafe, while ty feeds into drivetrain forward.
-    pub fn lineup_2d(&mut self, side: LineupSide) {
+    pub fn lineup_2d(&mut self, side: LineupSide) -> bool {
         // The lower limelight points at the tag when lined up on the right, the upper when lined up on the left
         let mut limelight = self.limelight_lower.clone();
         match side {
-            LineupSide::Left => { limelight = self.limelight_upper.clone();}
-            LineupSide::Right => {limelight = self.limelight_lower.clone();}
+            LineupSide::Left => {
+                limelight = self.limelight_upper.clone();
+            }
+            LineupSide::Right => {
+                limelight = self.limelight_lower.clone();
+            }
         }
 
         // Only try if a tag is detected
@@ -458,7 +469,8 @@ impl Drivetrain {
             let tag_rotation = tag_position.quaternion.unwrap();
             // None of us actually know how the quaternions provided by said map work, this is copied code
             // Flip the tag normal to be out the back of the tag and wrap to the [0, 360] range
-            let tag_yaw = -(quaternion_to_yaw(tag_rotation) + std::f64::consts::PI) % (std::f64::consts::PI * 2.);
+            let tag_yaw = -(quaternion_to_yaw(tag_rotation) + std::f64::consts::PI)
+                % (std::f64::consts::PI * 2.);
             println!("tag_yaw flipped: {}", tag_yaw);
             // We score out the left, so forward-to-the-tag isn't very helpful
             let mut perpendicular_yaw = tag_yaw + std::f64::consts::PI / 2.0;
@@ -472,11 +484,23 @@ impl Drivetrain {
             let error_ty = limelight.get_ty().get::<degree>() - 2.5;
             let error_tx = limelight.get_tx().get::<degree>() - 8.;
             let error_yaw = perpendicular_yaw - self.get_offset().get::<radian>();
-            println!("hi, yaw: {} target yaw: {}", self.get_offset().get::<radian>(), perpendicular_yaw);
+            println!(
+                "hi, yaw: {} target yaw: {}",
+                self.get_offset().get::<radian>(),
+                perpendicular_yaw
+            );
 
             // Figure out correct direction for ks constants to apply in
-            let tx_dir = if constants::drivetrain::LINEUP_2D_TX_KP * error_tx > 0. {1.} else {-1.};
-            let ty_dir = if constants::drivetrain::LINEUP_2D_TY_KP * error_ty > 0. {1.} else {-1.};
+            let tx_dir = if constants::drivetrain::LINEUP_2D_TX_KP * error_tx > 0. {
+                1.
+            } else {
+                -1.
+            };
+            let ty_dir = if constants::drivetrain::LINEUP_2D_TY_KP * error_ty > 0. {
+                1.
+            } else {
+                -1.
+            };
 
             // Neither limelight faces perfectly straight out.
             let off_straight_multiplier = match side {
@@ -488,14 +512,14 @@ impl Drivetrain {
             // KP - proportional: multiply the error by a tuned constant (KP)
             // KD - derivative: subtract the error from last frame by the error from this frame (this difference is roughly proportional to the rate at which the error is changing), then multiply by a tuned constant (KD)
             // KS - static: add a value to overcome static friction.
-            let str =
-                constants::drivetrain::LINEUP_2D_TY_KP * error_ty
+            let str = constants::drivetrain::LINEUP_2D_TY_KP * error_ty
                 + constants::drivetrain::LINEUP_2D_TY_KS * ty_dir
-                + constants::drivetrain::LINEUP_2D_TY_KD * (error_ty - limelight.get_last_results().ty);
-            let fwd =
-                constants::drivetrain::LINEUP_2D_TX_KP * error_tx
+                + constants::drivetrain::LINEUP_2D_TY_KD
+                    * (error_ty - limelight.get_last_results().ty);
+            let fwd = constants::drivetrain::LINEUP_2D_TX_KP * error_tx
                 + constants::drivetrain::LINEUP_2D_TX_KS * tx_dir
-                + constants::drivetrain::LINEUP_2D_TX_KD * (error_tx - limelight.get_last_results().tx)
+                + constants::drivetrain::LINEUP_2D_TX_KD
+                    * (error_tx - limelight.get_last_results().tx)
                 + off_straight_multiplier * constants::drivetrain::LINEUP_2D_TY_KP * error_ty;
             let mut transform = Vector2::new(fwd, str);
 
@@ -503,9 +527,18 @@ impl Drivetrain {
                 transform.x,
                 transform.y,
                 error_yaw * SWERVE_TURN_KP,
-                SwerveControlStyle::RobotOriented
+                SwerveControlStyle::RobotOriented,
             );
-        } else {println!("can't lineup - no tag seen");}
+
+            return if error_ty < 2. && error_tx < 2. && error_yaw < 2. {
+                true
+            } else {
+                false
+            };
+        } else {
+            println!("can't lineup - no tag seen");
+            false
+        }
     }
 }
 

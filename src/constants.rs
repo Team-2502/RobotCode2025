@@ -28,8 +28,8 @@ pub mod robotmap {
     }
 
     pub mod climber {
-        pub const RAISE: i32 = 0;
-        pub const GRAB: i32 = 1;
+        pub const RAISE: i32 = 1;
+        pub const GRAB: i32 = 2;
     }
 }
 
@@ -63,14 +63,12 @@ pub mod drivetrain {
     pub const SWERVE_DRIVE_SUGGESTION_ERR: f64 = 0.35;
     pub const SWERVE_DRIVE_IE: f64 = 0.0; //0.175; // integral enable
 
-
     pub const LINEUP_2D_TX_KP: f64 = -0.0067;
     pub const LINEUP_2D_TY_KP: f64 = -0.0067;
     pub const LINEUP_2D_TX_KS: f64 = 0.00;
     pub const LINEUP_2D_TY_KS: f64 = 0.00;
     pub const LINEUP_2D_TX_KD: f64 = 0.0;
     pub const LINEUP_2D_TY_KD: f64 = 0.0;
-
 }
 pub mod elevator {
     pub const BOTTOM: f64 = 0.0; // unit is rotations
@@ -92,10 +90,16 @@ pub mod joystick_map {
     //Right drive
     pub const LINEUP_LEFT: usize = 3;
     pub const LINEUP_RIGHT: usize = 4;
+    pub const INTAKE: usize = 1;
+    pub const RESET_HEADING: usize = 5;
+    pub const CLIMB: usize = 2;
 
     //Left drive
-    pub const INDEXER_IN: usize = 1;
-    pub const INDEXER_OUT: usize = 2;
+    pub const SLOW_MODE: usize = 1;
+
+    pub const SCORE_L2: usize = 2;
+    pub const SCORE_L3: usize = 3;
+    pub const SCORE_L4: usize = 4;
 
     //Operator
     pub const ELEVATOR_TRAPEZOID_TO_STORED_TARGET: usize = 1;
