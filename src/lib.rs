@@ -17,7 +17,10 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
-use tokio::task::spawn_local;
+use std::time::{Duration, Instant};
+use frcrs::ctre::ControlMode;
+use tokio::task::{AbortHandle, spawn_local};
+use tokio::time::sleep;
 use crate::constants::elevator;
 
 #[derive(Clone)]
@@ -46,6 +49,7 @@ pub struct Ferris {
 
     auto_handle: Option<tokio::task::AbortHandle>,
     elevator_trapezoid_handle: Option<tokio::task::AbortHandle>,
+    indexer_intake_handle: Option<AbortHandle>,
 }
 
 impl Default for Ferris {
@@ -72,6 +76,7 @@ impl Ferris {
 
             auto_handle: None,
             elevator_trapezoid_handle: None,
+            indexer_intake_handle: None,
         }
     }
 
@@ -243,10 +248,15 @@ impl Robot for Ferris {
                 .left_drive
                 .get(constants::joystick_map::INDEXER_IN)
             {
-                // In, score out the left
-                indexer.set_speed(-0.17);
+                    if self.indexer_intake_handle.is_none() {
+                        let f = self.clone();
+                        let handle = spawn_local(Indexer::intake_coral(f.indexer)).abort_handle();
+                        self.elevator_trapezoid_handle = Some(handle);
+                }
+            } else if let Some(handle) = self.elevator_trapezoid_handle.take() {
+                handle.abort();
             } else {
-                indexer.set_speed(0.0);
+                indexer.stop();
             }
         }
 

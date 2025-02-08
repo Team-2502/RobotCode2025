@@ -81,7 +81,7 @@ pub mod elevator {
     pub const POSITION_TOLERANCE: f64 = 0.25; // unit is rotations. finish elevator async move when within this distance of target
 }
 pub mod indexer {
-    pub const LASER_TRIP_DISTANCE_MM: i32 = 100;
+    pub const LASER_TRIP_DISTANCE_MM: i32 = 2;
 }
 pub mod joystick_map {
     // Joystick IDs (set in driver station)
