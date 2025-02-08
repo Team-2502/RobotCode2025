@@ -241,10 +241,10 @@ impl Drivetrain {
     }
 
     pub fn set_speeds(&mut self, fwd: f64, str: f64, rot: f64, style: SwerveControlStyle) {
-        /*println!(
+        println!(
             "ODO XY: {}, {}",
             self.odometry.position.x, self.odometry.position.y
-        );*/
+        );
         let mut transform = Vector2::new(-str, fwd);
         match style {
             SwerveControlStyle::FieldOriented => {transform = Rotation2::new(self.get_offset().get::<radian>()) * transform;;},
@@ -458,20 +458,31 @@ impl Drivetrain {
             let tag_rotation = tag_position.quaternion.unwrap();
             // None of us actually know how the quaternions provided by said map work, this is copied code
             // Flip the tag normal to be out the back of the tag and wrap to the [0, 360] range
-            let tag_yaw = (quaternion_to_yaw(tag_rotation) + std::f64::consts::PI) % (std::f64::consts::PI * 2.);
+            let tag_yaw = -(quaternion_to_yaw(tag_rotation) + std::f64::consts::PI) % (std::f64::consts::PI * 2.);
+            println!("tag_yaw flipped: {}", tag_yaw);
             // We score out the left, so forward-to-the-tag isn't very helpful
-            let perpendicular_yaw = tag_yaw + std::f64::consts::PI / 2.0;
+            let mut perpendicular_yaw = tag_yaw + std::f64::consts::PI / 2.0;
+            // Convert to angle on [0,180]
+            if perpendicular_yaw > std::f64::consts::PI {
+                perpendicular_yaw = perpendicular_yaw - (std::f64::consts::PI * 2.);
+            }
 
             // Calculate errors (difference between where you are (tx, ty, or drivetrain angle) and where you want to be (0 deg, 0 deg, or perpendicular_yaw))
             // Center of the limelight screen is (0,0) so we don't have to subtract anything for ty and tx
             let error_ty = limelight.get_ty().get::<degree>() - 2.5;
             let error_tx = limelight.get_tx().get::<degree>() - 8.;
             let error_yaw = perpendicular_yaw - self.get_offset().get::<radian>();
-            println!("hi3");
+            println!("hi, yaw: {} target yaw: {}", self.get_offset().get::<radian>(), perpendicular_yaw);
 
             // Figure out correct direction for ks constants to apply in
             let tx_dir = if constants::drivetrain::LINEUP_2D_TX_KP * error_tx > 0. {1.} else {-1.};
             let ty_dir = if constants::drivetrain::LINEUP_2D_TY_KP * error_ty > 0. {1.} else {-1.};
+
+            // Neither limelight faces perfectly straight out.
+            let off_straight_multiplier = match side {
+                LineupSide::Left => 1.0,
+                LineupSide::Right => -1.0,
+            };
 
             // Calculate PID stuff
             // KP - proportional: multiply the error by a tuned constant (KP)
@@ -485,7 +496,7 @@ impl Drivetrain {
                 constants::drivetrain::LINEUP_2D_TX_KP * error_tx
                 + constants::drivetrain::LINEUP_2D_TX_KS * tx_dir
                 + constants::drivetrain::LINEUP_2D_TX_KD * (error_tx - limelight.get_last_results().tx)
-                - constants::drivetrain::LINEUP_2D_TY_KP * error_ty;
+                + off_straight_multiplier * constants::drivetrain::LINEUP_2D_TY_KP * error_ty;
             let mut transform = Vector2::new(fwd, str);
 
             self.set_speeds(
