@@ -214,6 +214,7 @@ impl Robot for Ferris {
                         if indexer.get_laser_dist() > constants::indexer::LASER_TRIP_DISTANCE_MM
                             || indexer.get_laser_dist() == -1
                         {
+                            println!("Dist: {}", indexer.get_laser_dist());
                             indexer.set_speed(-0.25);
                         } else {
                             indexer.stop();
@@ -240,9 +241,31 @@ impl Robot for Ferris {
                 let handle = spawn_local(climb_task).abort_handle();
                 self.climb_handle = Some(handle);
             }
+        } else if self.controllers.right_drive.get(CLIMB_FALL) {
+            if let Some(handle) = self.climb_handle.take() {
+                handle.abort();
+            }
+
+            if let Ok(mut climber) = self.climber.try_borrow_mut() {
+                climber.fall()
+            }
         } else {
             if let Some(handle) = self.climb_handle.take() {
                 handle.abort();
+            }
+
+            if let Ok(mut climber) = self.climber.try_borrow_mut() {
+                if self.controllers.right_drive.get(CLIMBER_RAISE) {
+                    climber.set_raise(true);
+                } else {
+                    climber.set_raise(false);
+                }
+
+                if self.controllers.right_drive.get(CLIMBER_GRAB) {
+                    climber.set_grab(true);
+                } else {
+                    climber.set_grab(false);
+                }
             }
         }
     }

@@ -24,12 +24,12 @@ pub mod robotmap {
 
     pub mod indexer {
         pub const MOTOR: i32 = 12;
-        pub const LASER_CAN: i32 = 13;
+        pub const LASER_CAN: i32 = 0; // Cant save can id
     }
 
     pub mod climber {
         pub const RAISE: i32 = 1;
-        pub const GRAB: i32 = 2;
+        pub const GRAB: i32 = 0;
     }
 }
 
@@ -93,6 +93,9 @@ pub mod joystick_map {
     pub const INTAKE: usize = 1;
     pub const RESET_HEADING: usize = 5;
     pub const CLIMB: usize = 2;
+    pub const CLIMB_FALL: usize = 6;
+    pub const CLIMBER_GRAB: usize = 8;
+    pub const CLIMBER_RAISE: usize = 9;
 
     //Left drive
     pub const SLOW_MODE: usize = 1;

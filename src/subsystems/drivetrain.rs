@@ -241,10 +241,10 @@ impl Drivetrain {
     }
 
     pub fn set_speeds(&mut self, fwd: f64, str: f64, rot: f64, style: SwerveControlStyle) {
-        println!(
+        /*println!(
             "ODO XY: {}, {}",
             self.odometry.position.x, self.odometry.position.y
-        );
+        );*/
         let mut transform = Vector2::new(-str, fwd);
         match style {
             SwerveControlStyle::FieldOriented => {
@@ -530,9 +530,11 @@ impl Drivetrain {
                 SwerveControlStyle::RobotOriented,
             );
 
-            return if error_ty < 2. && error_tx < 2. && error_yaw < 2. {
+            return if error_ty.abs() < 2. && error_tx.abs() < 2. && error_yaw.abs() < 0.2 {
+                println!("Drivetrain at target");
                 true
             } else {
+                println!("Drivetrain not at target ty: {} tx: {} yaw: {}", error_ty.abs(), error_tx.abs(), error_yaw.abs());
                 false
             };
         } else {

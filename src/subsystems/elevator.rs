@@ -30,7 +30,7 @@ impl Elevator {
         let left = Talon::new(robotmap::elevator::LEFT, Some("can0".to_string()));
         let right = Talon::new(robotmap::elevator::RIGHT, Some("can0".to_string())); //should be inverted (clockwise positive) in config
 
-        right.follow(&left, true);
+        //right.follow(&left, true);
 
         Self {
             left,
@@ -69,12 +69,14 @@ impl Elevator {
         };
 
         // current implementation is to just set the control mode and call this function every frame
-        //self.right.set(ControlMode::MotionMagic, target_position);
+        self.right.set(ControlMode::MotionMagic, target_position);
         self.left.set(ControlMode::MotionMagic, target_position);
 
-        if (target_position - self.right.get_position()).abs() < 1. {
+        if (target_position - self.right.get_position()).abs() < 0.5 {
+            println!("Elevator at target");
             true
         } else {
+            println!("Elevator not at target {}", (target_position - self.right.get_position()).abs());
             false
         }
 

@@ -36,7 +36,7 @@ impl Climber {
     }
 
     pub fn set_grab(&self, engaged: bool) {
-        self.grab.set(engaged);
+        self.grab.set(!engaged);
     }
 
     pub async fn climb(ferris: Ferris) {
@@ -47,6 +47,11 @@ impl Climber {
             sleep(Duration::from_secs_f64(0.25)).await;
             climber.set_raise(false);
         }
+    }
+
+    pub fn fall(&self) {
+        self.set_grab(false);
+        self.set_raise(false);
     }
 
     pub async fn reverse_climb(&self) {
