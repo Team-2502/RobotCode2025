@@ -1,5 +1,6 @@
 use crate::constants::drivetrain::SWERVE_TURN_KP;
-use crate::subsystems::{Drivetrain, DrivetrainControlState};
+use crate::constants::joystick_map::*;
+use crate::subsystems::{Drivetrain, DrivetrainControlState, SwerveControlStyle};
 use crate::Controllers;
 use frcrs::deadzone;
 use nalgebra::ComplexField;
@@ -34,8 +35,16 @@ pub async fn control_drivetrain(
     let saved_angle = &mut state.saved_angle;
 
     let joystick_range = 0.04..1.;
-    let power_translate = if left_drive.get(1) { 0.0..0.3 } else { 0.0..1. };
-    let power_rotate = if left_drive.get(1) { 0.0..0.2 } else { 0.0..1. };
+    let power_translate = if left_drive.get(SLOW_MODE) {
+        0.0..0.3
+    } else {
+        0.0..1.
+    };
+    let power_rotate = if left_drive.get(SLOW_MODE) {
+        0.0..0.2
+    } else {
+        0.0..1.
+    };
     let deadly = deadzone(left_drive.get_y(), &joystick_range, &power_translate);
     let deadlx = deadzone(left_drive.get_x(), &joystick_range, &power_translate);
     let deadrz = deadzone(right_drive.get_z(), &joystick_range, &power_rotate);
@@ -53,18 +62,20 @@ pub async fn control_drivetrain(
         } else {
             0.
         }
-    } else if left_drive.get(2) {
+    }
+    /*else if right_drive.get(HOLD_90) {
         let angle = (drivetrain.get_angle() - drivetrain.offset).get::<degree>();
         let goal = (angle / 90.).round() * 90.;
         let error = angle - goal;
         -error.to_radians() * SWERVE_TURN_KP
-    } else {
+    } */
+    else {
         deadrz
     };
 
-    drivetrain.set_speeds(deadly, deadlx, rot);
+    drivetrain.set_speeds(deadly, deadlx, rot, SwerveControlStyle::FieldOriented);
 
-    if left_drive.get(4) {
+    if right_drive.get(RESET_HEADING) {
         drivetrain.reset_heading();
     }
 }

@@ -2,6 +2,7 @@ LIB=RobotCode2025
 OUT=target/arm-unknown-linux-gnueabi/release/$(LIB)
 DEPLOY=javastub/src/main/deploy/$(LIB)
 TEAM=25.02
+PATHS=auto/*
 
 .PHONY: check
 check:
@@ -26,6 +27,10 @@ deploy-scp: $(OUT)
 	ssh lvuser@10.$(TEAM).2 rm $(LIB)
 	scp $(OUT) lvuser@10.$(TEAM).2:
 	ssh lvuser@10.$(TEAM).2 /usr/local/frc/bin/frcRunRobot.sh
+
+.PHONY: deploy-paths
+deploy-paths:
+	scp -r $(PATHS) admin@10.$(TEAM).2:/home/lvuser/deploy/choreo/
 
 # Deploys the "deploy" directory and robotcode
 .PHONY: deploy

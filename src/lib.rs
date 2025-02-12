@@ -5,20 +5,27 @@ pub mod subsystems;
 pub mod swerve;
 
 use crate::auto::Auto;
+use crate::constants::elevator;
 use crate::container::control_drivetrain;
 use crate::subsystems::{
     Climber, Drivetrain, DrivetrainControlState, Elevator, ElevatorPosition, Indexer, LineupSide,
+    Vision,
 };
+use constants::joystick_map::*;
+use frcrs::ctre::ControlMode;
 use frcrs::input::Joystick;
 use frcrs::networktables::NetworkTable;
 use frcrs::telemetry::Telemetry;
 use frcrs::{Robot, TaskManager};
 use std::cell::RefCell;
 use std::cmp::PartialEq;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
-use tokio::task::spawn_local;
+use std::time::{Duration, Instant};
+use tokio::task::{spawn_local, AbortHandle};
+use tokio::time::sleep;
 
 #[derive(Clone)]
 pub struct Controllers {
@@ -40,11 +47,14 @@ pub struct Ferris {
     pub drivetrain: Rc<RefCell<Drivetrain>>,
     pub elevator: Rc<RefCell<Elevator>>,
     pub indexer: Rc<RefCell<Indexer>>,
-    pub climber: Arc<Rc<RefCell<Climber>>>,
+    pub climber: Rc<RefCell<Climber>>,
 
     teleop_state: Rc<RefCell<TeleopState>>,
 
     auto_handle: Option<tokio::task::AbortHandle>,
+    elevator_trapezoid_handle: Option<tokio::task::AbortHandle>,
+    indexer_intake_handle: Option<AbortHandle>,
+    climb_handle: Option<AbortHandle>,
 }
 
 impl Default for Ferris {
@@ -65,11 +75,14 @@ impl Ferris {
             drivetrain: Rc::new(RefCell::new(Drivetrain::new())),
             elevator: Rc::new(RefCell::new(Elevator::new())),
             indexer: Rc::new(RefCell::new(Indexer::new())),
-            climber: Arc::new(Rc::new(RefCell::new(Climber::new()))),
+            climber: Rc::new(RefCell::new(Climber::new())),
 
             teleop_state: Default::default(),
 
             auto_handle: None,
+            elevator_trapezoid_handle: None,
+            indexer_intake_handle: None,
+            climb_handle: None,
         }
     }
 
@@ -99,7 +112,7 @@ impl Robot for Ferris {
             serde_json::to_string(&Auto::names()).unwrap(),
         )
         .await;
-        Telemetry::put_string("selected auto", Auto::Nothing.name().to_string()).await;
+        Telemetry::put_string("selected auto", Auto::BlueTriangle.name().to_string()).await;
     }
 
     fn disabled_init(&mut self) {
@@ -142,7 +155,11 @@ impl Robot for Ferris {
                 let handle = spawn_local(auto_task).abort_handle();
                 self.auto_handle = Some(handle);
             } else {
-                eprintln!("Failed to get selected auto from telemetry.");
+                eprintln!("Failed to get selected auto from telemetry, running default");
+
+                let auto_task = Auto::run_auto(f, Auto::Nothing);
+                let handle = spawn_local(auto_task).abort_handle();
+                self.auto_handle = Some(handle);
             }
         }
     }
@@ -153,137 +170,165 @@ impl Robot for Ferris {
         } = *self.teleop_state.deref().borrow_mut();
 
         if let Ok(mut drivetrain) = self.drivetrain.try_borrow_mut() {
-            //drivetrain.update_limelight().await;
-            drivetrain.post_odo().await;
+            if let Ok(mut elevator) = self.elevator.try_borrow_mut() {
+                if let Ok(mut indexer) = self.indexer.try_borrow_mut() {
+                    drivetrain.update_limelight().await;
+                    drivetrain.post_odo().await;
 
-            if self
-                .controllers
-                .right_drive
-                .get(constants::joystick_map::LINEUP_LEFT)
-            {
-                drivetrain.lineup(LineupSide::Left).await;
-            } else if self
-                .controllers
-                .right_drive
-                .get(constants::joystick_map::LINEUP_RIGHT)
-            {
-                drivetrain.lineup(LineupSide::Right).await;
-            } else {
-                control_drivetrain(&mut drivetrain, &mut self.controllers, drivetrain_state).await;
-            }
-        }
-
-        if let Ok(mut elevator) = self.elevator.try_borrow_mut() {
-            // Setting the target position
-            if self
-                .controllers
-                .operator
-                .get(constants::joystick_map::SET_TARGET_L2)
-            {
-                elevator.set_target(ElevatorPosition::L2);
-            } else if self
-                .controllers
-                .operator
-                .get(constants::joystick_map::SET_TARGET_L3)
-            {
-                elevator.set_target(ElevatorPosition::L3);
-            } else if self
-                .controllers
-                .operator
-                .get(constants::joystick_map::SET_TARGET_L4)
-            {
-                elevator.set_target(ElevatorPosition::L4);
-            }
-
-            // Setting the actual elevator operation
-            if self
-                .controllers
-                .operator
-                .get(constants::joystick_map::ELEVATOR_UP_MANUAL)
-            {
-                // Manual up
-                elevator.set_speed(0.1);
-            } else if self
-                .controllers
-                .operator
-                .get(constants::joystick_map::ELEVATOR_DOWN_MANUAL)
-            {
-                // Manual down
-                elevator.set_speed(-0.1);
-            } else if self
-                .controllers
-                .operator
-                .get(constants::joystick_map::ELEVATOR_TRAPEZOID_TO_STORED_TARGET)
-            {
-                // Trapezoidal to stored target
-                elevator.run_to_target_trapezoid();
-            } else {
-                elevator.set_speed(0.0);
-            }
-        }
-
-        if let Ok(indexer) = self.indexer.try_borrow_mut() {
-            if self
-                .controllers
-                .left_drive
-                .get(constants::joystick_map::INDEXER_OUT)
-            {
-                // Out the front
-                indexer.set_speed(0.3);
-            } else if self
-                .controllers
-                .left_drive
-                .get(constants::joystick_map::INDEXER_IN)
-            {
-                // In, score out the left
-                indexer.set_speed(-0.5);
-            } else {
-                indexer.set_speed(0.0);
-            }
-        }
-
-        // TODO: make more ergonomic, maybe move away from frcrs task manager in favor for abort handle in ferris struct
-        // Untested
-        let climber = Arc::clone(&self.climber);
-        let climb = {
-            let climber = Arc::clone(&climber);
-            move || {
-                let climber = Arc::clone(&climber);
-                async move {
-                    if let Ok(climber) = climber.try_borrow_mut() {
-                        climber.climb().await;
+                    let side = if self.controllers.right_drive.get(LINEUP_LEFT) {
+                        LineupSide::Left
+                    } else if self.controllers.right_drive.get(LINEUP_RIGHT) {
+                        LineupSide::Right
+                    } else {
+                        LineupSide::Left
                     };
+
+                    if self.controllers.left_drive.get(SCORE_L2) {
+                        score(
+                            &mut drivetrain,
+                            &mut elevator,
+                            &mut indexer,
+                            ElevatorPosition::L2,
+                            side,
+                        )
+                    } else if self.controllers.left_drive.get(SCORE_L3) {
+                        score(
+                            &mut drivetrain,
+                            &mut elevator,
+                            &mut indexer,
+                            ElevatorPosition::L3,
+                            side,
+                        )
+                    } else if self.controllers.left_drive.get(SCORE_L4) {
+                        score(
+                            &mut drivetrain,
+                            &mut elevator,
+                            &mut indexer,
+                            ElevatorPosition::L4,
+                            side,
+                        )
+                    } else if self.controllers.right_drive.get(INTAKE) {
+                        elevator.set_target(ElevatorPosition::L2);
+                        elevator.run_to_target_trapezoid();
+
+                        if indexer.get_laser_dist() > constants::indexer::LASER_TRIP_DISTANCE_MM
+                            || indexer.get_laser_dist() == -1
+                        {
+                            println!("Dist: {}", indexer.get_laser_dist());
+                            indexer.set_speed(-0.25);
+                        } else {
+                            indexer.stop();
+                        }
+                    } else {
+                        control_drivetrain(
+                            &mut drivetrain,
+                            &mut self.controllers,
+                            drivetrain_state,
+                        )
+                        .await;
+
+                        elevator.stop();
+                        indexer.stop();
+                    }
                 }
             }
-        };
+        }
 
-        let climber = Arc::clone(&self.climber);
-        let cancel_climb = {
-            let climber = Arc::clone(&climber);
-            move || {
-                let climber = Arc::clone(&climber);
-                async move {
-                    if let Ok(climber) = climber.try_borrow_mut() {
-                        climber.set_raise(false);
-                        climber.set_grab(false);
-                    };
-                }
+        if self.controllers.right_drive.get(CLIMB) {
+            if self.climb_handle.is_none() {
+                let f = self.clone();
+                let climb_task = Climber::climb(f);
+                let handle = spawn_local(climb_task).abort_handle();
+                self.climb_handle = Some(handle);
             }
-        };
+        } else if self.controllers.right_drive.get(CLIMB_FALL) {
+            if let Some(handle) = self.climb_handle.take() {
+                handle.abort();
+            }
 
-        if self
-            .controllers
-            .operator
-            .get(constants::joystick_map::CLIMB_FULL)
-        {
-            self.task_manager.run_task(climb);
+            if let Ok(mut climber) = self.climber.try_borrow_mut() {
+                climber.fall()
+            }
         } else {
-            self.task_manager.run_task(cancel_climb);
-            self.task_manager.abort_task(climb);
+            if let Some(handle) = self.climb_handle.take() {
+                handle.abort();
+            }
+
+            if let Ok(mut climber) = self.climber.try_borrow_mut() {
+                if self.controllers.right_drive.get(CLIMBER_RAISE) {
+                    climber.set_raise(true);
+                } else {
+                    climber.set_raise(false);
+                }
+
+                if self.controllers.right_drive.get(CLIMBER_GRAB) {
+                    climber.set_grab(true);
+                } else {
+                    climber.set_grab(false);
+                }
+            }
         }
     }
 
     async fn test_periodic(&mut self) {
         // println!("Test periodic");
+    }
+}
+pub async fn elevator_move_to_target_async(robot: Ferris) {
+    println!("Called elevator_move_to_target_async");
+    if let Ok(mut elevator) = robot.elevator.try_borrow_mut() {
+        //println!("Borrowed elevator");
+        let target_position = match elevator.get_target() {
+            ElevatorPosition::Bottom => elevator::BOTTOM,
+            ElevatorPosition::L2 => elevator::L2,
+            ElevatorPosition::L3 => elevator::L3,
+            ElevatorPosition::L4 => elevator::L4,
+        };
+        //println!("Error: {}", (elevator.get_position() - target_position).abs());
+        //println!("{}", (elevator.get_position() - target_position).abs() > elevator::POSITION_TOLERANCE);
+        while (elevator.get_position() - target_position).abs() > elevator::POSITION_TOLERANCE {
+            elevator.run_to_target_trapezoid();
+        }
+        println!("End of elevator_move_to_target_async");
+    }
+}
+
+pub fn score(
+    drivetrain: &mut Drivetrain,
+    elevator: &mut Elevator,
+    indexer: &mut Indexer,
+    elevator_position: ElevatorPosition,
+    lineup_side: LineupSide,
+) {
+    let drivetrain_at_position = drivetrain.lineup_2d(lineup_side);
+    elevator.set_target(elevator_position);
+    let elevator_at_target = elevator.run_to_target_trapezoid();
+
+    if elevator_at_target && drivetrain_at_position {
+        if indexer.get_laser_dist() < constants::indexer::LASER_TRIP_DISTANCE_MM {
+            let indexer_speed = match elevator_position {
+                ElevatorPosition::Bottom => -0.25,
+                ElevatorPosition::L2 => -0.25,
+                ElevatorPosition::L3 => -0.25,
+                ElevatorPosition::L4 => -0.1
+            };
+            indexer.set_speed(indexer_speed);
+        } else {
+            indexer.stop();
+
+            //elevator.set_target(ElevatorPosition::Bottom);
+            //elevator.run_to_target_trapezoid();
+        }
+    }
+}
+
+pub fn after_score(robot: &Ferris) {
+    if let Ok(mut elevator) = robot.elevator.try_borrow_mut() {
+        if let Ok(mut indexer) = robot.indexer.try_borrow_mut() {
+            elevator.set_target(ElevatorPosition::Bottom);
+            elevator.run_to_target_trapezoid();
+
+            indexer.stop();
+        }
     }
 }

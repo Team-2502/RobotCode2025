@@ -24,12 +24,12 @@ pub mod robotmap {
 
     pub mod indexer {
         pub const MOTOR: i32 = 12;
-        pub const DISTANCE: i32 = 0;
+        pub const LASER_CAN: i32 = 0; // Cant save can id
     }
 
     pub mod climber {
-        pub const RAISE: i32 = 0;
-        pub const GRAB: i32 = 1;
+        pub const RAISE: i32 = 1;
+        pub const GRAB: i32 = 0;
     }
 }
 
@@ -63,15 +63,29 @@ pub mod drivetrain {
     pub const SWERVE_DRIVE_SUGGESTION_ERR: f64 = 0.35;
     pub const SWERVE_DRIVE_IE: f64 = 0.0; //0.175; // integral enable
 
-    pub const PODIUM_SHOT_ANGLE: f64 = 34.34; // degrees
+    pub const LINEUP_2D_TX_STR_KP: f64 = 0.005;
+    pub const LINEUP_2D_TX_FWD_KP: f64 = 0.005;
+    pub const LINEUP_2D_TY_STR_KP: f64 = 0.005;
+    pub const LINEUP_2D_TY_FWD_KP: f64 = 0.005;
+    pub const TARGET_TY_LEFT: f64 = -7.4;
+    pub const TARGET_TY_RIGHT: f64 = 3.45;
+    pub const TARGET_TX_LEFT: f64 = -7.4;
+    pub const TARGET_TX_RIGHT: f64 = 3.45;
+    pub const TX_ACCEPTABLE_ERROR: f64 = 1.8;
+    pub const TY_ACCEPTABLE_ERROR: f64 = 1.8;
+    pub const YAW_ACCEPTABLE_ERROR: f64 = 0.02;
+
 }
 pub mod elevator {
     pub const BOTTOM: f64 = 0.0; // unit is rotations
     pub const L2: f64 = 1.; // unit is rotations
     pub const L3: f64 = 15.75; // unit is rotations
-    pub const L4: f64 = 39.7; // unit is rotations
-    pub const ELEVATOR_TRAPEZOID_DT_MS: u64 = 50; // Currently unused TODO: update this comment when elevator trapezoidal move is async
-    pub const POSITION_TOLERANCE: f64 = 0.25; // Currently unused TODO: update this comment when elevator trapezoidal move is async
+    pub const L4: f64 = 38.8; // unit is rotations
+    pub const ELEVATOR_TRAPEZOID_DT_MS: u64 = 50; // sleep.await this long in between updating the elevator trapezoidal when running its async function
+    pub const POSITION_TOLERANCE: f64 = 0.25; // unit is rotations. finish elevator async move when within this distance of target
+}
+pub mod indexer {
+    pub const LASER_TRIP_DISTANCE_MM: i32 = 2;
 }
 pub mod joystick_map {
     // Joystick IDs (set in driver station)
@@ -82,13 +96,23 @@ pub mod joystick_map {
     //Right drive
     pub const LINEUP_LEFT: usize = 3;
     pub const LINEUP_RIGHT: usize = 4;
+    pub const INTAKE: usize = 1;
+    pub const RESET_HEADING: usize = 5;
+    pub const CLIMB: usize = 2;
+    pub const CLIMB_FALL: usize = 6;
+    pub const CLIMBER_GRAB: usize = 8;
+    pub const CLIMBER_RAISE: usize = 9;
 
     //Left drive
-    pub const INDEXER_IN: usize = 1;
-    pub const INDEXER_OUT: usize = 2;
+    pub const SLOW_MODE: usize = 1;
+
+    pub const SCORE_L2: usize = 2;
+    pub const SCORE_L3: usize = 3;
+    pub const SCORE_L4: usize = 4;
 
     //Operator
     pub const ELEVATOR_TRAPEZOID_TO_STORED_TARGET: usize = 1;
+    pub const ELEVATOR_TRAPEZOID_TO_STORED_TARGET_ASYNC: usize = 2;
     pub const ELEVATOR_UP_MANUAL: usize = 3;
     pub const ELEVATOR_DOWN_MANUAL: usize = 4;
     pub const CLIMB_FULL: usize = 8;
