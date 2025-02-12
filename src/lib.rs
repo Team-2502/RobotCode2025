@@ -306,12 +306,18 @@ pub fn score(
 
     if elevator_at_target && drivetrain_at_position {
         if indexer.get_laser_dist() < constants::indexer::LASER_TRIP_DISTANCE_MM {
-            indexer.set_speed(-0.25);
+            let indexer_speed = match elevator_position {
+                ElevatorPosition::Bottom => -0.25,
+                ElevatorPosition::L2 => -0.25,
+                ElevatorPosition::L3 => -0.25,
+                ElevatorPosition::L4 => -0.1
+            };
+            indexer.set_speed(indexer_speed);
         } else {
             indexer.stop();
 
-            elevator.set_target(ElevatorPosition::Bottom);
-            elevator.run_to_target_trapezoid();
+            //elevator.set_target(ElevatorPosition::Bottom);
+            //elevator.run_to_target_trapezoid();
         }
     }
 }

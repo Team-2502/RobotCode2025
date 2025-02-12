@@ -63,18 +63,24 @@ pub mod drivetrain {
     pub const SWERVE_DRIVE_SUGGESTION_ERR: f64 = 0.35;
     pub const SWERVE_DRIVE_IE: f64 = 0.0; //0.175; // integral enable
 
-    pub const LINEUP_2D_TX_KP: f64 = -0.0067;
-    pub const LINEUP_2D_TY_KP: f64 = -0.0067;
-    pub const LINEUP_2D_TX_KS: f64 = 0.00;
-    pub const LINEUP_2D_TY_KS: f64 = 0.00;
-    pub const LINEUP_2D_TX_KD: f64 = 0.0;
-    pub const LINEUP_2D_TY_KD: f64 = 0.0;
+    pub const LINEUP_2D_TX_STR_KP: f64 = 0.005;
+    pub const LINEUP_2D_TX_FWD_KP: f64 = 0.005;
+    pub const LINEUP_2D_TY_STR_KP: f64 = 0.005;
+    pub const LINEUP_2D_TY_FWD_KP: f64 = 0.005;
+    pub const TARGET_TY_LEFT: f64 = -7.4;
+    pub const TARGET_TY_RIGHT: f64 = 3.45;
+    pub const TARGET_TX_LEFT: f64 = -7.4;
+    pub const TARGET_TX_RIGHT: f64 = 3.45;
+    pub const TX_ACCEPTABLE_ERROR: f64 = 1.8;
+    pub const TY_ACCEPTABLE_ERROR: f64 = 1.8;
+    pub const YAW_ACCEPTABLE_ERROR: f64 = 0.02;
+
 }
 pub mod elevator {
     pub const BOTTOM: f64 = 0.0; // unit is rotations
     pub const L2: f64 = 1.; // unit is rotations
     pub const L3: f64 = 15.75; // unit is rotations
-    pub const L4: f64 = 39.7; // unit is rotations
+    pub const L4: f64 = 38.8; // unit is rotations
     pub const ELEVATOR_TRAPEZOID_DT_MS: u64 = 50; // sleep.await this long in between updating the elevator trapezoidal when running its async function
     pub const POSITION_TOLERANCE: f64 = 0.25; // unit is rotations. finish elevator async move when within this distance of target
 }
