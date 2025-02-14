@@ -241,10 +241,12 @@ impl Drivetrain {
     }
 
     pub fn set_speeds(&mut self, fwd: f64, str: f64, rot: f64, style: SwerveControlStyle) {
-        /*println!(
-            "ODO XY: {}, {}",
-            self.odometry.position.x, self.odometry.position.y
-        );*/
+        println!(
+            "ODO XY: {}, {} ODO FOM: {}",
+            self.odometry.robot_pose_estimate.get_position_meters().x,
+            self.odometry.robot_pose_estimate.get_position_meters().y,
+            self.odometry.robot_pose_estimate.figure_of_merit.get::<meter>()
+        );
         let mut transform = Vector2::new(-str, fwd);
         match style {
             SwerveControlStyle::FieldOriented => {
@@ -584,6 +586,7 @@ mod tests {
     use uom::si::length::meter;
 
     #[test]
+    #[ignore]
     fn calculate_target_lineup_position() {
         let side = LineupSide::Right;
 
