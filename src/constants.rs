@@ -76,6 +76,9 @@ pub mod drivetrain {
     pub const YAW_ACCEPTABLE_ERROR: f64 = 0.02;
 
 }
+pub mod pose_estimation {
+    pub const ARC_ODOMETRY_MINIMUM_DELTA_THETA_RADIANS: f64 = 0.00001;
+}
 pub mod elevator {
     pub const BOTTOM: f64 = 0.0; // unit is rotations
     pub const L2: f64 = 1.; // unit is rotations
