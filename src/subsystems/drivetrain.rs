@@ -141,7 +141,7 @@ impl Drivetrain {
         self.limelight_upper
             .update(self.get_offset().get::<degree>() + 180.)
             .await;
-
+        /*
         let pose = self.limelight_lower.get_botpose();
 
         // Calculate offset from robot center to limelight
@@ -168,21 +168,23 @@ impl Drivetrain {
 
         // Will return 0, 0 if no tag found
         if pose.x.get::<meter>() != 0.0 {
-            self.update_odo(pose + robot_to_limelight);
+            self.update_odo_absolute(pose + robot_to_limelight);
         }
+
+         */
         //println!("lower ll tx: {}", self.limelight_lower.get_tx().get::<degree>());
         //println!("upper ll tx: {}", self.limelight_upper.get_tx().get::<degree>());
     }
 
     pub async fn post_odo(&self) {
-        Telemetry::put_number("odo_x", self.odometry.position.x).await;
-        Telemetry::put_number("odo_y", self.odometry.position.y).await;
+        Telemetry::put_number("odo_x", self.odometry.robot_pose_estimate.get_position().x.get::<meter>()).await;
+        Telemetry::put_number("odo_y", self.odometry.robot_pose_estimate.get_position().y.get::<meter>()).await;
         Telemetry::put_number("angle", self.get_offset().get::<radian>()).await;
     }
 
-    pub fn update_odo(&mut self, pose: Vector2<Length>) {
+    pub fn update_odo_absolute(&mut self, pose: Vector2<Length>) {
         self.odometry
-            .set_abs(Vector2::new(pose.x.value, pose.y.value));
+            .set_abs(pose);
     }
 
     pub fn stop(&self) {
@@ -259,7 +261,11 @@ impl Drivetrain {
 
         let angle = self.get_offset();
 
-        self.odometry.calculate(positions, angle);
+        let mut sensor_measurements = Vec::new();
+        if let Some(odo_estimate) = self.odometry.calculate(positions, angle) {
+            sensor_measurements.push(odo_estimate);
+        }
+        self.odometry.fuse_sensors_fom(sensor_measurements);
 
         let wheel_speeds: Vec<ModuleState> = wheel_speeds
             .into_iter()
@@ -353,7 +359,7 @@ impl Drivetrain {
         let mut i = Vector2::zeros();
 
         if let Some(target) = self.calculate_target_lineup_position(side) {
-            let mut error_position = target.position - self.odometry.position;
+            let mut error_position = target.position - self.odometry.robot_pose_estimate.get_position_meters();
             let mut error_angle = (target.angle - self.get_offset()).get::<radian>();
 
             if error_position.abs().max() < SWERVE_DRIVE_IE {

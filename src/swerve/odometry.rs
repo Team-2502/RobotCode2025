@@ -2,14 +2,14 @@ use std::ops::Sub;
 
 use frcrs::alliance_station;
 use frcrs::networktables::SmartDashboard;
-use nalgebra::{Rotation2, Vector, Vector2};
+use nalgebra::{Rotation2, Vector2};
 use uom::si::{
     angle::{radian, degree},
     f64::{Angle, Length},
     length::meter,
 };
 use crate::constants::HALF_FIELD_WIDTH_METERS;
-use crate::constants::pose_estimation::ARC_ODOMETRY_MINIMUM_DELTA_THETA_RADIANS;
+use crate::constants::pose_estimation::{ARC_ODOMETRY_MINIMUM_DELTA_THETA_RADIANS, DRIFT_RATIO, START_POSITION_FOM};
 
 #[derive(Default, Clone)]
 pub struct ModuleReturn {
@@ -39,20 +39,17 @@ impl Sub for ModuleReturn {
 #[derive(Clone)]
 pub struct PoseEstimate {
     position: Vector2<Length>,
-    figure_of_merit: Length
+    pub figure_of_merit: Length
 }
 impl PoseEstimate {
-    pub fn new(position: Vector2<Length>, figure_of_merit: Length) -> Self {
-            Self {
-                position,
-                figure_of_merit
-            }
-        }
     pub fn get_position_meters(&self) -> Vector2<f64> {
         Vector2::new(
             self.position.x.get::<meter>(),
             self.position.y.get::<meter>(),
         )
+    }
+    pub fn get_position(&self) -> Vector2<Length> {
+        self.position
     }
     pub fn set_absolute(&mut self, position: Vector2<Length>) {
         self.position = position;
@@ -73,11 +70,11 @@ impl Default for Odometry {
 impl Odometry {
     pub fn new() -> Self {
         let last_modules = Vec::new();
-        let position = Vector2::new(0., 0.);
+        let position:Vector2<Length> = Vector2::new(Length::new::<meter>(0.), Length::new::<meter>(0.));
 
         Self {
             last_modules,
-            robot_pose_estimate: position,
+            robot_pose_estimate: PoseEstimate {position, figure_of_merit: Length::new::<meter>(START_POSITION_FOM) },
         }
     }
 
@@ -85,10 +82,10 @@ impl Odometry {
         self.robot_pose_estimate.set_absolute(position);
     }
 
-    pub fn calculate(&mut self, positions: Vec<ModuleReturn>, angle: Angle) {
+    pub fn calculate(&mut self, positions: Vec<ModuleReturn>, angle: Angle) -> Option<PoseEstimate> {
         if positions.len() != self.last_modules.len() {
             self.last_modules = positions;
-            return;
+            return None
         }
 
         let mut deltas: Vec<ModuleReturn> = positions
@@ -104,18 +101,24 @@ impl Odometry {
         let mut delta: Vector2<f64> = deltas.into_iter().map(Into::<Vector2<f64>>::into).sum();
 
         delta /= positions.len() as f64;
-
-        self.robot_pose_estimate += -delta;
+        let delta_length: Vector2<Length> = Vector2::new(
+            Length::new::<meter>(delta.x),
+            Length::new::<meter>(delta.y)
+        );
         self.last_modules = positions;
 
-        SmartDashboard::set_position(self.robot_pose_estimate.get_position_meters(), angle);
+        Some(PoseEstimate {
+            position: self.robot_pose_estimate.get_position() + delta_length,
+            figure_of_merit: self.robot_pose_estimate.figure_of_merit + Length::new::<meter>(delta.magnitude() * DRIFT_RATIO)
+        })
+
     }
-    pub fn calculate_arcs(&mut self, positions: Vec<ModuleReturn>, drivetrain_angle: Angle) {
+    pub fn calculate_arcs(&mut self, positions: Vec<ModuleReturn>, drivetrain_angle: Angle) -> Option<PoseEstimate>{
         if positions.len() != self.last_modules.len() {
             self.last_modules = positions;
-            return;
+            return None
         }
-        println!("drivetrain angle for calculate_arcs: {}", drivetrain_angle);
+        println!("drivetrain angle for calculate_arcs: {}", drivetrain_angle.get::<radian>());
 
         let mut theta_deltas : Vec<Angle> = positions
             .iter()
@@ -198,9 +201,55 @@ impl Odometry {
         let mut delta: Vector2<Length> = delta_positions.iter().sum();
         let mut delta_meters: Vector2<f64> = Vector2::new(delta.x.get::<meter>(), delta.y.get::<meter>());
         delta_meters /= delta_positions.len() as f64;
-
-        self.robot_pose_estimate += delta_meters;
+        delta = Vector2::new(
+            Length::new::<meter>(delta_meters.x),
+            Length::new::<meter>(delta_meters.y),
+        );
         self.last_modules = positions;
-        SmartDashboard::set_position(self.robot_pose_estimate.get_position_meters(), drivetrain_angle);
+
+        Some(PoseEstimate {
+            position: self.robot_pose_estimate.get_position() + delta,
+            figure_of_merit: self.robot_pose_estimate.figure_of_merit + Length::new::<meter>(delta_meters.magnitude() * DRIFT_RATIO),
+        })
+    }
+    pub fn fuse_sensors_fom(&mut self, pose_estimates: Vec<PoseEstimate>) {
+        let fom_inverse_squared_values: Vec<f64> = pose_estimates
+            .iter()
+            .map(|pose_estimate| (1. / (pose_estimate.figure_of_merit.get::<meter>() * pose_estimate.figure_of_merit.get::<meter>())))
+            .collect();
+        let poses_times_fom_inverse_squared_values: Vec<Vector2<f64>> = pose_estimates
+            .iter()
+            .zip(fom_inverse_squared_values.clone())
+            .map(|(pose_estimate, inverse_squared_value)| {
+                Vector2::new(
+                    pose_estimate.position.x.get::<meter>(),
+                    pose_estimate.position.y.get::<meter>(),
+                ) * inverse_squared_value
+            }).collect();
+        let mut robot_pose_estimate_meters_x: f64 = 0.;
+        let mut robot_pose_estimate_meters_y: f64 = 0.;
+        let mut inverse_squared_sum: f64 = 0.;
+        poses_times_fom_inverse_squared_values.iter().zip(fom_inverse_squared_values.clone()).for_each(|(pose_estimate, fom_inverse_squared_value)| {
+            robot_pose_estimate_meters_x += pose_estimate.x * fom_inverse_squared_value;
+            robot_pose_estimate_meters_y += pose_estimate.y * fom_inverse_squared_value;
+            inverse_squared_sum += fom_inverse_squared_value;
+        });
+        robot_pose_estimate_meters_x /= inverse_squared_sum;
+        robot_pose_estimate_meters_y /= inverse_squared_sum;
+
+        let mut min_sensor_fom: f64 = 1000.;
+        pose_estimates.iter().for_each(|pose_estimate| {
+            if pose_estimate.figure_of_merit.get::<meter>() < min_sensor_fom {
+                min_sensor_fom = pose_estimate.figure_of_merit.get::<meter>();
+            }
+        });
+
+        self.robot_pose_estimate = PoseEstimate {
+            position: Vector2::new(
+                Length::new::<meter>(robot_pose_estimate_meters_x),
+                Length::new::<meter>(robot_pose_estimate_meters_y),
+            ),
+            figure_of_merit: Length::new::<meter>(min_sensor_fom),
+        }
     }
 }
