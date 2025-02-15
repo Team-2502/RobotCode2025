@@ -114,13 +114,22 @@ impl Odometry {
         })
 
     }
+    /// Calculates the amount the robot has moved since this was last called based on swerve motor positions.
+    /// Returns a PoseEstimate adding that to the odometry struct's previous best PoseEstimate.
+    /// Uses arc odometry - see 1690's Software Sessions Part II for an explanation.
+    /// This will return None at least once, so don't .unwrap() it.
+    /// Remember that our angle standard is clockwise-positive on both modules and drivetrain.
     pub fn calculate_arcs(&mut self, positions: Vec<ModuleReturn>, drivetrain_angle: Angle) -> Option<PoseEstimate>{
+        // Hopefully we have the same number of modules as the last time this was called.
+        // If not (i.e., this is the first time we called it), return None
         if positions.len() != self.last_modules.len() {
             self.last_modules = positions;
             return None
         }
         //println!("drivetrain angle for calculate_arcs: {}", drivetrain_angle.get::<radian>());
 
+        // Create a Vec with the angles between the current module position and the module position when this function was last called
+        // If you're lost figuring out how this works, read the docs on .iter, .zip, and .map
         let mut theta_deltas : Vec<Angle> = positions
             .iter()
             .zip(self.last_modules.iter())
@@ -128,6 +137,8 @@ impl Odometry {
                 //println!("theta delta: {}", (current_modules.to_owned().angle - last_modules.to_owned().angle).get::<radian>());
                 current_modules.to_owned().angle - last_modules.to_owned().angle
             }).collect();
+
+        // We know that the arc length is equal to how far the module has travelled since this was last called
         let mut arc_lengths: Vec<Length> = positions
             .iter()
             .zip(self.last_modules.iter())
@@ -136,39 +147,52 @@ impl Odometry {
                 (current_modules.to_owned().distance - last_modules.to_owned().distance)
             })
             .collect();
+
+        // Because we know the arc length and the arc's angle, we can calculate its radius
+        // The formula for arc length is arc_length = radius * angle_in_radians
         let mut arc_radii: Vec<Length> = arc_lengths.clone()
             .iter()
             .zip(theta_deltas.clone())
             .map(|(arc_length, theta_delta)|{
                 //println!("arc radius: {}", (arc_length.get::<meter>() / (2. * std::f64::consts::PI) * ((2. * std::f64::consts::PI) / theta_delta.get::<radian>().abs())));
-                Length::new::<meter>((arc_length.get::<meter>() / (2. * std::f64::consts::PI) * ((2. * std::f64::consts::PI) / theta_delta.get::<radian>().abs())))
+                Length::new::<meter>((arc_length.get::<meter>() / theta_delta.get::<radian>().abs()))
             }).collect();
+
+        // We can declare the last-module position (starting position) 0,0 in a new robot-oriented coordinate system
+        // We know that the arc center is exactly one radius away from there
+        // The direction is a vector perpendicular to where the wheel was facing then
+        // There are two possible perpendicular vectors - one to the left, and one to the right
+        // We can choose the right one by looking at which direction the arc curves in, which we can get from the theta delta
         let mut arc_centers: Vec<Vector2<Length>> = self.last_modules.clone()
             .iter()
             .zip(arc_radii.clone())
             .zip(theta_deltas.clone())
             .map(|((last_module, arc_radius), theta_delta)| {
                 let mut angle_to_center = last_module.angle;
-                if theta_delta.get::<radian>() < 0. {
-                    angle_to_center -= Angle::new::<degree>(90.);
+                if theta_delta.get::<radian>() < 0. { // Clockwise is positive, so a theta delta angle less than zero means the wheel turned counterclockwise and the arc curves left
+                    angle_to_center -= Angle::new::<degree>(90.); // Rotate the angle_to_center to be perpendicular to the left
                 } else {
-                    angle_to_center += Angle::new::<degree>(90.);
+                    angle_to_center += Angle::new::<degree>(90.); // Or to the right if theta_delta was clockwise
                 }
                 //println!("angle_to_center degrees: {}", angle_to_center.get::<degree>());
                 //println!("center x: {}", arc_radius.get::<meter>() * (-angle_to_center.get::<radian>()).cos());
                 //println!("center y: {}", arc_radius.get::<meter>() * (-angle_to_center.get::<radian>()).sin());
                 Vector2::new(
-                    Length::new::<meter>(arc_radius.get::<meter>() * (-angle_to_center.get::<radian>()).cos()),
+                    Length::new::<meter>(arc_radius.get::<meter>() * (-angle_to_center.get::<radian>()).cos()), // Negative sign in there because cosine and sine assume counterclockwise-positive
                     Length::new::<meter>(arc_radius.get::<meter>() * (-angle_to_center.get::<radian>()).sin()),
                 )
             }).collect();
+
+        // We can find the vector from the endpoint to the center in the same way we find it for the start point to the center
+        // From there, (start to center) - (end to center) = (start to end)
         let mut delta_positions: Vec<Vector2<Length>> = arc_centers.clone()
             .iter()
             .zip(arc_radii.clone())
-            .zip(positions.clone())
+            .zip(positions.clone()) // Zipping more than once leaves you with a Vec of tuples that look like ((start thing , zipped in first), zipped in second)
             .zip(theta_deltas.clone())
             .zip(self.last_modules.clone())
             .map(|((((arc_center, arc_radius), current_module), theta_delta), last_module)|{
+                // Endpoint to center, same way as for start point ot center
                 let mut endpoint_angle_to_center = current_module.angle;
                 if theta_delta.get::<radian>() < 0. {
                     endpoint_angle_to_center -= Angle::new::<degree>(90.);
@@ -182,6 +206,9 @@ impl Odometry {
                 );
                 //println!("endpoint to center x: {}", arc_radius.get::<meter>() * (-endpoint_angle_to_center.get::<radian>()).cos());
                 //println!("endpoint to center y: {}",arc_radius.get::<meter>() * (-endpoint_angle_to_center.get::<radian>()).sin());
+
+                // If theta_delta is very small, we shouldn't mess around with arc odometry, since the arc center point would be miles away
+                // In this case we return a vector constructed the same way as in the regular calculate function
                 if theta_delta.get::<radian>().abs() < ARC_ODOMETRY_MINIMUM_DELTA_THETA_RADIANS || theta_delta.get::<radian>().is_nan() {
                     //println!("delta theta too small");
                     Vector2::new(
@@ -194,17 +221,17 @@ impl Odometry {
                     arc_center - endpoint_to_center
                 }
             }).collect();
-        let drivetrain_angle_rotation = Rotation2::new(-drivetrain_angle.get::<radian>());
 
-        // Rotate all by the drivetrain angle to get into field coordinates
+        // Rotate all by the drivetrain angle to get from robot-relative coordinates to field-relative coordinates
+        let drivetrain_angle_rotation = Rotation2::new(-drivetrain_angle.get::<radian>()); // -1 * drivetrain angle because we use clockwise positive and the Rotation2 * Vector2 math assumes CCW+
         delta_positions = delta_positions.clone()
             .iter()
             .map(|delta_position| {
                 let mut delta_position_meters = Vector2::new(
-                    delta_position.x.get::<meter>(),
+                    delta_position.x.get::<meter>(), // The rotation * vector math doesn't work for Vector<Length>s
                     delta_position.y.get::<meter>()
                 );
-                delta_position_meters = drivetrain_angle_rotation.clone() * delta_position_meters;
+                delta_position_meters = drivetrain_angle_rotation.clone() * delta_position_meters; // A Rotation2 times a Vector2<f64> returns a Vector2<f64> of the vector rotated by the rotation
                 Vector2::new(
                     Length::new::<meter>(delta_position_meters.x),
                     Length::new::<meter>(delta_position_meters.y),
@@ -213,7 +240,7 @@ impl Odometry {
 
         // Average the module deltas to get robot delta
         let mut delta: Vector2<Length> = delta_positions.iter().sum();
-        let mut delta_meters: Vector2<f64> = Vector2::new(delta.x.get::<meter>(), delta.y.get::<meter>());
+        let mut delta_meters: Vector2<f64> = Vector2::new(delta.x.get::<meter>(), delta.y.get::<meter>()); //Can't divide a Length by a f64, apparently.
         delta_meters /= delta_positions.len() as f64;
         delta = Vector2::new(
             Length::new::<meter>(delta_meters.x),
@@ -221,16 +248,25 @@ impl Odometry {
         );
         self.last_modules = positions;
 
+        // We estimate the error accumulated by driving around to be DRIFT_RATIO * the distance driven.
+        // We estimate distance driven to be the average of the arc lengths rather than the length of the delta vector to increase FoM when the modules are turning quickly
         let mut average_arc_length_meters: f64 = 0.;
         arc_lengths.iter().for_each(|arc_length| {average_arc_length_meters += arc_length.get::<meter>().abs();});
         average_arc_length_meters /= arc_lengths.len() as f64;
+        let figure_of_merit = self.robot_pose_estimate.figure_of_merit + Length::new::<meter>(average_arc_length_meters * DRIFT_RATIO);
 
         Some(PoseEstimate {
             position: self.robot_pose_estimate.get_position() + delta,
-            figure_of_merit: self.robot_pose_estimate.figure_of_merit + Length::new::<meter>(average_arc_length_meters * DRIFT_RATIO),
+            figure_of_merit: figure_of_merit,
         })
     }
+
+    /// Uses a figure of merit calculation to estimate the true robot pose based on a set of sensor measurements and their confidence (figure of merit).
+    /// Each sensor measurement should have a figure of merit value estimating how far it is likely to be from the true measurement.
+    /// This was taken from 1690's Software Sessions Part II - they'll explain it better than code comments can.
     pub fn fuse_sensors_fom(&mut self, pose_estimates: Vec<PoseEstimate>) {
+        // Extremely low figure of merit values can make some numbers in the calculation very, very large
+        // This bit was created to try to solve an error that turned out to be a different problem - I'm not sure if it actually needs to be here.
         let pose_estimates: Vec<PoseEstimate> = pose_estimates.iter().map(|pose_estimate| {
             if pose_estimate.figure_of_merit.get::<meter>() < MIN_FOM {
                 PoseEstimate {
@@ -241,10 +277,18 @@ impl Odometry {
                 pose_estimate.clone()
             }
         }).collect();
+
+        // The formula for the FoM calculation is:
+        // (Robot pose) = (((Sensor 1 estimate) / (Sensor 1 FoM)^2) + ((Sensor 2 estimate) / (Sensor 2 FoM)^2) + ...) / ((1 / (Sensor 1 FoM)^2) +  (1 / (Sensor 2 FoM)^2) + ...)
+        // Look at 1690's Software Sessions Part II for it actually written out on a slide
+
+        // A vec of every element on the bottom of the equation
         let fom_inverse_squared_values: Vec<f64> = pose_estimates
             .iter()
             .map(|pose_estimate| (1. / (pose_estimate.figure_of_merit.get::<meter>() * pose_estimate.figure_of_merit.get::<meter>())))
             .collect();
+
+        // A vec of every element on the top of the equation
         let poses_times_fom_inverse_squared_values: Vec<Vector2<f64>> = pose_estimates
             .iter()
             .zip(fom_inverse_squared_values.clone())
@@ -254,6 +298,8 @@ impl Odometry {
                     pose_estimate.position.y.get::<meter>(),
                 ) * inverse_squared_value
             }).collect();
+
+        // Sum everything and divide the top by the bottom
         let mut robot_pose_estimate_meters_x: f64 = 0.;
         let mut robot_pose_estimate_meters_y: f64 = 0.;
         let mut inverse_squared_sum: f64 = 0.;
@@ -265,10 +311,11 @@ impl Odometry {
         robot_pose_estimate_meters_x /= inverse_squared_sum;
         robot_pose_estimate_meters_y /= inverse_squared_sum;
 
-        let mut min_sensor_fom: f64 = 1000.;
+        // Robot FoM is equal to the smallest sensor FoM
+        let mut min_sensor_fom_meters: f64 = 1000.;
         pose_estimates.iter().for_each(|pose_estimate| {
-            if pose_estimate.figure_of_merit.get::<meter>() < min_sensor_fom {
-                min_sensor_fom = pose_estimate.figure_of_merit.get::<meter>();
+            if pose_estimate.figure_of_merit.get::<meter>() < min_sensor_fom_meters {
+                min_sensor_fom_meters = pose_estimate.figure_of_merit.get::<meter>();
             }
         });
 
@@ -277,7 +324,7 @@ impl Odometry {
                 Length::new::<meter>(robot_pose_estimate_meters_x),
                 Length::new::<meter>(robot_pose_estimate_meters_y),
             ),
-            figure_of_merit: Length::new::<meter>(min_sensor_fom),
+            figure_of_merit: Length::new::<meter>(min_sensor_fom_meters),
         }
     }
 }
