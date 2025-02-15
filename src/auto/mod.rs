@@ -2,6 +2,10 @@ mod path;
 
 use crate::auto::path::drive;
 use nalgebra::Vector2;
+use uom::si::{
+    f64::{Length},
+    length::meter,
+};
 use serde::{Deserialize, Serialize};
 use std::ops::Deref;
 use std::time::Duration;
@@ -60,7 +64,7 @@ pub async fn blue_triangle(robot: Ferris) -> Result<(), Box<dyn std::error::Erro
 
     drivetrain
         .odometry
-        .set_abs(Vector2::new(8.075126647949219, 2.0993127822875977));
+        .set_abs(Vector2::new(Length::new::<meter>(8.075126647949219), Length::new::<meter>(2.0993127822875977)));
 
     drive("BlueTriangle", &mut drivetrain, 1).await?;
     println!("BlueTriangle.1 done");

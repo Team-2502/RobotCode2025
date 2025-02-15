@@ -85,7 +85,7 @@ pub async fn follow_path_segment(
         let angle = -setpoint.heading;
         let position = Vector2::new(setpoint.x.get::<meter>(), setpoint.y.get::<meter>());
 
-        let mut error_position = position - drivetrain.odometry.position;
+        let mut error_position = position - drivetrain.odometry.robot_pose_estimate.get_position_meters();
         let mut error_angle = (angle - drivetrain.get_angle()).get::<radian>();
 
         if error_position.abs().max() < SWERVE_DRIVE_IE {
