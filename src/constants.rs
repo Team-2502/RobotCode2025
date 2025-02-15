@@ -83,6 +83,8 @@ pub mod pose_estimation {
     pub const MIN_FOM: f64 = 0.00001;
     pub const START_POSITION_FOM: f64 = 0.01; //meters
     pub const DRIFT_RATIO: f64 = 0.02; // Robot odometry pose estimate drifts [ratio] meters for every meter driven
+    pub const LIMELIGHT_BASE_FOM: f64 = 0.02; // meters
+    pub const LIMELIGHT_INACCURACY_PER_ANGULAR_VELOCITY: f64 = 0.5; // Meters of inaccuracy per (radian/second) of drivetrain angular velocity
 }
 pub mod elevator {
     pub const BOTTOM: f64 = 0.0; // unit is rotations

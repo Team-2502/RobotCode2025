@@ -37,7 +37,7 @@ impl Sub for ModuleReturn {
 }
 #[derive(Clone)]
 pub struct PoseEstimate {
-    position: Vector2<Length>,
+    pub(crate) position: Vector2<Length>,
     pub figure_of_merit: Length
 }
 impl PoseEstimate {

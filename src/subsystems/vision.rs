@@ -15,6 +15,9 @@ use uom::si::{
 };
 
 use std::net::SocketAddr;
+use tokio::time::Instant;
+use crate::constants::pose_estimation::{LIMELIGHT_BASE_FOM, LIMELIGHT_INACCURACY_PER_ANGULAR_VELOCITY};
+use crate::swerve::odometry::PoseEstimate;
 
 #[derive(Clone)]
 pub struct Vision {
@@ -23,6 +26,9 @@ pub struct Vision {
     results: LimelightResults,
     last_results: LimelightResults,
     saved_id: i32,
+    drivetrain_angle: Angle,
+    last_drivetrain_angle: Angle,
+    last_update_time: Instant,
 }
 
 pub struct FieldPosition {
@@ -45,14 +51,20 @@ impl Vision {
             results: LimelightResults::default(),
             last_results: LimelightResults::default(),
             saved_id: 0,
+            drivetrain_angle: Angle::new::<degree>(0.),
+            last_drivetrain_angle: Angle::new::<degree>(0.),
+            last_update_time: Instant::now(),
         }
     }
     /// Updates the results from the limelight, also posts telemetry data
     pub async fn update(&mut self, dt_angle: f64) {
         self.last_results = self.results.clone();
         self.results = self.limelight.results().await.unwrap();
+        self.last_drivetrain_angle = self.drivetrain_angle;
+        self.drivetrain_angle = Angle::new::<radian>(dt_angle);
+        self.last_update_time = Instant::now();
         self.limelight
-            .update_robot_orientation(dt_angle)
+            .update_robot_orientation(-dt_angle) // Why do we use clockwise positive
             .await
             .unwrap();
 
@@ -220,11 +232,35 @@ impl Vision {
     }
 
     /// Returns the botpose: x, y
-    pub fn get_botpose_orb(&self) -> Vector2<Length> {
-        Vector2::new(
+    pub fn get_botpose_orb(&self) -> Option<Vector2<Length>> {
+        let pose: Vector2<Length> = Vector2::new(
             Length::new::<meter>(self.results.botpose_orb_wpiblue[0]),
             Length::new::<meter>(self.results.botpose_orb_wpiblue[1]),
-        )
+        );
+        if pose.x.get::<meter>() == 0. {
+            None
+        } else {
+            Some(pose)
+        }
+    }
+
+    pub fn get_pose_estimate_orb(&self) -> Option<PoseEstimate> {
+        if let Some(pose) = self.get_botpose_orb() {
+            Some(PoseEstimate {
+                position: pose,
+                figure_of_merit: self.get_figure_of_merit()
+            })
+        } else {
+            None
+        }
+    }
+
+    pub fn get_figure_of_merit(&self) -> Length {
+        let dt = Instant::now() - self.last_update_time;
+        let angular_velocity_rad_per_sec = (self.drivetrain_angle.get::<radian>() - self.last_drivetrain_angle.get::<radian>()) / dt.as_secs_f64();
+        let mut fom_meters = LIMELIGHT_INACCURACY_PER_ANGULAR_VELOCITY * angular_velocity_rad_per_sec;
+        fom_meters += LIMELIGHT_BASE_FOM;
+        Length::new::<meter>(fom_meters)
     }
 
     pub fn get_botpose(&self) -> Vector2<Length> {
