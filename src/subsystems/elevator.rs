@@ -29,7 +29,7 @@ impl Elevator {
     pub fn new() -> Self {
         let left = Talon::new(robotmap::elevator::LEFT, Some("can0".to_string()));
         let right = Talon::new(robotmap::elevator::RIGHT, Some("can0".to_string())); //should be inverted (clockwise positive) in config
-        println!("left pos: {} right pos: {} diff: {}",right.get_position(),left.get_position(),right.get_position() - left.get_position());
+        // println!("left pos: {} right pos: {} diff: {}",right.get_position(),left.get_position(),right.get_position() - left.get_position());
 
         //right.follow(&left, true);
 
@@ -73,9 +73,9 @@ impl Elevator {
         self.right.set(ControlMode::MotionMagic, target_position);
         self.left.follow(&self.right, true);
 
-        println!("left pos: {} right pos: {} diff: {}",self.right.get_position(),self.left.get_position(),self.right.get_position() - self.left.get_position());
+        // println!("left pos: {} right pos: {} diff: {}",self.right.get_position(),self.left.get_position(),self.right.get_position() - self.left.get_position());
         if (target_position - self.right.get_position()).abs() < 0.5 {
-            println!("Elevator at target");
+            // println!("Elevator at target");
             true
         } else {
            // println!("Elevator not at target {}", (target_position - self.right.get_position()).abs());

@@ -175,37 +175,41 @@ impl Robot for Ferris {
                     drivetrain.update_limelight().await;
                     drivetrain.post_odo().await;
 
-                    let side = if self.controllers.right_drive.get(LINEUP_LEFT) {
-                        LineupSide::Left
+                    let drivetrain_aligned = if self.controllers.right_drive.get(LINEUP_LEFT) {
+                        drivetrain.lineup_2d(LineupSide::Left)
                     } else if self.controllers.right_drive.get(LINEUP_RIGHT) {
-                        LineupSide::Right
+                        drivetrain.lineup_2d(LineupSide::Right)
                     } else {
-                        LineupSide::Left
+                        control_drivetrain(
+                            &mut drivetrain,
+                            &mut self.controllers,
+                            drivetrain_state,
+                        )
+                            .await;
+
+                        true
                     };
 
                     if self.controllers.left_drive.get(SCORE_L2) {
                         score(
-                            &mut drivetrain,
+                            drivetrain_aligned,
                             &mut elevator,
                             &mut indexer,
                             ElevatorPosition::L2,
-                            side,
                         )
                     } else if self.controllers.left_drive.get(SCORE_L3) {
                         score(
-                            &mut drivetrain,
+                            drivetrain_aligned,
                             &mut elevator,
                             &mut indexer,
                             ElevatorPosition::L3,
-                            side,
                         )
                     } else if self.controllers.left_drive.get(SCORE_L4) {
                         score(
-                            &mut drivetrain,
+                            drivetrain_aligned,
                             &mut elevator,
                             &mut indexer,
                             ElevatorPosition::L4,
-                            side,
                         )
                     } else if self.controllers.right_drive.get(INTAKE) {
                         elevator.set_target(ElevatorPosition::L2);
@@ -214,19 +218,15 @@ impl Robot for Ferris {
                         if indexer.get_laser_dist() > constants::indexer::LASER_TRIP_DISTANCE_MM
                             || indexer.get_laser_dist() == -1
                         {
-                            println!("Dist: {}", indexer.get_laser_dist());
                             indexer.set_speed(-0.25);
                         } else {
                             indexer.stop();
                         }
+                    } else if self.controllers.left_drive.get(14) {
+                        elevator.set_speed(1.);
+                    } else if self.controllers.left_drive.get(15) {
+                        elevator.set_speed(-1.)
                     } else {
-                        control_drivetrain(
-                            &mut drivetrain,
-                            &mut self.controllers,
-                            drivetrain_state,
-                        )
-                        .await;
-
                         elevator.stop();
                         indexer.stop();
                     }
@@ -294,23 +294,21 @@ pub async fn elevator_move_to_target_async(robot: Ferris) {
 }
 
 pub fn score(
-    drivetrain: &mut Drivetrain,
+    drivetrain_aligned: bool,
     elevator: &mut Elevator,
     indexer: &mut Indexer,
     elevator_position: ElevatorPosition,
-    lineup_side: LineupSide,
 ) {
-    let drivetrain_at_position = drivetrain.lineup_2d(lineup_side);
     elevator.set_target(elevator_position);
     let elevator_at_target = elevator.run_to_target_trapezoid();
 
-    if elevator_at_target && drivetrain_at_position {
+    if elevator_at_target && drivetrain_aligned {
         if indexer.get_laser_dist() < constants::indexer::LASER_TRIP_DISTANCE_MM {
             let indexer_speed = match elevator_position {
                 ElevatorPosition::Bottom => -0.25,
                 ElevatorPosition::L2 => -0.25,
                 ElevatorPosition::L3 => -0.25,
-                ElevatorPosition::L4 => -0.1
+                ElevatorPosition::L4 => -0.15
             };
             indexer.set_speed(indexer_speed);
         } else {

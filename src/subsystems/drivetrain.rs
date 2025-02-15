@@ -1,3 +1,4 @@
+use std::f64::consts::PI;
 use frcrs::alliance_station;
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -485,14 +486,17 @@ impl Drivetrain {
             let tag_rotation = tag_position.quaternion.unwrap();
             // None of us actually know how the quaternions provided by said map work, this is copied code
             // Flip the tag normal to be out the back of the tag and wrap to the [0, 360] range
-            let tag_yaw = -(quaternion_to_yaw(tag_rotation) + std::f64::consts::PI)
-                % (std::f64::consts::PI * 2.);
+            let tag_yaw = -(quaternion_to_yaw(tag_rotation) + std::f64::consts::PI);
+                // % (std::f64::consts::PI * 2.);
             // We score out the left, so forward-to-the-tag isn't very helpful
             let mut perpendicular_yaw = tag_yaw + std::f64::consts::PI / 2.0;
             // Convert to angle on [0,180]
             if perpendicular_yaw > std::f64::consts::PI {
                 perpendicular_yaw = perpendicular_yaw - (std::f64::consts::PI * 2.);
+            } else if perpendicular_yaw < PI {
+                perpendicular_yaw = perpendicular_yaw + (PI * 2.);
             }
+
             let target_ty = match side {
                 LineupSide::Left => TARGET_TY_LEFT,
                 LineupSide::Right => TARGET_TY_RIGHT
@@ -528,18 +532,22 @@ impl Drivetrain {
 
             let mut transform = Vector2::new(fwd, str);
 
-            self.set_speeds(
-                transform.x,
-                transform.y,
-                error_yaw * SWERVE_TURN_KP,
-                SwerveControlStyle::RobotOriented,
-            );
-
             return if error_ty.abs() < TX_ACCEPTABLE_ERROR && error_tx.abs() < TY_ACCEPTABLE_ERROR && error_yaw.abs() < YAW_ACCEPTABLE_ERROR {
                 println!("Drivetrain at target");
+
+                self.stop();
+
                 true
             } else {
                 println!("Drivetrain not at target ty: {} tx: {} yaw: {}", error_ty.abs(), error_tx.abs(), error_yaw.abs());
+
+                self.set_speeds(
+                    transform.x,
+                    transform.y,
+                    error_yaw * SWERVE_TURN_KP,
+                    SwerveControlStyle::RobotOriented,
+                );
+
                 false
             };
         } else {
@@ -586,6 +594,7 @@ fn calculate_relative_target(current: f64, target: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
+    use std::f64::consts::PI;
     use nalgebra::{Quaternion, Vector2, Vector3};
 
     use crate::subsystems::drivetrain::{calculate_relative_target, quaternion_to_yaw};
@@ -657,5 +666,21 @@ mod tests {
 
         let relative_angle = calculate_relative_target(current_angle, target_angle);
         assert_eq!(relative_angle, 970.0);
+    }
+
+    #[test]
+    fn quaternion_tag_19() {
+        let quaternion = Quaternion::new(
+            0.5000000000000001,
+            0.,
+            0.,
+            0.8660254037844386
+        );
+
+        let yaw = -quaternion_to_yaw(quaternion);
+
+        println!("{}", yaw);
+
+        assert_eq!(yaw, -(2. * PI) / 3.)
     }
 }
