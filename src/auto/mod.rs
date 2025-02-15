@@ -1,5 +1,6 @@
 mod path;
 
+use std::cell::RefMut;
 use crate::auto::path::drive;
 use nalgebra::Vector2;
 use uom::si::{
@@ -9,9 +10,12 @@ use uom::si::{
 use serde::{Deserialize, Serialize};
 use std::ops::Deref;
 use std::time::Duration;
+use tokio::join;
 use tokio::time::sleep;
 
-use crate::Ferris;
+use crate::{constants, Ferris, score};
+use crate::subsystems::{ElevatorPosition, Indexer};
+use crate::subsystems::ElevatorPosition::{L2, L4};
 
 #[derive(Serialize, Deserialize)]
 pub enum Auto {
@@ -19,6 +23,7 @@ pub enum Auto {
     BlueTriangle,
     Blue180,
     BlueLong,
+    Blue2,
 }
 
 impl Auto {
@@ -28,6 +33,7 @@ impl Auto {
             "BlueTriangle" => Auto::BlueTriangle,
             "Blue180" => Auto::Blue180,
             "BlueLong" => Auto::BlueLong,
+            "Blue2" => Auto::Blue2,
             _ => Auto::Nothing,
         }
     }
@@ -38,12 +44,13 @@ impl Auto {
             Auto::BlueTriangle => "BlueTriangle",
             Auto::Blue180 => "Blue180",
             Auto::BlueLong => "BlueLong",
+            Auto::Blue2 => "Blue2",
             _ => "none",
         }
     }
 
     pub fn iterator() -> Vec<Self> {
-        vec![Auto::Nothing, Auto::BlueTriangle, Auto::Blue180, Auto::BlueLong]
+        vec![Auto::Nothing, Auto::BlueTriangle, Auto::Blue180, Auto::BlueLong, Auto::Blue2]
     }
 
     pub fn names() -> Vec<String> {
@@ -64,6 +71,9 @@ impl Auto {
             }
             Auto::BlueLong => {
                 blue_long(ferris).await.expect("Failed running auto")
+            }
+            Auto::Blue2 => {
+                blue_2(ferris).await.expect("Failed running auto")
             }
         }
     }
@@ -119,4 +129,43 @@ pub async fn blue_long(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> 
     println!("BlueLong.1 done");
 
     Ok(())
+}
+
+pub async fn blue_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
+    let mut drivetrain = robot.drivetrain.deref().borrow_mut();
+    let mut elevator = robot.elevator.deref().borrow_mut();
+    let mut indexer = robot.indexer.deref().borrow_mut();
+
+    drivetrain.reset_heading();
+
+    drivetrain
+        .odometry
+        .set_abs(Vector2::new(Length::new::<meter>(8.020708084106445), Length::new::<meter>(7.632927417755127)));
+
+    join!(
+        drive("Blue2", &mut drivetrain, 1),
+        async {
+            sleep(Duration::from_secs_f64(2.5)).await;
+            elevator.set_target(L4);
+            elevator.run_to_target_trapezoid();
+        }
+    );
+
+    // wait_indexer(&mut indexer).await;
+
+    indexer.set_speed(-0.25);
+
+    sleep(Duration::from_secs_f64(1.)).await;
+
+    indexer.stop();
+
+    Ok(())
+}
+
+async fn wait_indexer(indexer: &mut Indexer) {
+    while indexer.get_laser_dist() < constants::indexer::LASER_TRIP_DISTANCE_MM {
+        indexer.set_speed(-0.25);
+    }
+
+    indexer.stop();
 }
