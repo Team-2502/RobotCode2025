@@ -86,7 +86,7 @@ pub async fn follow_path_segment(
         let position = Vector2::new(setpoint.x.get::<meter>(), setpoint.y.get::<meter>());
 
         let mut error_position = position - drivetrain.odometry.robot_pose_estimate.get_position_meters();
-        let mut error_angle = (angle - drivetrain.get_angle()).get::<radian>();
+        let mut error_angle = (angle - drivetrain.get_offset()).get::<radian>();
 
         if error_position.abs().max() < SWERVE_DRIVE_IE {
             i += error_position;
@@ -114,10 +114,10 @@ pub async fn follow_path_segment(
 
         speed += velocity * -SWERVE_DRIVE_KF;
         speed += acceleration * -SWERVE_DRIVE_KFA;
-        speed += i * -SWERVE_DRIVE_KI * dt.as_secs_f64() * 9.;
+        speed += i * -SWERVE_DRIVE_KI * dt.as_secs_f64();
 
         let speed_s = speed;
-        speed += (speed - last_error) * -SWERVE_DRIVE_KD * dt.as_secs_f64() * 9.;
+        speed += (speed - last_error) * SWERVE_DRIVE_KD * dt.as_secs_f64();
         last_error = speed_s;
 
         drivetrain.set_speeds(

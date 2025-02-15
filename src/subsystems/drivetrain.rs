@@ -5,7 +5,7 @@ use std::ops::Add;
 
 use frcrs::ctre::{talon_encoder_tick, ControlMode, Pigeon, Talon};
 
-use crate::constants::drivetrain::{LINEUP_2D_TX_FWD_KP, LINEUP_2D_TX_STR_KP, LINEUP_2D_TY_FWD_KP, SWERVE_DRIVE_IE, SWERVE_DRIVE_KP, SWERVE_ROTATIONS_TO_INCHES, SWERVE_TURN_KP, TARGET_TX_LEFT, TARGET_TX_RIGHT, TARGET_TY_LEFT, TARGET_TY_RIGHT, TX_ACCEPTABLE_ERROR, TY_ACCEPTABLE_ERROR, YAW_ACCEPTABLE_ERROR};
+use crate::constants::drivetrain::{LINEUP_2D_TX_FWD_KP, LINEUP_2D_TX_STR_KP, LINEUP_2D_TY_FWD_KP, PIGEON_OFFSET, SWERVE_DRIVE_IE, SWERVE_DRIVE_KP, SWERVE_ROTATIONS_TO_INCHES, SWERVE_TURN_KP, TARGET_TX_LEFT, TARGET_TX_RIGHT, TARGET_TY_LEFT, TARGET_TY_RIGHT, TX_ACCEPTABLE_ERROR, TY_ACCEPTABLE_ERROR, YAW_ACCEPTABLE_ERROR};
 use crate::constants::robotmap::swerve::*;
 use crate::swerve::kinematics::{ModuleState, Swerve};
 use crate::swerve::odometry::{ModuleReturn, Odometry};
@@ -268,16 +268,16 @@ impl Drivetrain {
 
         let angle = self.get_offset();
 
-        // let mut sensor_measurements = Vec::new();
-        // if let Some(odo_estimate) = self.odometry.calculate_arcs(positions, (angle + Angle::new::<degree>(180.))) {
-        //     //println!("new odo pose estimate: x {} y {} fom {}",odo_estimate.get_position_meters().x, odo_estimate.get_position_meters().y, odo_estimate.figure_of_merit.get::<meter>());
-        //     sensor_measurements.push(odo_estimate);
-        // }
-        // if sensor_measurements.len() != 0 {self.odometry.fuse_sensors_fom(sensor_measurements);}
-
-        if let Some(pose) = self.odometry.calculate(positions, (angle + Angle::new::<degree>(180.))) {
-            self.odometry.set_abs(pose.get_position());
+        let mut sensor_measurements = Vec::new();
+        if let Some(odo_estimate) = self.odometry.calculate_arcs(positions, (angle + Angle::new::<degree>(180.))) {
+            //println!("new odo pose estimate: x {} y {} fom {}",odo_estimate.get_position_meters().x, odo_estimate.get_position_meters().y, odo_estimate.figure_of_merit.get::<meter>());
+            sensor_measurements.push(odo_estimate);
         }
+        if sensor_measurements.len() != 0 {self.odometry.fuse_sensors_fom(sensor_measurements);}
+
+        // if let Some(pose) = self.odometry.calculate(positions, (angle + Angle::new::<degree>(180.))) {
+        //     self.odometry.set_abs(pose.get_position());
+        // }
 
         let wheel_speeds: Vec<ModuleState> = wheel_speeds
             .into_iter()
@@ -341,9 +341,9 @@ impl Drivetrain {
 
     pub fn get_angle(&self) -> Angle {
         if alliance_station().red() {
-            Angle::new::<radian>(-self.pigeon.get_rotation().z + 180.)
+            Angle::new::<radian>(-self.pigeon.get_rotation().z + 180. + PIGEON_OFFSET)
         } else {
-            Angle::new::<radian>(-self.pigeon.get_rotation().z)
+            Angle::new::<radian>(-self.pigeon.get_rotation().z + PIGEON_OFFSET)
         }
     }
 

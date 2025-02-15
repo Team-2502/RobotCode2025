@@ -109,6 +109,8 @@ pub async fn blue_180(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
 pub async fn blue_long(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
     let mut drivetrain = robot.drivetrain.deref().borrow_mut();
 
+    drivetrain.reset_heading();
+
     drivetrain
         .odometry
         .set_abs(Vector2::new(Length::new::<meter>(7.5), Length::new::<meter>(7.)));
