@@ -259,10 +259,10 @@ impl Drivetrain {
 
         let measured = self.get_speeds();
 
-        for  module in &measured {
-            print!("{:.2} : ", module.angle.get::<degree>());
-        }
-        println!();
+        // for  module in &measured {
+        //     print!("{:.2} : ", module.angle.get::<degree>());
+        // }
+        // println!();
 
         let positions = self.get_positions(&measured);
 
