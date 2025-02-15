@@ -107,12 +107,7 @@ impl Robot for Ferris {
 
         NetworkTable::init();
 
-        Telemetry::put_string(
-            "auto chooser",
-            serde_json::to_string(&Auto::names()).unwrap(),
-        )
-        .await;
-        Telemetry::put_string("selected auto", Auto::BlueTriangle.name().to_string()).await;
+        Telemetry::put_selector("auto chooser", Auto::names()).await;
     }
 
     fn disabled_init(&mut self) {
@@ -145,10 +140,15 @@ impl Robot for Ferris {
     }
 
     async fn autonomous_periodic(&mut self) {
+        if let Ok(mut drivetrain) = self.drivetrain.try_borrow_mut() {
+            //drivetrain.update_limelight().await;
+            drivetrain.post_odo().await;
+        }
+
         if self.auto_handle.is_none() {
             let f = self.clone();
 
-            if let Some(selected_auto) = Telemetry::get("selected auto").await {
+            if let Some(selected_auto) = Telemetry::get_selection("auto chooser").await {
                 let chosen = Auto::from_dashboard(selected_auto.as_str());
 
                 let auto_task = Auto::run_auto(f, chosen);

@@ -17,6 +17,8 @@ use crate::Ferris;
 pub enum Auto {
     Nothing,
     BlueTriangle,
+    Blue180,
+    BlueLong,
 }
 
 impl Auto {
@@ -24,6 +26,8 @@ impl Auto {
         match s {
             "Nothing" => Auto::Nothing,
             "BlueTriangle" => Auto::BlueTriangle,
+            "Blue180" => Auto::Blue180,
+            "BlueLong" => Auto::BlueLong,
             _ => Auto::Nothing,
         }
     }
@@ -32,12 +36,14 @@ impl Auto {
         match self {
             Auto::Nothing => "Nothing",
             Auto::BlueTriangle => "BlueTriangle",
+            Auto::Blue180 => "Blue180",
+            Auto::BlueLong => "BlueLong",
             _ => "none",
         }
     }
 
     pub fn iterator() -> Vec<Self> {
-        vec![Auto::Nothing, Auto::BlueTriangle]
+        vec![Auto::Nothing, Auto::BlueTriangle, Auto::Blue180, Auto::BlueLong]
     }
 
     pub fn names() -> Vec<String> {
@@ -53,13 +59,17 @@ impl Auto {
             Auto::BlueTriangle => {
                 blue_triangle(ferris).await.expect("Failed running auto");
             }
+            Auto::Blue180 => {
+                blue_180(ferris).await.expect("Failed running auto");
+            }
+            Auto::BlueLong => {
+                blue_long(ferris).await.expect("Failed running auto")
+            }
         }
     }
 }
 
 pub async fn blue_triangle(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
-    println!("RUNNING");
-
     let mut drivetrain = robot.drivetrain.deref().borrow_mut();
 
     drivetrain
@@ -78,6 +88,33 @@ pub async fn blue_triangle(robot: Ferris) -> Result<(), Box<dyn std::error::Erro
 
     drive("BlueTriangle", &mut drivetrain, 3).await?;
     println!("BlueTriangle.3 done");
+
+    Ok(())
+}
+
+
+pub async fn blue_180(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
+    let mut drivetrain = robot.drivetrain.deref().borrow_mut();
+
+    drivetrain
+        .odometry
+        .set_abs(Vector2::new(Length::new::<meter>(7.8775811195373535), Length::new::<meter>(6.840074062347412)));
+
+    drive("Blue180", &mut drivetrain, 1).await?;
+    println!("Blue180.1 done");
+
+    Ok(())
+}
+
+pub async fn blue_long(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
+    let mut drivetrain = robot.drivetrain.deref().borrow_mut();
+
+    drivetrain
+        .odometry
+        .set_abs(Vector2::new(Length::new::<meter>(7.5), Length::new::<meter>(7.)));
+
+    drive("BlueLong", &mut drivetrain, 1).await?;
+    println!("BlueLong.1 done");
 
     Ok(())
 }

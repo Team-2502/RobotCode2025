@@ -50,7 +50,7 @@ pub async fn drive(
     let end_time = waypoints[waypoint_index];
 
     // Follow path for this segment
-    follow_path_segment(drivetrain, path, 0., 3.4).await;
+    follow_path_segment(drivetrain, path, start_time, end_time).await;
     drivetrain.set_speeds(0., 0., 0., SwerveControlStyle::FieldOriented);
     Ok(())
 }

@@ -49,12 +49,12 @@ pub mod vision {
 pub mod drivetrain {
     use std::f64::consts::PI;
 
-    pub const SWERVE_TURN_KP: f64 = 0.3;
+    pub const SWERVE_TURN_KP: f64 = 0.4;
 
-    pub const SWERVE_ROTATIONS_TO_INCHES: f64 = (1. / 5.906) * (4. * PI);
+    pub const SWERVE_ROTATIONS_TO_INCHES: f64 = (1. / 6.75) * (4. * PI);
 
-    pub const SWERVE_DRIVE_KP: f64 = 0.3;
-    pub const SWERVE_DRIVE_KI: f64 = 0.;
+    pub const SWERVE_DRIVE_KP: f64 = 0.8;
+    pub const SWERVE_DRIVE_KI: f64 = 0.15;
     pub const SWERVE_DRIVE_KD: f64 = 0.;
     pub const SWERVE_DRIVE_KF: f64 = 0.; // Velocity ff
     pub const SWERVE_DRIVE_KFA: f64 = 0.; // Acceleration ff

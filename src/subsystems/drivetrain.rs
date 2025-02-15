@@ -124,7 +124,7 @@ impl Drivetrain {
             br_drive: Talon::new(BR_DRIVE, Some("can0".to_owned())),
             br_turn,
 
-            kinematics: Swerve::rectangle(Length::new::<inch>(22.5), Length::new::<inch>(23.5)),
+            kinematics: Swerve::rectangle(Length::new::<inch>(21.5), Length::new::<inch>(21.5)),
             odometry: Odometry::new(),
 
             offset,
@@ -259,16 +259,25 @@ impl Drivetrain {
 
         let measured = self.get_speeds();
 
+        for  module in &measured {
+            print!("{:.2} : ", module.angle.get::<degree>());
+        }
+        println!();
+
         let positions = self.get_positions(&measured);
 
         let angle = self.get_offset();
 
-        let mut sensor_measurements = Vec::new();
-        if let Some(odo_estimate) = self.odometry.calculate_arcs(positions, (angle + Angle::new::<degree>(180.))) {
-            //println!("new odo pose estimate: x {} y {} fom {}",odo_estimate.get_position_meters().x, odo_estimate.get_position_meters().y, odo_estimate.figure_of_merit.get::<meter>());
-            sensor_measurements.push(odo_estimate);
+        // let mut sensor_measurements = Vec::new();
+        // if let Some(odo_estimate) = self.odometry.calculate_arcs(positions, (angle + Angle::new::<degree>(180.))) {
+        //     //println!("new odo pose estimate: x {} y {} fom {}",odo_estimate.get_position_meters().x, odo_estimate.get_position_meters().y, odo_estimate.figure_of_merit.get::<meter>());
+        //     sensor_measurements.push(odo_estimate);
+        // }
+        // if sensor_measurements.len() != 0 {self.odometry.fuse_sensors_fom(sensor_measurements);}
+
+        if let Some(pose) = self.odometry.calculate(positions, (angle + Angle::new::<degree>(180.))) {
+            self.odometry.set_abs(pose.get_position());
         }
-        if sensor_measurements.len() != 0 {self.odometry.fuse_sensors_fom(sensor_measurements);}
 
         let wheel_speeds: Vec<ModuleState> = wheel_speeds
             .into_iter()
