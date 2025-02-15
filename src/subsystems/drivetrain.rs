@@ -241,12 +241,12 @@ impl Drivetrain {
     }
 
     pub fn set_speeds(&mut self, fwd: f64, str: f64, rot: f64, style: SwerveControlStyle) {
-        println!(
+        /*println!(
             "ODO XY: {}, {} ODO FOM: {}",
             self.odometry.robot_pose_estimate.get_position_meters().x,
             self.odometry.robot_pose_estimate.get_position_meters().y,
             self.odometry.robot_pose_estimate.figure_of_merit.get::<meter>()
-        );
+        );*/
         let mut transform = Vector2::new(-str, fwd);
         match style {
             SwerveControlStyle::FieldOriented => {
@@ -264,10 +264,11 @@ impl Drivetrain {
         let angle = self.get_offset();
 
         let mut sensor_measurements = Vec::new();
-        if let Some(odo_estimate) = self.odometry.calculate(positions, angle) {
+        if let Some(odo_estimate) = self.odometry.calculate_arcs(positions, (angle + Angle::new::<degree>(180.))) {
+            //println!("new odo pose estimate: x {} y {} fom {}",odo_estimate.get_position_meters().x, odo_estimate.get_position_meters().y, odo_estimate.figure_of_merit.get::<meter>());
             sensor_measurements.push(odo_estimate);
         }
-        self.odometry.fuse_sensors_fom(sensor_measurements);
+        if sensor_measurements.len() != 0 {self.odometry.fuse_sensors_fom(sensor_measurements);}
 
         let wheel_speeds: Vec<ModuleState> = wheel_speeds
             .into_iter()

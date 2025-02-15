@@ -78,8 +78,9 @@ pub mod drivetrain {
 }
 pub mod pose_estimation {
     pub const ARC_ODOMETRY_MINIMUM_DELTA_THETA_RADIANS: f64 = 0.000001;
+    pub const MIN_FOM: f64 = 0.00001;
     pub const START_POSITION_FOM: f64 = 0.01; //meters
-    pub const DRIFT_RATIO: f64 = 0.05; // Robot odometry pose estimate drifts [ratio] meters for every meter driven
+    pub const DRIFT_RATIO: f64 = 0.02; // Robot odometry pose estimate drifts [ratio] meters for every meter driven
 }
 pub mod elevator {
     pub const BOTTOM: f64 = 0.0; // unit is rotations

@@ -8,7 +8,7 @@ use uom::si::{
     f64::{Angle, Length},
     length::meter,
 };
-use crate::constants::pose_estimation::{ARC_ODOMETRY_MINIMUM_DELTA_THETA_RADIANS, DRIFT_RATIO, START_POSITION_FOM};
+use crate::constants::pose_estimation::{ARC_ODOMETRY_MINIMUM_DELTA_THETA_RADIANS, DRIFT_RATIO, MIN_FOM, START_POSITION_FOM};
 
 #[derive(Default, Clone)]
 pub struct ModuleReturn {
@@ -98,13 +98,15 @@ impl Odometry {
         }
 
         let mut delta: Vector2<f64> = deltas.into_iter().map(Into::<Vector2<f64>>::into).sum();
-
         delta /= positions.len() as f64;
+
         let delta_length: Vector2<Length> = Vector2::new(
             Length::new::<meter>(delta.x),
             Length::new::<meter>(delta.y)
         );
+        println!("delta: x {} y {}", delta.x, delta.y);
         self.last_modules = positions;
+        let fom = self.robot_pose_estimate.figure_of_merit + Length::new::<meter>(delta.magnitude() * DRIFT_RATIO);
 
         Some(PoseEstimate {
             position: self.robot_pose_estimate.get_position() + delta_length,
@@ -117,20 +119,20 @@ impl Odometry {
             self.last_modules = positions;
             return None
         }
-        println!("drivetrain angle for calculate_arcs: {}", drivetrain_angle.get::<radian>());
+        //println!("drivetrain angle for calculate_arcs: {}", drivetrain_angle.get::<radian>());
 
         let mut theta_deltas : Vec<Angle> = positions
             .iter()
             .zip(self.last_modules.iter())
             .map(|(current_modules, last_modules)| {
-                println!("theta delta: {}", (current_modules.to_owned().angle - last_modules.to_owned().angle).get::<radian>());
+                //println!("theta delta: {}", (current_modules.to_owned().angle - last_modules.to_owned().angle).get::<radian>());
                 current_modules.to_owned().angle - last_modules.to_owned().angle
             }).collect();
         let mut arc_lengths: Vec<Length> = positions
             .iter()
             .zip(self.last_modules.iter())
             .map(|(current_modules, last_modules)|{
-                println!("arc length: {}", ((current_modules.to_owned().distance - last_modules.to_owned().distance)).get::<meter>());
+                //println!("arc length: {}", ((current_modules.to_owned().distance - last_modules.to_owned().distance)).get::<meter>());
                 (current_modules.to_owned().distance - last_modules.to_owned().distance)
             })
             .collect();
@@ -138,7 +140,7 @@ impl Odometry {
             .iter()
             .zip(theta_deltas.clone())
             .map(|(arc_length, theta_delta)|{
-                println!("arc radius: {}", (arc_length.get::<meter>() / (2. * std::f64::consts::PI) * ((2. * std::f64::consts::PI) / theta_delta.get::<radian>().abs())));
+                //println!("arc radius: {}", (arc_length.get::<meter>() / (2. * std::f64::consts::PI) * ((2. * std::f64::consts::PI) / theta_delta.get::<radian>().abs())));
                 Length::new::<meter>((arc_length.get::<meter>() / (2. * std::f64::consts::PI) * ((2. * std::f64::consts::PI) / theta_delta.get::<radian>().abs())))
             }).collect();
         let mut arc_centers: Vec<Vector2<Length>> = self.last_modules.clone()
@@ -152,9 +154,9 @@ impl Odometry {
                 } else {
                     angle_to_center += Angle::new::<degree>(90.);
                 }
-                println!("angle_to_center degrees: {}", angle_to_center.get::<degree>());
-                println!("center x: {}", arc_radius.get::<meter>() * (-angle_to_center.get::<radian>()).cos());
-                println!("center y: {}", arc_radius.get::<meter>() * (-angle_to_center.get::<radian>()).sin());
+                //println!("angle_to_center degrees: {}", angle_to_center.get::<degree>());
+                //println!("center x: {}", arc_radius.get::<meter>() * (-angle_to_center.get::<radian>()).cos());
+                //println!("center y: {}", arc_radius.get::<meter>() * (-angle_to_center.get::<radian>()).sin());
                 Vector2::new(
                     Length::new::<meter>(arc_radius.get::<meter>() * (-angle_to_center.get::<radian>()).cos()),
                     Length::new::<meter>(arc_radius.get::<meter>() * (-angle_to_center.get::<radian>()).sin()),
@@ -173,22 +175,22 @@ impl Odometry {
                 } else {
                     endpoint_angle_to_center += Angle::new::<degree>(90.);
                 }
-                println!("endpoint angle to center degrees: {}", endpoint_angle_to_center.get::<degree>());
+                //println!("endpoint angle to center degrees: {}", endpoint_angle_to_center.get::<degree>());
                 let endpoint_to_center = Vector2::new(
                     Length::new::<meter>(arc_radius.get::<meter>() * (-endpoint_angle_to_center.get::<radian>()).cos()),
                     Length::new::<meter>(arc_radius.get::<meter>() * (-endpoint_angle_to_center.get::<radian>()).sin()),
                 );
-                println!("endpoint to center x: {}", arc_radius.get::<meter>() * (-endpoint_angle_to_center.get::<radian>()).cos());
-                println!("endpoint to center y: {}",arc_radius.get::<meter>() * (-endpoint_angle_to_center.get::<radian>()).sin());
+                //println!("endpoint to center x: {}", arc_radius.get::<meter>() * (-endpoint_angle_to_center.get::<radian>()).cos());
+                //println!("endpoint to center y: {}",arc_radius.get::<meter>() * (-endpoint_angle_to_center.get::<radian>()).sin());
                 if theta_delta.get::<radian>().abs() < ARC_ODOMETRY_MINIMUM_DELTA_THETA_RADIANS || theta_delta.get::<radian>().is_nan() {
-                    println!("delta theta too small");
+                    //println!("delta theta too small");
                     Vector2::new(
                         Length::new::<meter>( Vector2::from((current_module.clone() - last_module.clone())).x),
                         Length::new::<meter>( Vector2::from((current_module.clone() - last_module.clone())).y),
                     )
                 } else {
-                    println!("delta x: {}", (arc_center - endpoint_to_center).x.get::<meter>());
-                    println!("delta y: {}", (arc_center - endpoint_to_center).y.get::<meter>());
+                    //println!("delta x: {}", (arc_center - endpoint_to_center).x.get::<meter>());
+                    //println!("delta y: {}", (arc_center - endpoint_to_center).y.get::<meter>());
                     arc_center - endpoint_to_center
                 }
             }).collect();
@@ -220,7 +222,7 @@ impl Odometry {
         self.last_modules = positions;
 
         let mut average_arc_length_meters: f64 = 0.;
-        arc_lengths.iter().for_each(|arc_length| {average_arc_length_meters += arc_length.get::<meter>();});
+        arc_lengths.iter().for_each(|arc_length| {average_arc_length_meters += arc_length.get::<meter>().abs();});
         average_arc_length_meters /= arc_lengths.len() as f64;
 
         Some(PoseEstimate {
@@ -229,6 +231,16 @@ impl Odometry {
         })
     }
     pub fn fuse_sensors_fom(&mut self, pose_estimates: Vec<PoseEstimate>) {
+        let pose_estimates: Vec<PoseEstimate> = pose_estimates.iter().map(|pose_estimate| {
+            if pose_estimate.figure_of_merit.get::<meter>() < MIN_FOM {
+                PoseEstimate {
+                    position: pose_estimate.position.clone(),
+                    figure_of_merit: Length::new::<meter>(MIN_FOM),
+                }
+            } else {
+                pose_estimate.clone()
+            }
+        }).collect();
         let fom_inverse_squared_values: Vec<f64> = pose_estimates
             .iter()
             .map(|pose_estimate| (1. / (pose_estimate.figure_of_merit.get::<meter>() * pose_estimate.figure_of_merit.get::<meter>())))
@@ -246,8 +258,8 @@ impl Odometry {
         let mut robot_pose_estimate_meters_y: f64 = 0.;
         let mut inverse_squared_sum: f64 = 0.;
         poses_times_fom_inverse_squared_values.iter().zip(fom_inverse_squared_values.clone()).for_each(|(pose_estimate, fom_inverse_squared_value)| {
-            robot_pose_estimate_meters_x += pose_estimate.x * fom_inverse_squared_value;
-            robot_pose_estimate_meters_y += pose_estimate.y * fom_inverse_squared_value;
+            robot_pose_estimate_meters_x += pose_estimate.x;
+            robot_pose_estimate_meters_y += pose_estimate.y;
             inverse_squared_sum += fom_inverse_squared_value;
         });
         robot_pose_estimate_meters_x /= inverse_squared_sum;
