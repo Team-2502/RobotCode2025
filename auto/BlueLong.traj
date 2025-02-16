@@ -3,9 +3,9 @@
  "version":1,
  "snapshot":{
   "waypoints":[
-    {"x":7.5, "y":7.0, "heading":0.0, "intervals":40, "split":false, "fixTranslation":true, "fixHeading":true, "overrideIntervals":false},
+    {"x":7.5, "y":7.0, "heading":0.0, "intervals":40, "split":true, "fixTranslation":true, "fixHeading":true, "overrideIntervals":false},
     {"x":4.940769672393799, "y":5.631424427032471, "heading":0.0, "intervals":39, "split":false, "fixTranslation":true, "fixHeading":false, "overrideIntervals":false},
-    {"x":2.5, "y":7.0, "heading":0.0, "intervals":40, "split":false, "fixTranslation":true, "fixHeading":true, "overrideIntervals":false}],
+    {"x":2.5, "y":7.0, "heading":0.0, "intervals":40, "split":true, "fixTranslation":true, "fixHeading":true, "overrideIntervals":false}],
   "constraints":[
     {"from":"first", "to":null, "data":{"type":"StopPoint", "props":{}}, "enabled":true},
     {"from":"last", "to":null, "data":{"type":"StopPoint", "props":{}}, "enabled":true},
@@ -16,9 +16,9 @@
  },
  "params":{
   "waypoints":[
-    {"x":{"exp":"7.5 m", "val":7.5}, "y":{"exp":"7 m", "val":7.0}, "heading":{"exp":"0 deg", "val":0.0}, "intervals":40, "split":false, "fixTranslation":true, "fixHeading":true, "overrideIntervals":false},
+    {"x":{"exp":"7.5 m", "val":7.5}, "y":{"exp":"7 m", "val":7.0}, "heading":{"exp":"0 deg", "val":0.0}, "intervals":40, "split":true, "fixTranslation":true, "fixHeading":true, "overrideIntervals":false},
     {"x":{"exp":"4.940769672393799 m", "val":4.940769672393799}, "y":{"exp":"5.631424427032471 m", "val":5.631424427032471}, "heading":{"exp":"0 deg", "val":0.0}, "intervals":39, "split":false, "fixTranslation":true, "fixHeading":false, "overrideIntervals":false},
-    {"x":{"exp":"2.5 m", "val":2.5}, "y":{"exp":"7 m", "val":7.0}, "heading":{"exp":"0 rad", "val":0.0}, "intervals":40, "split":false, "fixTranslation":true, "fixHeading":true, "overrideIntervals":false}],
+    {"x":{"exp":"2.5 m", "val":2.5}, "y":{"exp":"7 m", "val":7.0}, "heading":{"exp":"0 rad", "val":0.0}, "intervals":40, "split":true, "fixTranslation":true, "fixHeading":true, "overrideIntervals":false}],
   "constraints":[
     {"from":"first", "to":null, "data":{"type":"StopPoint", "props":{}}, "enabled":true},
     {"from":"last", "to":null, "data":{"type":"StopPoint", "props":{}}, "enabled":true},
