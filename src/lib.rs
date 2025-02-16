@@ -141,7 +141,7 @@ impl Robot for Ferris {
 
     async fn autonomous_periodic(&mut self) {
         if let Ok(mut drivetrain) = self.drivetrain.try_borrow_mut() {
-            //drivetrain.update_limelight().await;
+            drivetrain.update_limelight().await;
             drivetrain.post_odo().await;
         }
 

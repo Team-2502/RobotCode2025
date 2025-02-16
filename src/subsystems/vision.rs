@@ -16,7 +16,7 @@ use uom::si::{
 
 use std::net::SocketAddr;
 use tokio::time::Instant;
-use crate::constants::pose_estimation::{LIMELIGHT_BASE_FOM, LIMELIGHT_INACCURACY_PER_ANGULAR_VELOCITY};
+use crate::constants::pose_estimation::{LIMELIGHT_BASE_FOM, LIMELIGHT_INACCURACY_PER_ANGULAR_VELOCITY, LIMELIGHT_INACCURACY_PER_LINEAR_VELOCITY};
 use crate::swerve::odometry::PoseEstimate;
 
 #[derive(Clone)]
@@ -29,6 +29,8 @@ pub struct Vision {
     drivetrain_angle: Angle,
     last_drivetrain_angle: Angle,
     last_update_time: Instant,
+    robot_position: Vector2<Length>,
+    last_robot_position: Vector2<Length>,
 }
 
 pub struct FieldPosition {
@@ -54,11 +56,15 @@ impl Vision {
             drivetrain_angle: Angle::new::<degree>(0.),
             last_drivetrain_angle: Angle::new::<degree>(0.),
             last_update_time: Instant::now(),
+            robot_position: Vector2::new(Length::new::<meter>(0.), Length::new::<meter>(0.)),
+            last_robot_position: Vector2::new(Length::new::<meter>(0.), Length::new::<meter>(0.)),
         }
     }
     /// Updates the results from the limelight, also posts telemetry data
-    pub async fn update(&mut self, dt_angle: f64) {
+    pub async fn update(&mut self, dt_angle: f64, robot_position: Vector2<Length>) {
         self.last_results = self.results.clone();
+        self.last_robot_position = self.robot_position;
+        self.robot_position = robot_position;
         self.results = self.limelight.results().await.unwrap();
         self.last_drivetrain_angle = self.drivetrain_angle;
         self.drivetrain_angle = Angle::new::<radian>(dt_angle);
@@ -258,7 +264,18 @@ impl Vision {
     pub fn get_figure_of_merit(&self) -> Length {
         let dt = Instant::now() - self.last_update_time;
         let angular_velocity_rad_per_sec = (self.drivetrain_angle.get::<radian>() - self.last_drivetrain_angle.get::<radian>()) / dt.as_secs_f64();
+        let robot_position_meters: Vector2<f64> = Vector2::new(
+            self.robot_position.x.get::<meter>(),
+            self.robot_position.y.get::<meter>(),
+        );
+        let last_robot_position_meters: Vector2<f64> = Vector2::new(
+            self.last_robot_position.x.get::<meter>(),
+            self.last_robot_position.y.get::<meter>(),
+        );
+        let linear_velocity_meters_per_sec = (robot_position_meters - last_robot_position_meters).magnitude() / dt.as_secs_f64();
+
         let mut fom_meters = LIMELIGHT_INACCURACY_PER_ANGULAR_VELOCITY * angular_velocity_rad_per_sec;
+        fom_meters += LIMELIGHT_INACCURACY_PER_LINEAR_VELOCITY * linear_velocity_meters_per_sec;
         fom_meters += LIMELIGHT_BASE_FOM;
         Length::new::<meter>(fom_meters)
     }

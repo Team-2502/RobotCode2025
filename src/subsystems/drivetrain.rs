@@ -137,10 +137,10 @@ impl Drivetrain {
 
     pub async fn update_limelight(&mut self) {
         self.limelight_lower
-            .update(self.get_offset().get::<degree>())
+            .update(self.get_offset().get::<degree>(), self.odometry.robot_pose_estimate.get_position())
             .await;
         self.limelight_upper
-            .update(self.get_offset().get::<degree>())
+            .update(self.get_offset().get::<degree>(), self.odometry.robot_pose_estimate.get_position())
             .await;
         /*
         let pose = self.limelight_lower.get_botpose();
