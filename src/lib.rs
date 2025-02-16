@@ -187,7 +187,7 @@ impl Robot for Ferris {
                         )
                             .await;
 
-                        true
+                        false
                     };
 
                     if self.controllers.left_drive.get(SCORE_L2) {
