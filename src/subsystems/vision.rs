@@ -2,9 +2,9 @@ use frcrs::limelight::{Limelight, LimelightResults};
 use std::fs::File;
 
 use crate::constants::vision;
-use crate::constants::vision::ROBOT_CENTER_TO_LIMELIGHT_INCHES;
+use crate::constants::vision::ROBOT_CENTER_TO_LIMELIGHT_UPPER_INCHES;
 use frcrs::telemetry::Telemetry;
-use nalgebra::{Quaternion, Vector2, Vector3};
+use nalgebra::{Quaternion, Rotation2, Vector2, Vector3};
 use serde_json::Value;
 use uom::num::FromPrimitive;
 use uom::si::length::inch;
@@ -127,9 +127,9 @@ impl Vision {
                     .unwrap()
                     .z
                     .get::<inch>();
-                let height_diff = tag_height - vision::LIMELIGHT_HEIGHT_INCHES;
+                let height_diff = tag_height - vision::LIMELIGHT_UPPER_HEIGHT_INCHES;
                 let pitch_to_tag: Angle = Angle::new::<degree>(
-                    vision::LIMELIGHT_PITCH_DEGREES + self.get_ty().get::<degree>(),
+                    vision::LIMELIGHT_UPPER_PITCH_DEGREES + self.get_ty().get::<degree>(),
                 );
                 Some(Length::new::<inch>(height_diff) / f64::tan(pitch_to_tag.get::<radian>()))
             }
@@ -194,16 +194,9 @@ impl Vision {
         // Get tag position and rotation
         let tag_data = self.get_tag_position(id)?;
         let tag_xy = Vector2::new(tag_data.coordinate?.x, tag_data.coordinate?.y);
-        let tag_quaternion = tag_data.quaternion?;
-
-        let tag_yaw = Angle::new::<radian>(f64::atan2(
-            2.0 * (tag_quaternion.w * tag_quaternion.k + tag_quaternion.i * tag_quaternion.j),
-            1.0 - 2.0 * (tag_quaternion.j * tag_quaternion.j + tag_quaternion.k * tag_quaternion.k),
-        ));
 
         let angle_to_tag: Angle =
-            drivetrain_angle + Angle::new::<degree>(vision::LIMELIGHT_YAW_DEGREES) - self.get_tx()
-                + tag_yaw;
+            ( - drivetrain_angle) + Angle::new::<degree>(vision::LIMELIGHT_UPPER_YAW_DEGREES) + self.get_tx();
 
         // Calculate limelight's position relative to tag
         let limelight_to_tag: Vector2<Length> = Vector2::new(
@@ -212,25 +205,17 @@ impl Vision {
         );
 
         // Calculate offset from robot center to limelight
-        let robot_center_to_limelight_unrotated: Vector2<Length> = Vector2::new(
-            Length::new::<inch>(ROBOT_CENTER_TO_LIMELIGHT_INCHES.x),
-            Length::new::<inch>(ROBOT_CENTER_TO_LIMELIGHT_INCHES.y),
+        let robot_center_to_limelight_unrotated_inches: Vector2<f64> = Vector2::new(
+            ROBOT_CENTER_TO_LIMELIGHT_UPPER_INCHES.x,
+            ROBOT_CENTER_TO_LIMELIGHT_UPPER_INCHES.y,
         );
 
         // Rotate the limelight offset by drivetrain angle
+        let drivetrain_angle_rotation = Rotation2::new(- drivetrain_angle);
+        let robot_to_limelight_inches = drivetrain_angle_rotation * robot_center_to_limelight_unrotated_inches;
         let robot_to_limelight: Vector2<Length> = Vector2::new(
-            Length::new::<meter>(
-                robot_center_to_limelight_unrotated.x.get::<meter>()
-                    * f64::cos(drivetrain_angle.get::<radian>())
-                    - robot_center_to_limelight_unrotated.y.get::<meter>()
-                        * f64::sin(drivetrain_angle.get::<radian>()),
-            ),
-            Length::new::<meter>(
-                robot_center_to_limelight_unrotated.x.get::<meter>()
-                    * f64::sin(drivetrain_angle.get::<radian>())
-                    + robot_center_to_limelight_unrotated.y.get::<meter>()
-                        * f64::cos(drivetrain_angle.get::<radian>()),
-            ),
+            Length::new::<inch>(robot_to_limelight_inches.x),
+            Length::new::<inch>(robot_to_limelight_inches.y),
         );
 
         // Calculate final robot position

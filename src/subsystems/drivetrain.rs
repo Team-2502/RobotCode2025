@@ -17,7 +17,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::constants;
-use crate::constants::vision::ROBOT_CENTER_TO_LIMELIGHT_INCHES;
+use crate::constants::vision::ROBOT_CENTER_TO_LIMELIGHT_UPPER_INCHES;
 use crate::subsystems::Vision;
 use uom::si::angle::{degree, radian, revolution};
 use uom::si::f64::{Angle, Length};
