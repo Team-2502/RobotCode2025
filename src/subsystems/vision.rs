@@ -61,16 +61,16 @@ impl Vision {
         }
     }
     /// Updates the results from the limelight, also posts telemetry data
-    pub async fn update(&mut self, dt_angle: f64, robot_position: Vector2<Length>) {
+    pub async fn update(&mut self, dt_angle: Angle, robot_position: Vector2<Length>) {
         self.last_results = self.results.clone();
         self.last_robot_position = self.robot_position;
         self.robot_position = robot_position;
         self.results = self.limelight.results().await.unwrap();
         self.last_drivetrain_angle = self.drivetrain_angle;
-        self.drivetrain_angle = Angle::new::<radian>(dt_angle);
+        self.drivetrain_angle = dt_angle;
         self.last_update_time = Instant::now();
         self.limelight
-            .update_robot_orientation(-dt_angle) // Why do we use clockwise positive
+            .update_robot_orientation(-dt_angle.get::<radian>()) // Why do we use clockwise positive
             .await
             .unwrap();
 
@@ -185,9 +185,10 @@ impl Vision {
     /// Estimates robot position (always blue origin) given a drivetrain angle (CCW+, always blue origin) and last updates' limelight measurements
     /// Uses 2D calculations: distance from tag center & angle to tag center
     /// Returns Option::None if no tag is currently targeted
-    pub fn get_position_from_tag_2d(&self, drivetrain_angle: Angle) -> Option<Vector2<Length>> {
+    pub fn get_position_from_tag_2d(&self) -> Option<Vector2<Length>> {
         let id = self.get_id();
         let dist = self.get_dist()?;
+        let drivetrain_angle = Angle::new::<radian>(-self.drivetrain_angle.get::<radian>());
 
         println!("dist: {}", dist.get::<meter>());
 
@@ -196,7 +197,8 @@ impl Vision {
         let tag_xy = Vector2::new(tag_data.coordinate?.x, tag_data.coordinate?.y);
 
         let angle_to_tag: Angle =
-            ( - drivetrain_angle) + Angle::new::<degree>(vision::LIMELIGHT_UPPER_YAW_DEGREES) + self.get_tx();
+            (drivetrain_angle) + Angle::new::<degree>(vision::LIMELIGHT_UPPER_YAW_DEGREES) - self.get_tx();
+        println!("angle to tag degrees: dt angle {} + ll yaw {} + tx {} = {}",drivetrain_angle.get::<degree>(),vision::LIMELIGHT_UPPER_YAW_DEGREES,self.get_tx().get::<degree>(),angle_to_tag.get::<degree>());
 
         // Calculate limelight's position relative to tag
         let limelight_to_tag: Vector2<Length> = Vector2::new(
@@ -211,7 +213,7 @@ impl Vision {
         );
 
         // Rotate the limelight offset by drivetrain angle
-        let drivetrain_angle_rotation = Rotation2::new(- drivetrain_angle);
+        let drivetrain_angle_rotation = Rotation2::new(drivetrain_angle.get::<radian>());
         let robot_to_limelight_inches = drivetrain_angle_rotation * robot_center_to_limelight_unrotated_inches;
         let robot_to_limelight: Vector2<Length> = Vector2::new(
             Length::new::<inch>(robot_to_limelight_inches.x),
@@ -244,6 +246,13 @@ impl Vision {
         } else {
             None
         }
+    }
+    pub fn get_pose_estimate_2d(&self) -> Option<PoseEstimate> {
+        let pose = self.get_position_from_tag_2d()?;
+        Some(PoseEstimate{
+            position:pose,
+            figure_of_merit: self.get_figure_of_merit()
+        })
     }
 
     pub fn get_figure_of_merit(&self) -> Length {

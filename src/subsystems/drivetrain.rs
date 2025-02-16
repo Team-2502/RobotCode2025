@@ -137,10 +137,10 @@ impl Drivetrain {
 
     pub async fn update_limelight(&mut self) {
         self.limelight_lower
-            .update(self.get_offset().get::<degree>(), self.odometry.robot_pose_estimate.get_position())
+            .update(self.get_offset(), self.odometry.robot_pose_estimate.get_position())
             .await;
         self.limelight_upper
-            .update(self.get_offset().get::<degree>(), self.odometry.robot_pose_estimate.get_position())
+            .update(self.get_offset(), self.odometry.robot_pose_estimate.get_position())
             .await;
         /*
         let pose = self.limelight_lower.get_botpose();
@@ -274,10 +274,12 @@ impl Drivetrain {
             //println!("new odo pose estimate: x {} y {} fom {}",odo_estimate.get_position_meters().x, odo_estimate.get_position_meters().y, odo_estimate.figure_of_merit.get::<meter>());
             sensor_measurements.push(odo_estimate);
         }
-        if let Some(limelight_lower_estimate) = self.limelight_lower.get_pose_estimate_orb() {
+        /*if let Some(limelight_lower_estimate) = self.limelight_lower.get_pose_estimate_2d() {
             sensor_measurements.push(limelight_lower_estimate);
         }
-        if let Some(limelight_upper_estimate) = self.limelight_upper.get_pose_estimate_orb() {
+
+         */
+        if let Some(limelight_upper_estimate) = self.limelight_upper.get_pose_estimate_2d() {
             sensor_measurements.push(limelight_upper_estimate);
         }
         if sensor_measurements.len() != 0 {self.odometry.fuse_sensors_fom(sensor_measurements);}
