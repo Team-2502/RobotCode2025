@@ -268,8 +268,8 @@ impl Vision {
         );
         let linear_velocity_meters_per_sec = (robot_position_meters - last_robot_position_meters).magnitude() / dt.as_secs_f64();
 
-        let mut fom_meters = LIMELIGHT_INACCURACY_PER_ANGULAR_VELOCITY * angular_velocity_rad_per_sec;
-        fom_meters += LIMELIGHT_INACCURACY_PER_LINEAR_VELOCITY * linear_velocity_meters_per_sec;
+        let mut fom_meters = LIMELIGHT_INACCURACY_PER_ANGULAR_VELOCITY * angular_velocity_rad_per_sec.abs();
+        fom_meters += LIMELIGHT_INACCURACY_PER_LINEAR_VELOCITY * linear_velocity_meters_per_sec.abs();
         fom_meters += LIMELIGHT_BASE_FOM;
         Length::new::<meter>(fom_meters)
     }

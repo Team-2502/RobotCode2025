@@ -435,18 +435,21 @@ impl Drivetrain {
 
         let yaw = quaternion_to_yaw(tag_rotation);
 
-        let side_distance = Length::new::<meter>(0.5);
-        let forward_distance = Length::new::<meter>(0.5);
+        let mut side_distance = Length::new::<inch>(13. / 2.);
+        let forward_distance = Length::new::<inch>(16.75);
+        let elevator_position = Length::new::<inch>(-11.);
 
         let side_multiplier = match side {
             LineupSide::Left => -1.0,
             LineupSide::Right => 1.0,
         };
+        side_distance *= side_multiplier;
+        side_distance += elevator_position;
 
         let perpendicular_yaw = yaw + std::f64::consts::PI / 2.0;
 
-        let offset_x = side_distance.get::<meter>() * f64::cos(perpendicular_yaw) * side_multiplier;
-        let offset_y = side_distance.get::<meter>() * f64::sin(perpendicular_yaw) * side_multiplier;
+        let offset_x = side_distance.get::<meter>() * f64::cos(perpendicular_yaw);
+        let offset_y = side_distance.get::<meter>() * f64::sin(perpendicular_yaw);
 
         let forward_x = forward_distance.get::<meter>() * f64::cos(yaw);
         let forward_y = forward_distance.get::<meter>() * f64::sin(yaw);
@@ -459,12 +462,14 @@ impl Drivetrain {
         );
 
         let mut robot_angle =
-            Angle::new::<radian>(yaw).add(Angle::new::<radian>(std::f64::consts::PI));
+            Angle::new::<radian>(yaw).add(Angle::new::<radian>(PI)).add(Angle::new::<radian>(PI / 2.));
 
         robot_angle = Angle::new::<degree>(calculate_relative_target(
             self.get_offset().get::<degree>(),
             robot_angle.get::<degree>(),
         ));
+        if robot_angle.get::<degree>() > 180. {robot_angle -= Angle::new::<degree>(360.)}
+        else if robot_angle.get::<degree>() < -180. {robot_angle += Angle::new::<degree>(360.)}
 
         Some(LineupTarget {
             position: target_pos,
