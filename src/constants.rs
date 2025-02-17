@@ -40,10 +40,10 @@ pub const HALF_FIELD_LENGTH_METERS: f64 = 8.2296; // 54/2 feet
 pub mod vision {
     use nalgebra::Vector2;
 
-    pub const LIMELIGHT_UPPER_PITCH_DEGREES: f64 = -37.3;
+    pub const LIMELIGHT_UPPER_PITCH_DEGREES: f64 = -35.15;
     pub const LIMELIGHT_UPPER_YAW_DEGREES: f64 = 90.; // Counterclockwise positive
-    pub const LIMELIGHT_UPPER_HEIGHT_INCHES: f64 = 20.785;
-    pub const ROBOT_CENTER_TO_LIMELIGHT_UPPER_INCHES: Vector2<f64> = Vector2::new(11.807, 10.916);
+    pub const LIMELIGHT_UPPER_HEIGHT_INCHES: f64 = 20.8;
+    pub const ROBOT_CENTER_TO_LIMELIGHT_UPPER_INCHES: Vector2<f64> = Vector2::new(11.118, 10.352);
 }
 
 pub mod drivetrain {
@@ -91,7 +91,7 @@ pub mod elevator {
     pub const BOTTOM: f64 = 0.0; // unit is rotations
     pub const L2: f64 = 1.; // unit is rotations
     pub const L3: f64 = 15.75; // unit is rotations
-    pub const L4: f64 = 38.8; // unit is rotations
+    pub const L4: f64 = 39.1; // unit is rotations
     pub const ELEVATOR_TRAPEZOID_DT_MS: u64 = 50; // sleep.await this long in between updating the elevator trapezoidal when running its async function
     pub const POSITION_TOLERANCE: f64 = 0.25; // unit is rotations. finish elevator async move when within this distance of target
 }

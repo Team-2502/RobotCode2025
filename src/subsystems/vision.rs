@@ -81,7 +81,10 @@ impl Vision {
 
             Telemetry::put_number("id", self.results.Fiducial[0].fID as f64).await;
         }
+        if let Some(dist) = self.get_dist() {
+            Telemetry::put_number("dist from tag inches", dist.get::<inch>()).await;
 
+        }
         Telemetry::put_number("tx", self.results.tx).await;
         Telemetry::put_number("ty", self.results.ty).await;
         Telemetry::put_number("saved_id", self.saved_id as f64).await;

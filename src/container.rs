@@ -73,7 +73,7 @@ pub async fn control_drivetrain(
         deadrz
     };
 
-    drivetrain.set_speeds(deadly, deadlx, rot, SwerveControlStyle::FieldOriented);
+    drivetrain.set_speeds(deadly, deadlx , rot, SwerveControlStyle::FieldOriented);
 
     if right_drive.get(RESET_HEADING) {
         drivetrain.reset_heading();

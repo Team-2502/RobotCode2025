@@ -176,11 +176,9 @@ impl Robot for Ferris {
                     drivetrain.post_odo().await;
 
                     let drivetrain_aligned = if self.controllers.right_drive.get(LINEUP_LEFT) {
-                        drivetrain.lineup(LineupSide::Left).await;
-                        true
+                        drivetrain.lineup(LineupSide::Left).await
                     } else if self.controllers.right_drive.get(LINEUP_RIGHT) {
-                        drivetrain.lineup(LineupSide::Right).await;
-                        true
+                        drivetrain.lineup(LineupSide::Right).await
                     } else {
                         control_drivetrain(
                             &mut drivetrain,
@@ -310,7 +308,7 @@ pub fn score(
                 ElevatorPosition::Bottom => -0.25,
                 ElevatorPosition::L2 => -0.25,
                 ElevatorPosition::L3 => -0.25,
-                ElevatorPosition::L4 => -0.15
+                ElevatorPosition::L4 => -0.25
             };
             indexer.set_speed(indexer_speed);
         } else {

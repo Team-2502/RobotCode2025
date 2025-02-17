@@ -260,10 +260,12 @@ impl Drivetrain {
 
         let measured = self.get_speeds();
 
-        // for  module in &measured {
-        //     print!("{:.2} : ", module.angle.get::<degree>());
-        // }
-        // println!();
+        /*
+        for  module in &measured {
+            print!("{:.2} : ", module.angle.get::<degree>() % 360.);
+        }
+        println!();
+        */
 
         let positions = self.get_positions(&measured);
 
@@ -375,7 +377,7 @@ impl Drivetrain {
         self.offset = self.get_angle();
     }
 
-    pub async fn lineup(&mut self, side: LineupSide) {
+    pub async fn lineup(&mut self, side: LineupSide) -> bool {
         let mut last_error = Vector2::zeros();
         let mut i = Vector2::zeros();
 
@@ -388,7 +390,7 @@ impl Drivetrain {
             }
 
             error_angle *= SWERVE_TURN_KP;
-            error_position *= -SWERVE_DRIVE_KP;
+            error_position *= -SWERVE_DRIVE_KP * 1.25;
 
             let mut speed = error_position;
 
@@ -416,7 +418,8 @@ impl Drivetrain {
             Telemetry::put_number("target_x", target.position.x).await;
             Telemetry::put_number("target_y", target.position.y).await;
             Telemetry::put_number("target_angle", target.angle.get::<radian>()).await;
-        }
+            if error_position.magnitude().abs() < 0.01 {true} else {false}
+        } else {false}
     }
 
     // Find the position to line up to based on which scoring side we want.
@@ -435,13 +438,13 @@ impl Drivetrain {
 
         let yaw = quaternion_to_yaw(tag_rotation);
 
-        let mut side_distance = Length::new::<inch>(13. / 2.);
+        let mut side_distance = Length::new::<inch>(13. / 2.); // theoretical is 13. / 2.
         let forward_distance = Length::new::<inch>(16.75); //theoretical is 16.75
-        let elevator_position = Length::new::<inch>(-10.); //theoretical is -11.0
+        let elevator_position = Length::new::<inch>(-9.); //theoretical is -11.0
 
         let side_multiplier = match side {
             LineupSide::Left => -1.0,
-            LineupSide::Right => 0.9,
+            LineupSide::Right => 1.0,
         };
         side_distance *= side_multiplier;
         side_distance += elevator_position;
