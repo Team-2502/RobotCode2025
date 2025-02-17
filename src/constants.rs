@@ -6,15 +6,19 @@ pub mod robotmap {
 
         pub const FR_DRIVE: i32 = 1;
         pub const FR_TURN: i32 = 2;
+        pub const FR_ENCODER: i32 = 13;
 
         pub const FL_DRIVE: i32 = 4;
         pub const FL_TURN: i32 = 3;
+        pub const FL_ENCODER: i32 = 14;
 
         pub const BL_DRIVE: i32 = 5;
         pub const BL_TURN: i32 = 6;
+        pub const BL_ENCODER: i32 = 15;
 
         pub const BR_DRIVE: i32 = 7;
         pub const BR_TURN: i32 = 8;
+        pub const BR_ENCODER: i32 = 16;
     }
 
     pub mod elevator {

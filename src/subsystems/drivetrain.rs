@@ -4,7 +4,7 @@ use frcrs::alliance_station;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::ops::{Add, Sub};
 
-use frcrs::ctre::{talon_encoder_tick, ControlMode, Pigeon, Talon};
+use frcrs::ctre::{talon_encoder_tick, ControlMode, Pigeon, Talon, CanCoder};
 
 use crate::constants::drivetrain::{LINEUP_2D_TX_FWD_KP, LINEUP_2D_TX_STR_KP, LINEUP_2D_TY_FWD_KP, PIGEON_OFFSET, SWERVE_DRIVE_IE, SWERVE_DRIVE_KP, SWERVE_ROTATIONS_TO_INCHES, SWERVE_TURN_KP, TARGET_TX_LEFT, TARGET_TX_RIGHT, TARGET_TY_LEFT, TARGET_TY_RIGHT, TX_ACCEPTABLE_ERROR, TY_ACCEPTABLE_ERROR, YAW_ACCEPTABLE_ERROR};
 use crate::constants::robotmap::swerve::*;
@@ -50,15 +50,19 @@ pub struct Drivetrain {
 
     fr_drive: Talon,
     fr_turn: Talon,
+    fr_encoder: CanCoder,
 
     fl_drive: Talon,
     fl_turn: Talon,
+    fl_encoder: CanCoder,
 
     bl_drive: Talon,
     bl_turn: Talon,
+    bl_encoder: CanCoder,
 
     br_drive: Talon,
     br_turn: Talon,
+    br_encoder: CanCoder,
 
     kinematics: Swerve,
     pub odometry: Odometry,
@@ -95,6 +99,16 @@ impl Drivetrain {
         let bl_turn = Talon::new(BL_TURN, Some("can0".to_owned()));
         let br_turn = Talon::new(BR_TURN, Some("can0".to_owned()));
 
+        let fr_drive = Talon::new(FR_DRIVE, Some("can0".to_owned()));
+        let fl_drive = Talon::new(FL_DRIVE, Some("can0".to_owned()));
+        let bl_drive = Talon::new(BL_DRIVE, Some("can0".to_owned()));
+        let br_drive = Talon::new(BR_DRIVE, Some("can0".to_owned()));
+
+        let fr_encoder = CanCoder::new(FR_ENCODER, Some("can0".to_owned()));
+        let fl_encoder = CanCoder::new(FL_ENCODER, Some("can0".to_owned()));
+        let bl_encoder = CanCoder::new(BL_ENCODER, Some("can0".to_owned()));
+        let br_encoder = CanCoder::new(BR_ENCODER, Some("can0".to_owned()));
+
         let limelight_lower = Vision::new(SocketAddr::new(
             IpAddr::V4(Ipv4Addr::new(10, 25, 2, 11)),
             5807,
@@ -113,17 +127,21 @@ impl Drivetrain {
         Self {
             pigeon: Pigeon::new(PIGEON, Some("can0".to_owned())),
 
-            fr_drive: Talon::new(FR_DRIVE, Some("can0".to_owned())),
+            fr_drive,
             fr_turn,
+            fr_encoder,
 
-            fl_drive: Talon::new(FL_DRIVE, Some("can0".to_owned())),
+            fl_drive,
             fl_turn,
+            fl_encoder,
 
-            bl_drive: Talon::new(BL_DRIVE, Some("can0".to_owned())),
+            bl_drive,
             bl_turn,
+            bl_encoder,
 
-            br_drive: Talon::new(BR_DRIVE, Some("can0".to_owned())),
+            br_drive,
             br_turn,
+            br_encoder,
 
             kinematics: Swerve::rectangle(Length::new::<inch>(21.5), Length::new::<inch>(21.5)),
             odometry: Odometry::new(),
