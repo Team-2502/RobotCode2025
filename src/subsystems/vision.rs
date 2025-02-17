@@ -190,7 +190,7 @@ impl Vision {
         let dist = self.get_dist()?;
         let drivetrain_angle = Angle::new::<radian>(-self.drivetrain_angle.get::<radian>());
 
-        println!("dist: {}", dist.get::<meter>());
+        //println!("dist: {}", dist.get::<meter>());
 
         // Get tag position and rotation
         let tag_data = self.get_tag_position(id)?;
@@ -198,7 +198,7 @@ impl Vision {
 
         let angle_to_tag: Angle =
             (drivetrain_angle) + Angle::new::<degree>(vision::LIMELIGHT_UPPER_YAW_DEGREES) - self.get_tx();
-        println!("angle to tag degrees: dt angle {} + ll yaw {} + tx {} = {}",drivetrain_angle.get::<degree>(),vision::LIMELIGHT_UPPER_YAW_DEGREES,self.get_tx().get::<degree>(),angle_to_tag.get::<degree>());
+        //println!("angle to tag degrees: dt angle {} + ll yaw {} + tx {} = {}",drivetrain_angle.get::<degree>(),vision::LIMELIGHT_UPPER_YAW_DEGREES,self.get_tx().get::<degree>(),angle_to_tag.get::<degree>());
 
         // Calculate limelight's position relative to tag
         let limelight_to_tag: Vector2<Length> = Vector2::new(

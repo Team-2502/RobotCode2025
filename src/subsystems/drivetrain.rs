@@ -2,7 +2,7 @@ use std::f64::consts::PI;
 use frcrs::alliance_station;
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::ops::Add;
+use std::ops::{Add, Sub};
 
 use frcrs::ctre::{talon_encoder_tick, ControlMode, Pigeon, Talon};
 
@@ -381,7 +381,7 @@ impl Drivetrain {
 
         if let Some(target) = self.calculate_target_lineup_position(side) {
             let mut error_position = target.position - self.odometry.robot_pose_estimate.get_position_meters();
-            let mut error_angle = (target.angle - self.get_offset()).get::<radian>();
+            let mut error_angle = (-target.angle - self.get_offset()).get::<radian>();
 
             if error_position.abs().max() < SWERVE_DRIVE_IE {
                 i += error_position;
@@ -401,7 +401,7 @@ impl Drivetrain {
 
             self.set_speeds(
                 speed.x,
-                -speed.y,
+                speed.y,
                 error_angle,
                 SwerveControlStyle::FieldOriented,
             );
@@ -436,12 +436,12 @@ impl Drivetrain {
         let yaw = quaternion_to_yaw(tag_rotation);
 
         let mut side_distance = Length::new::<inch>(13. / 2.);
-        let forward_distance = Length::new::<inch>(16.75);
-        let elevator_position = Length::new::<inch>(-11.);
+        let forward_distance = Length::new::<inch>(16.75); //theoretical is 16.75
+        let elevator_position = Length::new::<inch>(-10.); //theoretical is -11.0
 
         let side_multiplier = match side {
             LineupSide::Left => -1.0,
-            LineupSide::Right => 1.0,
+            LineupSide::Right => 0.9,
         };
         side_distance *= side_multiplier;
         side_distance += elevator_position;
@@ -462,7 +462,7 @@ impl Drivetrain {
         );
 
         let mut robot_angle =
-            Angle::new::<radian>(yaw).add(Angle::new::<radian>(PI)).add(Angle::new::<radian>(PI / 2.));
+            Angle::new::<radian>(yaw).add(Angle::new::<radian>(PI)).sub(Angle::new::<radian>(PI / 2.));
 
         robot_angle = Angle::new::<degree>(calculate_relative_target(
             self.get_offset().get::<degree>(),

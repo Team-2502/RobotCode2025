@@ -176,9 +176,11 @@ impl Robot for Ferris {
                     drivetrain.post_odo().await;
 
                     let drivetrain_aligned = if self.controllers.right_drive.get(LINEUP_LEFT) {
-                        drivetrain.lineup_2d(LineupSide::Left)
+                        drivetrain.lineup(LineupSide::Left).await;
+                        true
                     } else if self.controllers.right_drive.get(LINEUP_RIGHT) {
-                        drivetrain.lineup_2d(LineupSide::Right)
+                        drivetrain.lineup(LineupSide::Right).await;
+                        true
                     } else {
                         control_drivetrain(
                             &mut drivetrain,
