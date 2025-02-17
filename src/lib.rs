@@ -108,6 +108,10 @@ impl Robot for Ferris {
         NetworkTable::init();
 
         Telemetry::put_selector("auto chooser", Auto::names()).await;
+
+        if let Ok(drivetrain) = self.drivetrain.try_borrow_mut() {
+            drivetrain.reset_turn_angles();
+        }
     }
 
     fn disabled_init(&mut self) {
@@ -179,6 +183,9 @@ impl Robot for Ferris {
                         drivetrain.lineup(LineupSide::Left).await
                     } else if self.controllers.right_drive.get(LINEUP_RIGHT) {
                         drivetrain.lineup(LineupSide::Right).await
+                    } else if self.controllers.operator.get(WHEELS_ZERO) {
+                        drivetrain.set_wheels_zero();
+                        false
                     } else {
                         control_drivetrain(
                             &mut drivetrain,

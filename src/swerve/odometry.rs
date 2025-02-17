@@ -79,6 +79,7 @@ impl Odometry {
 
     pub fn set_abs(&mut self, position: Vector2<Length>) {
         self.robot_pose_estimate.set_absolute(position);
+        self.robot_pose_estimate.figure_of_merit = Length::new::<meter>(START_POSITION_FOM);
     }
 
     pub fn calculate(&mut self, positions: Vec<ModuleReturn>, angle: Angle) -> Option<PoseEstimate> {

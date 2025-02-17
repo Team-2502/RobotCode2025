@@ -67,6 +67,9 @@ pub async fn follow_path_segment(
     let mut i = Vector2::zeros();
 
     loop {
+        drivetrain.post_odo().await;
+        drivetrain.update_limelight().await;
+
         let now = Instant::now();
         let dt = now - last_loop;
         last_loop = now;

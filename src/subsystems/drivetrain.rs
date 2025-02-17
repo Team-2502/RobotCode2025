@@ -177,10 +177,25 @@ impl Drivetrain {
         //println!("upper ll tx: {}", self.limelight_upper.get_tx().get::<degree>());
     }
 
+    pub fn reset_turn_angles(&self) {
+        self.fr_turn.set_position(0.);
+        self.fl_turn.set_position(0.);
+        self.br_turn.set_position(0.);
+        self.fr_turn.set_position(0.);
+    }
+
+    pub fn set_wheels_zero(&mut self) {
+        self.fr_turn.set(ControlMode::Position, 0.);
+        self.fl_turn.set(ControlMode::Position, 0.);
+        self.br_turn.set(ControlMode::Position, 0.);
+        self.fr_turn.set(ControlMode::Position, 0.);
+    }
+
     pub async fn post_odo(&self) {
         Telemetry::put_number("odo_x", self.odometry.robot_pose_estimate.get_position().x.get::<meter>()).await;
         Telemetry::put_number("odo_y", self.odometry.robot_pose_estimate.get_position().y.get::<meter>()).await;
         Telemetry::put_number("angle", self.get_offset().get::<radian>()).await;
+        Telemetry::put_number("FOM", self.odometry.robot_pose_estimate.figure_of_merit.get::<meter>()).await;
     }
 
     pub fn update_odo_absolute(&mut self, pose: Vector2<Length>) {
@@ -418,7 +433,7 @@ impl Drivetrain {
             Telemetry::put_number("target_x", target.position.x).await;
             Telemetry::put_number("target_y", target.position.y).await;
             Telemetry::put_number("target_angle", target.angle.get::<radian>()).await;
-            if error_position.magnitude().abs() < 0.01 {true} else {false}
+            if error_position.magnitude().abs() < 0.015 {true} else {false}
         } else {false}
     }
 

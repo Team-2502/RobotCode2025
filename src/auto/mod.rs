@@ -14,7 +14,7 @@ use tokio::join;
 use tokio::time::sleep;
 
 use crate::{constants, Ferris, score};
-use crate::subsystems::{ElevatorPosition, Indexer};
+use crate::subsystems::{Drivetrain, Elevator, ElevatorPosition, Indexer, LineupSide};
 use crate::subsystems::ElevatorPosition::{L2, L4};
 
 #[derive(Serialize, Deserialize)]
@@ -77,6 +77,47 @@ impl Auto {
             }
         }
     }
+}
+
+pub async fn async_score(
+    drivetrain: &mut Drivetrain,
+    lineup_side: LineupSide,
+    elevator: &mut Elevator,
+    indexer: &mut Indexer,
+    elevator_position: ElevatorPosition,
+) -> bool {
+    elevator.set_target(elevator_position);
+
+    join! (
+        async {
+            loop {
+                drivetrain.update_limelight().await;
+                drivetrain.post_odo().await;
+
+                if drivetrain.lineup(lineup_side).await {
+                    break
+                }
+
+                sleep(Duration::from_millis(20)).await;
+            }
+        },
+        elevator.run_to_target_trapezoid_async()
+    );
+
+    while indexer.get_laser_dist() < constants::indexer::LASER_TRIP_DISTANCE_MM {
+        let indexer_speed = match elevator_position {
+            ElevatorPosition::Bottom => -0.25,
+            ElevatorPosition::L2 => -0.25,
+            ElevatorPosition::L3 => -0.25,
+            ElevatorPosition::L4 => -0.25
+        };
+        indexer.set_speed(indexer_speed);
+    }
+
+    sleep(Duration::from_secs_f64(0.5)).await;
+    indexer.stop();
+
+    true
 }
 
 pub async fn blue_triangle(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
@@ -151,13 +192,9 @@ pub async fn blue_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
         }
     );
 
-    // wait_indexer(&mut indexer).await;
+    sleep(Duration::from_secs_f64(1.5)).await;
 
-    indexer.set_speed(-0.25);
-
-    sleep(Duration::from_secs_f64(1.)).await;
-
-    indexer.stop();
+    async_score(&mut drivetrain, LineupSide::Left, &mut elevator, &mut indexer, L4).await;
 
     Ok(())
 }

@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 #frcrs = { git = "https://github.com/Team-2502/frcrs.git" }
-frcrs = { path = "../frcrs" }
+frcrs = { path = "../../frcrs" }
 tokio = { version = "1.36.0", features = ["rt", "full"] }
 serde = { version = "1.0.217", features = ["derive"] }
 serde_json = "1.0.134"

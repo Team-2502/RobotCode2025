@@ -91,6 +91,22 @@ impl Elevator {
          */
     }
 
+    pub async fn run_to_target_trapezoid_async(&mut self) {
+        let target_position = match self.get_target() {
+            ElevatorPosition::Bottom => elevator::BOTTOM,
+            ElevatorPosition::L2 => elevator::L2,
+            ElevatorPosition::L3 => elevator::L3,
+            ElevatorPosition::L4 => elevator::L4,
+        };
+
+        while (self.right.get_position() - target_position).abs() < elevator::POSITION_TOLERANCE {
+            self.right.set(ControlMode::MotionMagic, target_position);
+            self.left.follow(&self.right, true);
+
+            sleep(Duration::from_millis(20)).await;
+        }
+    }
+
     pub fn set_speed(&self, speed: f64) {
         self.left.set(ControlMode::Percent, speed);
         self.right.set(ControlMode::Percent, speed); //is inverted in config
