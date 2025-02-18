@@ -26,6 +26,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::task::{spawn_local, AbortHandle};
 use tokio::time::sleep;
+use uom::si::angle::degree;
 
 #[derive(Clone)]
 pub struct Controllers {
@@ -108,14 +109,18 @@ impl Robot for Ferris {
         NetworkTable::init();
 
         Telemetry::put_selector("auto chooser", Auto::names()).await;
-
-        if let Ok(drivetrain) = self.drivetrain.try_borrow_mut() {
-            drivetrain.reset_turn_angles();
-        }
     }
 
     fn disabled_init(&mut self) {
-        println!("Disabled init");
+        if let Ok(drivetrain) = self.drivetrain.try_borrow_mut() {
+            let offsets = drivetrain.get_offsets();
+
+            for offset in offsets {
+                print!("{} : ", offset.get::<degree>())
+            }
+
+            println!();
+        }
     }
 
     fn autonomous_init(&mut self) {
@@ -136,6 +141,8 @@ impl Robot for Ferris {
         if let Ok(mut drivetrain) = self.drivetrain.try_borrow_mut() {
             //drivetrain.update_limelight().await;
             drivetrain.post_odo().await;
+
+            drivetrain.print_offsets();
         }
 
         if let Some(handle) = self.auto_handle.take() {
