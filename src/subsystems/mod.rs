@@ -2,6 +2,7 @@ mod climber;
 mod drivetrain;
 mod elevator;
 mod indexer;
+mod led;
 mod vision;
 
 pub use climber::*;
