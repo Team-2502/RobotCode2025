@@ -86,7 +86,6 @@ pub mod drivetrain {
     pub const TX_ACCEPTABLE_ERROR: f64 = 1.8;
     pub const TY_ACCEPTABLE_ERROR: f64 = 1.8;
     pub const YAW_ACCEPTABLE_ERROR: f64 = 0.02;
-
 }
 pub mod pose_estimation {
     pub const ARC_ODOMETRY_MINIMUM_DELTA_THETA_RADIANS: f64 = 0.000001;

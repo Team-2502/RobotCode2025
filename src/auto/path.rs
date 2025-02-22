@@ -1,9 +1,14 @@
+use frcrs::telemetry::Telemetry;
+use std::f64::consts::PI;
+use std::ops::{Add, Neg};
 use std::time::Duration;
+use frcrs::input::RobotState;
 use tokio::fs::File;
 
 use nalgebra::Vector2;
 use tokio::io::AsyncReadExt;
 use tokio::time::{sleep, Instant};
+use uom::si::angle::{Angle, degree};
 use uom::si::{
     angle::radian,
     f64::{Length, Time},
@@ -13,7 +18,7 @@ use uom::si::{
 };
 use wpi_trajectory::Path;
 
-use crate::subsystems::SwerveControlStyle;
+use crate::subsystems::{calculate_relative_target, SwerveControlStyle};
 use crate::{
     constants::drivetrain::{
         SWERVE_DRIVE_IE, SWERVE_DRIVE_KD, SWERVE_DRIVE_KF, SWERVE_DRIVE_KFA, SWERVE_DRIVE_KI,
@@ -67,6 +72,12 @@ pub async fn follow_path_segment(
     let mut i = Vector2::zeros();
 
     loop {
+        let state = RobotState::get();
+
+        if !state.enabled() {
+            break
+        }
+
         drivetrain.post_odo().await;
         drivetrain.update_limelight().await;
 
@@ -85,10 +96,29 @@ pub async fn follow_path_segment(
 
         let setpoint = path.get(Time::new::<second>(elapsed));
 
-        let angle = -setpoint.heading;
+        let mut angle = -setpoint.heading;
+        // let mut angle_radians: f64 = setpoint.heading.get::<radian>();
         let position = Vector2::new(setpoint.x.get::<meter>(), setpoint.y.get::<meter>());
 
-        let mut error_position = position - drivetrain.odometry.robot_pose_estimate.get_position_meters();
+        // if drivetrain.get_offset().get::<radian>() > 0. && angle.get::<radian>() < 0. {
+        //     angle += Angle::new::<degree>(360.);
+        // } else if drivetrain.get_offset().get::<radian>() < 0. && angle.get::<radian>() > 0. {
+        //     angle -= Angle::new::<degree>(360.);
+        // }
+
+        // if drivetrain.get_offset().get::<radian>() > 0. && angle_radians < 0. {
+        //     angle_radians += (PI * 2.);
+        // } else if drivetrain.get_offset().get::<radian>() < 0. && angle_radians > 0. {
+        //     angle_radians -= (PI * 2.);
+        // }
+
+        angle = Angle::new::<degree>(calculate_relative_target(drivetrain.get_offset().get::<degree>(), angle.get::<degree>()));
+
+        let mut error_position = position
+            - drivetrain
+                .odometry
+                .robot_pose_estimate
+                .get_position_meters();
         let mut error_angle = (angle - drivetrain.get_offset()).get::<radian>();
 
         if error_position.abs().max() < SWERVE_DRIVE_IE {
@@ -129,6 +159,9 @@ pub async fn follow_path_segment(
             error_angle,
             SwerveControlStyle::FieldOriented,
         );
+
+        Telemetry::put_number("path_turn_err", error_angle).await;
+        Telemetry::put_number("path_target_angle", angle.get::<radian>()).await;
 
         sleep(Duration::from_millis(20)).await;
     }

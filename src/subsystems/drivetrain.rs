@@ -1,12 +1,18 @@
-use std::f64::consts::PI;
 use frcrs::alliance_station;
+use std::f64::consts::PI;
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::ops::{Add, Sub};
 
-use frcrs::ctre::{talon_encoder_tick, ControlMode, Pigeon, Talon, CanCoder};
+use frcrs::ctre::{talon_encoder_tick, CanCoder, ControlMode, Pigeon, Talon};
 
-use crate::constants::drivetrain::{BL_OFFSET_DEGREES, BR_OFFSET_DEGREES, FL_OFFSET_DEGREES, FR_OFFSET_DEGREES, LINEUP_2D_TX_FWD_KP, LINEUP_2D_TX_STR_KP, LINEUP_2D_TY_FWD_KP, PIGEON_OFFSET, SWERVE_DRIVE_IE, SWERVE_DRIVE_KP, SWERVE_ROTATIONS_TO_INCHES, SWERVE_TURN_KP, SWERVE_TURN_RATIO, TARGET_TX_LEFT, TARGET_TX_RIGHT, TARGET_TY_LEFT, TARGET_TY_RIGHT, TX_ACCEPTABLE_ERROR, TY_ACCEPTABLE_ERROR, YAW_ACCEPTABLE_ERROR};
+use crate::constants::drivetrain::{
+    BL_OFFSET_DEGREES, BR_OFFSET_DEGREES, FL_OFFSET_DEGREES, FR_OFFSET_DEGREES,
+    LINEUP_2D_TX_FWD_KP, LINEUP_2D_TX_STR_KP, LINEUP_2D_TY_FWD_KP, PIGEON_OFFSET, SWERVE_DRIVE_IE,
+    SWERVE_DRIVE_KP, SWERVE_ROTATIONS_TO_INCHES, SWERVE_TURN_KP, SWERVE_TURN_RATIO, TARGET_TX_LEFT,
+    TARGET_TX_RIGHT, TARGET_TY_LEFT, TARGET_TY_RIGHT, TX_ACCEPTABLE_ERROR, TY_ACCEPTABLE_ERROR,
+    YAW_ACCEPTABLE_ERROR,
+};
 use crate::constants::robotmap::swerve::*;
 use crate::swerve::kinematics::{ModuleState, Swerve};
 use crate::swerve::odometry::{ModuleReturn, Odometry};
@@ -72,7 +78,7 @@ pub struct Drivetrain {
     pub limelight_lower: Vision,
     pub limelight_upper: Vision,
 
-    abs_offsets: [Angle; 4]
+    abs_offsets: [Angle; 4],
 }
 
 #[derive(Serialize, Deserialize)]
@@ -105,7 +111,13 @@ impl Drivetrain {
         fl_turn.zero();
         bl_turn.zero();
         br_turn.zero();
-        println!("These should be 0: {} {} {} {}", fr_turn.get_position(), fl_turn.get_position(), br_turn.get_position(), bl_turn.get_position());
+        println!(
+            "These should be 0: {} {} {} {}",
+            fr_turn.get_position(),
+            fl_turn.get_position(),
+            br_turn.get_position(),
+            bl_turn.get_position()
+        );
 
         let fr_drive = Talon::new(FR_DRIVE, Some("can0".to_owned()));
         let fl_drive = Talon::new(FL_DRIVE, Some("can0".to_owned()));
@@ -172,12 +184,22 @@ impl Drivetrain {
 
     pub async fn update_limelight(&mut self) {
         self.limelight_lower
-            .update(self.get_offset(), self.odometry.robot_pose_estimate.get_position())
+            .update(
+                self.get_offset(),
+                self.odometry.robot_pose_estimate.get_position(),
+            )
             .await;
         self.limelight_upper
-            .update(self.get_offset(), self.odometry.robot_pose_estimate.get_position())
+            .update(
+                self.get_offset(),
+                self.odometry.robot_pose_estimate.get_position(),
+            )
             .await;
-        Telemetry::put_number("limelight upper fom", self.limelight_upper.get_figure_of_merit().get::<meter>()).await;
+        Telemetry::put_number(
+            "limelight upper fom",
+            self.limelight_upper.get_figure_of_merit().get::<meter>(),
+        )
+        .await;
         /*
         let pose = self.limelight_lower.get_botpose();
 
@@ -240,15 +262,37 @@ impl Drivetrain {
     }
 
     pub async fn post_odo(&self) {
-        Telemetry::put_number("odo_x", self.odometry.robot_pose_estimate.get_position().x.get::<meter>()).await;
-        Telemetry::put_number("odo_y", self.odometry.robot_pose_estimate.get_position().y.get::<meter>()).await;
+        Telemetry::put_number(
+            "odo_x",
+            self.odometry
+                .robot_pose_estimate
+                .get_position()
+                .x
+                .get::<meter>(),
+        )
+        .await;
+        Telemetry::put_number(
+            "odo_y",
+            self.odometry
+                .robot_pose_estimate
+                .get_position()
+                .y
+                .get::<meter>(),
+        )
+        .await;
         Telemetry::put_number("angle", self.get_offset().get::<radian>()).await;
-        Telemetry::put_number("FOM", self.odometry.robot_pose_estimate.figure_of_merit.get::<meter>()).await;
+        Telemetry::put_number(
+            "FOM",
+            self.odometry
+                .robot_pose_estimate
+                .figure_of_merit
+                .get::<meter>(),
+        )
+        .await;
     }
 
     pub fn update_odo_absolute(&mut self, pose: Vector2<Length>) {
-        self.odometry
-            .set_abs(pose);
+        self.odometry.set_abs(pose);
     }
 
     pub fn stop(&self) {
@@ -263,6 +307,18 @@ impl Drivetrain {
 
         self.br_drive.stop();
         self.br_turn.stop();
+
+        self.fr_drive.set(ControlMode::Percent, 0.);
+        self.fr_turn.set(ControlMode::Percent, 0.);
+
+        self.fl_drive.set(ControlMode::Percent, 0.);
+        self.fl_turn.set(ControlMode::Percent, 0.);
+
+        self.bl_drive.set(ControlMode::Percent, 0.);
+        self.bl_turn.set(ControlMode::Percent, 0.);
+
+        self.br_drive.set(ControlMode::Percent, 0.);
+        self.br_turn.set(ControlMode::Percent, 0.);
     }
 
     fn get_positions(&self, angles: &Vec<ModuleState>) -> Vec<ModuleReturn> {
@@ -290,7 +346,10 @@ impl Drivetrain {
     fn get_speeds(&self) -> Vec<ModuleState> {
         let mut speeds = Vec::new();
 
-        for (module, offset) in [&self.fr_turn, &self.fl_turn, &self.bl_turn, &self.br_turn].iter().zip(self.abs_offsets) {
+        for (module, offset) in [&self.fr_turn, &self.fl_turn, &self.bl_turn, &self.br_turn]
+            .iter()
+            .zip(self.abs_offsets)
+        {
             let rev = -module.get_position() / SWERVE_TURN_RATIO;
 
             speeds.push(ModuleState {
@@ -369,10 +428,13 @@ impl Drivetrain {
 
         let positions = self.get_positions(&measured);
 
-        let angle = self.get_offset();
+        let angle = self.get_offset_wrapped();
 
         let mut sensor_measurements = Vec::new();
-        if let Some(odo_estimate) = self.odometry.calculate_arcs(positions, (angle + Angle::new::<degree>(180.))) {
+        if let Some(odo_estimate) = self
+            .odometry
+            .calculate_arcs(positions, (angle + Angle::new::<degree>(180.)))
+        {
             //println!("new odo pose estimate: x {} y {} fom {}",odo_estimate.get_position_meters().x, odo_estimate.get_position_meters().y, odo_estimate.figure_of_merit.get::<meter>());
             sensor_measurements.push(odo_estimate);
         }
@@ -384,7 +446,9 @@ impl Drivetrain {
         if let Some(limelight_upper_estimate) = self.limelight_upper.get_pose_estimate_2d() {
             sensor_measurements.push(limelight_upper_estimate);
         }
-        if sensor_measurements.len() != 0 {self.odometry.fuse_sensors_fom(sensor_measurements);}
+        if sensor_measurements.len() != 0 {
+            self.odometry.fuse_sensors_fom(sensor_measurements);
+        }
 
         // if let Some(pose) = self.odometry.calculate(positions, (angle + Angle::new::<degree>(180.))) {
         //     self.odometry.set_abs(pose.get_position());
@@ -407,19 +471,23 @@ impl Drivetrain {
 
         self.fr_turn.set(
             ControlMode::Position,
-            -(wheel_speeds[0].angle.get::<revolution>() - self.abs_offsets[0].get::<revolution>()) * SWERVE_TURN_RATIO,
+            -(wheel_speeds[0].angle.get::<revolution>() - self.abs_offsets[0].get::<revolution>())
+                * SWERVE_TURN_RATIO,
         );
         self.fl_turn.set(
             ControlMode::Position,
-            -(wheel_speeds[1].angle.get::<revolution>() - self.abs_offsets[1].get::<revolution>()) * SWERVE_TURN_RATIO,
+            -(wheel_speeds[1].angle.get::<revolution>() - self.abs_offsets[1].get::<revolution>())
+                * SWERVE_TURN_RATIO,
         );
         self.bl_turn.set(
             ControlMode::Position,
-            -(wheel_speeds[2].angle.get::<revolution>() - self.abs_offsets[2].get::<revolution>()) * SWERVE_TURN_RATIO,
+            -(wheel_speeds[2].angle.get::<revolution>() - self.abs_offsets[2].get::<revolution>())
+                * SWERVE_TURN_RATIO,
         );
         self.br_turn.set(
             ControlMode::Position,
-            -(wheel_speeds[3].angle.get::<revolution>() - self.abs_offsets[3].get::<revolution>()) * SWERVE_TURN_RATIO,
+            -(wheel_speeds[3].angle.get::<revolution>() - self.abs_offsets[3].get::<revolution>())
+                * SWERVE_TURN_RATIO,
         );
     }
 
@@ -461,6 +529,12 @@ impl Drivetrain {
     pub fn get_offset(&self) -> Angle {
         let mut difference = (self.get_angle() - self.offset).get::<degree>();
 
+        Angle::new::<degree>(difference)
+    }
+
+    pub fn get_offset_wrapped(&self) -> Angle {
+        let mut difference = (self.get_angle() - self.offset).get::<degree>();
+
         difference = (difference + 180.) % 360. - 180.;
         if difference < -180. {
             difference += 360.
@@ -482,8 +556,19 @@ impl Drivetrain {
         let mut i = Vector2::zeros();
 
         if let Some(target) = self.calculate_target_lineup_position(side, target_level) {
-            let mut error_position = target.position - self.odometry.robot_pose_estimate.get_position_meters();
-            let mut error_angle = (-target.angle - self.get_offset()).get::<radian>();
+            let mut error_position =
+                target.position - self.odometry.robot_pose_estimate.get_position_meters();
+
+            let mut dt_angle = (self.get_angle() - self.offset).get::<degree>();
+
+            dt_angle = (dt_angle + 180.) % 360. - 180.;
+            if dt_angle < -180. {
+                dt_angle += 360.
+            };
+
+            let dt_angle = Angle::new::<degree>(dt_angle);
+
+            let mut error_angle = (-target.angle - dt_angle).get::<radian>();
 
             if error_position.abs().max() < SWERVE_DRIVE_IE {
                 i += error_position;
@@ -525,14 +610,20 @@ impl Drivetrain {
                 // println!("dt not at position");
                 false
             }
-        } else {false}
+        } else {
+            false
+        }
     }
 
     // Find the position to line up to based on which scoring side we want.
     // It will return a vector with the x and y coordinates of the target position.
     // The target position will be to the side of the apriltag, half a robot length away from the edge
     // Will account for the robot's orientation with the hexagon lineup
-    pub fn calculate_target_lineup_position(&mut self, side: LineupSide, target_level: ElevatorPosition) -> Option<LineupTarget> {
+    pub fn calculate_target_lineup_position(
+        &mut self,
+        side: LineupSide,
+        target_level: ElevatorPosition,
+    ) -> Option<LineupTarget> {
         let tag_id = self.limelight_upper.get_saved_id();
         if tag_id == -1 {
             return None;
@@ -551,7 +642,7 @@ impl Drivetrain {
             ElevatorPosition::L2 => Length::new::<inch>(-10.5),
             ElevatorPosition::L3 => Length::new::<inch>(-10.5),
             ElevatorPosition::L4 => Length::new::<inch>(-9.),
-        };  //theoretical is -11.0
+        }; //theoretical is -11.0
 
         let side_multiplier = match side {
             LineupSide::Left => -1.0,
@@ -575,15 +666,19 @@ impl Drivetrain {
                 .get::<meter>(),
         );
 
-        let mut robot_angle =
-            Angle::new::<radian>(yaw).add(Angle::new::<radian>(PI)).sub(Angle::new::<radian>(PI / 2.));
+        let mut robot_angle = Angle::new::<radian>(yaw)
+            .add(Angle::new::<radian>(PI))
+            .sub(Angle::new::<radian>(PI / 2.));
 
         robot_angle = Angle::new::<degree>(calculate_relative_target(
             self.get_offset().get::<degree>(),
             robot_angle.get::<degree>(),
         ));
-        if robot_angle.get::<degree>() > 180. {robot_angle -= Angle::new::<degree>(360.)}
-        else if robot_angle.get::<degree>() < -180. {robot_angle += Angle::new::<degree>(360.)}
+        if robot_angle.get::<degree>() > 180. {
+            robot_angle -= Angle::new::<degree>(360.)
+        } else if robot_angle.get::<degree>() < -180. {
+            robot_angle += Angle::new::<degree>(360.)
+        }
 
         Some(LineupTarget {
             position: target_pos,
@@ -614,7 +709,7 @@ impl Drivetrain {
             // None of us actually know how the quaternions provided by said map work, this is copied code
             // Flip the tag normal to be out the back of the tag and wrap to the [0, 360] range
             let tag_yaw = -(quaternion_to_yaw(tag_rotation) + std::f64::consts::PI);
-                // % (std::f64::consts::PI * 2.);
+            // % (std::f64::consts::PI * 2.);
             // We score out the left, so forward-to-the-tag isn't very helpful
             let mut perpendicular_yaw = tag_yaw + std::f64::consts::PI / 2.0;
             // Convert to angle on [0,180]
@@ -626,7 +721,7 @@ impl Drivetrain {
 
             let target_ty = match side {
                 LineupSide::Left => TARGET_TY_LEFT,
-                LineupSide::Right => TARGET_TY_RIGHT
+                LineupSide::Right => TARGET_TY_RIGHT,
             };
             let target_tx = match side {
                 LineupSide::Left => TARGET_TX_LEFT,
@@ -659,14 +754,22 @@ impl Drivetrain {
 
             let mut transform = Vector2::new(fwd, str);
 
-            return if error_ty.abs() < TX_ACCEPTABLE_ERROR && error_tx.abs() < TY_ACCEPTABLE_ERROR && error_yaw.abs() < YAW_ACCEPTABLE_ERROR {
+            return if error_ty.abs() < TX_ACCEPTABLE_ERROR
+                && error_tx.abs() < TY_ACCEPTABLE_ERROR
+                && error_yaw.abs() < YAW_ACCEPTABLE_ERROR
+            {
                 println!("Drivetrain at target");
 
                 self.stop();
 
                 true
             } else {
-                println!("Drivetrain not at target ty: {} tx: {} yaw: {}", error_ty.abs(), error_tx.abs(), error_yaw.abs());
+                println!(
+                    "Drivetrain not at target ty: {} tx: {} yaw: {}",
+                    error_ty.abs(),
+                    error_tx.abs(),
+                    error_yaw.abs()
+                );
 
                 self.set_speeds(
                     transform.x,
@@ -706,7 +809,7 @@ fn normalize_angle_360(angle: f64) -> f64 {
 
 /// Get the target angle in relation to the robot's current angle.
 /// Ensures the target angle is mapped to the same rotational "circle" as the robot's angle.
-fn calculate_relative_target(current: f64, target: f64) -> f64 {
+pub fn calculate_relative_target(current: f64, target: f64) -> f64 {
     let target_relative = target + (current / 360.0).floor() * 360.0;
 
     // Ensure the relative target is the closest possible to the current angle
@@ -721,8 +824,8 @@ fn calculate_relative_target(current: f64, target: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use std::f64::consts::PI;
     use nalgebra::{Quaternion, Vector2, Vector3};
+    use std::f64::consts::PI;
 
     use crate::subsystems::drivetrain::{calculate_relative_target, quaternion_to_yaw};
     use crate::subsystems::{FieldPosition, LineupSide};
@@ -797,12 +900,7 @@ mod tests {
 
     #[test]
     fn quaternion_tag_19() {
-        let quaternion = Quaternion::new(
-            0.5000000000000001,
-            0.,
-            0.,
-            0.8660254037844386
-        );
+        let quaternion = Quaternion::new(0.5000000000000001, 0., 0., 0.8660254037844386);
 
         let yaw = -quaternion_to_yaw(quaternion);
 

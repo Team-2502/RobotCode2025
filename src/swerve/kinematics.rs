@@ -6,8 +6,8 @@ use uom::si::{
     length::inch,
 };
 
-use nalgebra::{ComplexField, Rotation2, Vector2};
 use crate::constants::drivetrain::SWERVE_TURN_RATIO;
+use nalgebra::{ComplexField, Rotation2, Vector2};
 
 pub type WheelSpeeds = Vec<ModuleState>;
 pub type ModulePosition = Vector2<f64>;

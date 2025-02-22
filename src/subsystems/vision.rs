@@ -14,10 +14,13 @@ use uom::si::{
     length::meter,
 };
 
+use crate::constants::pose_estimation::{
+    LIMELIGHT_BASE_FOM, LIMELIGHT_INACCURACY_PER_ANGULAR_VELOCITY,
+    LIMELIGHT_INACCURACY_PER_DEGREE_TX, LIMELIGHT_INACCURACY_PER_LINEAR_VELOCITY,
+};
+use crate::swerve::odometry::PoseEstimate;
 use std::net::SocketAddr;
 use tokio::time::Instant;
-use crate::constants::pose_estimation::{LIMELIGHT_BASE_FOM, LIMELIGHT_INACCURACY_PER_ANGULAR_VELOCITY, LIMELIGHT_INACCURACY_PER_DEGREE_TX, LIMELIGHT_INACCURACY_PER_LINEAR_VELOCITY};
-use crate::swerve::odometry::PoseEstimate;
 
 #[derive(Clone)]
 pub struct Vision {
@@ -83,7 +86,6 @@ impl Vision {
         }
         if let Some(dist) = self.get_dist() {
             Telemetry::put_number("dist from tag inches", dist.get::<inch>()).await;
-
         }
         Telemetry::put_number("tx", self.results.tx).await;
         Telemetry::put_number("ty", self.results.ty).await;
@@ -199,8 +201,9 @@ impl Vision {
         let tag_data = self.get_tag_position(id)?;
         let tag_xy = Vector2::new(tag_data.coordinate?.x, tag_data.coordinate?.y);
 
-        let angle_to_tag: Angle =
-            (drivetrain_angle) + Angle::new::<degree>(vision::LIMELIGHT_UPPER_YAW_DEGREES) - self.get_tx();
+        let angle_to_tag: Angle = (drivetrain_angle)
+            + Angle::new::<degree>(vision::LIMELIGHT_UPPER_YAW_DEGREES)
+            - self.get_tx();
         //println!("angle to tag degrees: dt angle {} + ll yaw {} + tx {} = {}",drivetrain_angle.get::<degree>(),vision::LIMELIGHT_UPPER_YAW_DEGREES,self.get_tx().get::<degree>(),angle_to_tag.get::<degree>());
 
         // Calculate limelight's position relative to tag
@@ -217,7 +220,8 @@ impl Vision {
 
         // Rotate the limelight offset by drivetrain angle
         let drivetrain_angle_rotation = Rotation2::new(drivetrain_angle.get::<radian>());
-        let robot_to_limelight_inches = drivetrain_angle_rotation * robot_center_to_limelight_unrotated_inches;
+        let robot_to_limelight_inches =
+            drivetrain_angle_rotation * robot_center_to_limelight_unrotated_inches;
         let robot_to_limelight: Vector2<Length> = Vector2::new(
             Length::new::<inch>(robot_to_limelight_inches.x),
             Length::new::<inch>(robot_to_limelight_inches.y),
@@ -244,7 +248,7 @@ impl Vision {
         if let Some(pose) = self.get_botpose_orb() {
             Some(PoseEstimate {
                 position: pose,
-                figure_of_merit: self.get_figure_of_merit()
+                figure_of_merit: self.get_figure_of_merit(),
             })
         } else {
             None
@@ -252,15 +256,17 @@ impl Vision {
     }
     pub fn get_pose_estimate_2d(&self) -> Option<PoseEstimate> {
         let pose = self.get_position_from_tag_2d()?;
-        Some(PoseEstimate{
-            position:pose,
-            figure_of_merit: self.get_figure_of_merit()
+        Some(PoseEstimate {
+            position: pose,
+            figure_of_merit: self.get_figure_of_merit(),
         })
     }
 
     pub fn get_figure_of_merit(&self) -> Length {
         let dt = Instant::now() - self.last_update_time;
-        let angular_velocity_rad_per_sec = (self.drivetrain_angle.get::<radian>() - self.last_drivetrain_angle.get::<radian>()) / dt.as_secs_f64();
+        let angular_velocity_rad_per_sec = (self.drivetrain_angle.get::<radian>()
+            - self.last_drivetrain_angle.get::<radian>())
+            / dt.as_secs_f64();
         let robot_position_meters: Vector2<f64> = Vector2::new(
             self.robot_position.x.get::<meter>(),
             self.robot_position.y.get::<meter>(),
@@ -269,10 +275,13 @@ impl Vision {
             self.last_robot_position.x.get::<meter>(),
             self.last_robot_position.y.get::<meter>(),
         );
-        let linear_velocity_meters_per_sec = (robot_position_meters - last_robot_position_meters).magnitude() / dt.as_secs_f64();
+        let linear_velocity_meters_per_sec =
+            (robot_position_meters - last_robot_position_meters).magnitude() / dt.as_secs_f64();
 
-        let mut fom_meters = LIMELIGHT_INACCURACY_PER_ANGULAR_VELOCITY * angular_velocity_rad_per_sec.abs();
-        fom_meters += LIMELIGHT_INACCURACY_PER_LINEAR_VELOCITY * linear_velocity_meters_per_sec.abs();
+        let mut fom_meters =
+            LIMELIGHT_INACCURACY_PER_ANGULAR_VELOCITY * angular_velocity_rad_per_sec.abs();
+        fom_meters +=
+            LIMELIGHT_INACCURACY_PER_LINEAR_VELOCITY * linear_velocity_meters_per_sec.abs();
         //fom_meters += LIMELIGHT_INACCURACY_PER_DEGREE_TX * self.get_tx().get::<degree>().abs();
         fom_meters += LIMELIGHT_BASE_FOM;
         Length::new::<meter>(fom_meters)

@@ -24,6 +24,8 @@ use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use axum::response::IntoResponse;
+use tokio::runtime::Handle;
 use tokio::task::{spawn_local, AbortHandle};
 use tokio::time::sleep;
 use uom::si::angle::degree;
@@ -36,8 +38,8 @@ pub struct Controllers {
 }
 
 #[derive(Default)]
-struct TeleopState {
-    drivetrain_state: DrivetrainControlState,
+pub struct TeleopState {
+    pub drivetrain_state: DrivetrainControlState,
 }
 
 #[derive(Clone)]
@@ -50,12 +52,12 @@ pub struct Ferris {
     pub indexer: Rc<RefCell<Indexer>>,
     pub climber: Rc<RefCell<Climber>>,
 
-    teleop_state: Rc<RefCell<TeleopState>>,
+    pub teleop_state: Rc<RefCell<TeleopState>>,
 
-    auto_handle: Option<tokio::task::AbortHandle>,
+    pub auto_handle: Option<tokio::task::AbortHandle>,
     elevator_trapezoid_handle: Option<tokio::task::AbortHandle>,
     indexer_intake_handle: Option<AbortHandle>,
-    climb_handle: Option<AbortHandle>,
+    pub climb_handle: Option<AbortHandle>,
 }
 
 impl Default for Ferris {
@@ -113,6 +115,8 @@ impl Robot for Ferris {
 
     fn disabled_init(&mut self) {
         if let Ok(drivetrain) = self.drivetrain.try_borrow_mut() {
+            drivetrain.stop();
+
             let offsets = drivetrain.get_offsets();
 
             for offset in offsets {
@@ -120,6 +124,11 @@ impl Robot for Ferris {
             }
 
             println!();
+        }
+
+        if let Some(handle) = self.auto_handle.take() {
+            println!("Aborted");
+            handle.abort();
         }
     }
 
@@ -136,14 +145,25 @@ impl Robot for Ferris {
     }
 
     async fn disabled_periodic(&mut self) {
+        let metrics = Handle::current().metrics();
+
+        let n = metrics.num_alive_tasks();
+        // println!("Active tasks: {}", n);
+
         &self.stop();
+
+        let mut drivetrain = self.drivetrain.deref().borrow_mut();
+
+        drivetrain.stop();
 
         if let Ok(mut drivetrain) = self.drivetrain.try_borrow_mut() {
             //drivetrain.update_limelight().await;
             drivetrain.post_odo().await;
+            drivetrain.stop();
         }
 
         if let Some(handle) = self.auto_handle.take() {
+            println!("Aborted");
             handle.abort();
         }
     }
@@ -160,14 +180,12 @@ impl Robot for Ferris {
             if let Some(selected_auto) = Telemetry::get_selection("auto chooser").await {
                 let chosen = Auto::from_dashboard(selected_auto.as_str());
 
-                let auto_task = Auto::run_auto(f, chosen);
-                let handle = spawn_local(auto_task).abort_handle();
+                let handle = spawn_local(Auto::run_auto(f, chosen)).abort_handle();
                 self.auto_handle = Some(handle);
             } else {
                 eprintln!("Failed to get selected auto from telemetry, running default");
 
-                let auto_task = Auto::run_auto(f, Auto::Nothing);
-                let handle = spawn_local(auto_task).abort_handle();
+                let handle = spawn_local(Auto::run_auto(f, Auto::Nothing)).abort_handle();
                 self.auto_handle = Some(handle);
             }
         }
@@ -185,9 +203,13 @@ impl Robot for Ferris {
                     drivetrain.post_odo().await;
 
                     let drivetrain_aligned = if self.controllers.right_drive.get(LINEUP_LEFT) {
-                        drivetrain.lineup(LineupSide::Left, elevator.get_target()).await
+                        drivetrain
+                            .lineup(LineupSide::Left, elevator.get_target())
+                            .await
                     } else if self.controllers.right_drive.get(LINEUP_RIGHT) {
-                        drivetrain.lineup(LineupSide::Right, elevator.get_target()).await
+                        drivetrain
+                            .lineup(LineupSide::Right, elevator.get_target())
+                            .await
                     } else if self.controllers.operator.get(WHEELS_ZERO) {
                         drivetrain.set_wheels_zero();
                         false
@@ -197,7 +219,7 @@ impl Robot for Ferris {
                             &mut self.controllers,
                             drivetrain_state,
                         )
-                            .await;
+                        .await;
 
                         false
                     };
@@ -320,7 +342,7 @@ pub fn score(
                 ElevatorPosition::Bottom => -0.5,
                 ElevatorPosition::L2 => -0.5,
                 ElevatorPosition::L3 => -0.5,
-                ElevatorPosition::L4 => -0.25
+                ElevatorPosition::L4 => -0.25,
             };
             indexer.set_speed(indexer_speed);
         } else {
