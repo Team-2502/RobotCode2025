@@ -7,7 +7,7 @@ use frcrs::input::{RobotMode, RobotState};
 use frcrs::networktables::NetworkTable;
 use frcrs::telemetry::Telemetry;
 use tokio::task;
-use tokio::task::spawn_local;
+use tokio::task::{AbortHandle, spawn_local};
 use tokio::time::sleep;
 use RobotCode2025::constants::joystick_map::{CLIMB, CLIMB_FALL, CLIMBER_GRAB, CLIMBER_RAISE, INTAKE, LINEUP_LEFT, LINEUP_RIGHT, SCORE_L2, SCORE_L3, SCORE_L4, WHEELS_ZERO};
 use RobotCode2025::container::control_drivetrain;
@@ -38,12 +38,19 @@ fn main() {
         let mut last_loop = Instant::now();
         let mut dt = Duration::from_millis(0);
 
-        let mut auto = None;
+        let mut auto: Option<AbortHandle> = None;
 
         loop {
             refresh_data();
 
             let state = RobotState::get();
+
+            if !state.enabled() {
+                if let Some(handle) = auto.take() {
+                    println!("Aborted");
+                    handle.abort();
+                }
+            }
 
             if state.enabled() && state.teleop() {
                 teleop(&mut ferris).await;
@@ -61,13 +68,13 @@ fn main() {
                     if let Some(selected_auto) = Telemetry::get_selection("auto chooser").await {
                         let chosen = Auto::from_dashboard(selected_auto.as_str());
 
-                        let handle = spawn_local(Auto::run_auto(f, chosen)).abort_handle();
-                        auto = Some(handle);
+                        let run = Auto::run_auto(f, chosen);
+                        auto = Some(local.spawn_local(run).abort_handle());
                     } else {
                         eprintln!("Failed to get selected auto from telemetry, running default");
 
-                        let handle = spawn_local(Auto::run_auto(f, Auto::Nothing)).abort_handle();
-                        auto = Some(handle);
+                        let run = Auto::run_auto(f, Auto::Nothing);
+                        auto = Some(local.spawn_local(run).abort_handle());
                     }
                 }
             } else if let Some(auto) = auto.take() {

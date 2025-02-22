@@ -7,11 +7,12 @@ use std::cell::RefMut;
 use std::ops::Deref;
 use std::time::Duration;
 use tokio::join;
-use tokio::time::{sleep, Instant};
+use tokio::time::{sleep, Instant, timeout};
 use uom::si::{f64::Length, length::meter};
 
 use crate::subsystems::{Drivetrain, Elevator, ElevatorPosition, Indexer, LineupSide};
 use crate::{constants, score, Ferris};
+use crate::constants::indexer::LASER_TRIP_DISTANCE_MM;
 
 #[derive(Serialize, Deserialize)]
 pub enum Auto {
@@ -68,7 +69,9 @@ impl Auto {
 
     pub async fn run_auto<'a>(ferris: Ferris, chosen: Auto) {
         match chosen {
-            Auto::Nothing => {}
+            Auto::Nothing => {
+                println!("No auto was selected!");
+            }
             Auto::BlueTriangle => {
                 blue_triangle(ferris).await.expect("Failed running auto");
             }
@@ -79,6 +82,14 @@ impl Auto {
             Auto::Blue2 => blue_2(ferris).await.expect("Failed running auto"),
             Auto::RotationTest => rotation_test(ferris).await.expect("Failed running auto"),
         }
+    }
+}
+
+pub async fn wait<F>(mut condition: F)
+where F: FnMut() -> bool {
+    loop {
+        if condition() { return };
+        sleep(Duration::from_millis(20)).await;
     }
 }
 
@@ -196,11 +207,12 @@ pub async fn blue_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
         elevator.run_to_target_trapezoid();
     });
 
-    let start = Instant::now();
-    while Instant::now().duration_since(start) < Duration::from_secs_f64(0.5) {
-        drivetrain.update_limelight().await;
-        sleep(Duration::from_millis(20)).await;
-    }
+    let _ = timeout(Duration::from_secs_f64(0.5), async {
+        loop {
+            drivetrain.update_limelight().await;
+            sleep(Duration::from_millis(20)).await;
+        }
+    }).await;
 
     async_score(
         &mut drivetrain,
@@ -215,11 +227,9 @@ pub async fn blue_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
         elevator.set_target(ElevatorPosition::Bottom);
         elevator.run_to_target_trapezoid_async().await;
 
-        while indexer.get_laser_dist() > constants::indexer::LASER_TRIP_DISTANCE_MM
-            || indexer.get_laser_dist() == -1
-        {
-            indexer.set_speed(-0.25);
-        }
+        indexer.set_speed(-0.25);
+
+        wait(|| indexer.get_laser_dist() < LASER_TRIP_DISTANCE_MM && indexer.get_laser_dist() != -1).await;
 
         indexer.stop();
     });
@@ -230,11 +240,12 @@ pub async fn blue_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
         elevator.run_to_target_trapezoid();
     });
 
-    let start = Instant::now();
-    while Instant::now().duration_since(start) < Duration::from_secs_f64(0.5) {
-        drivetrain.update_limelight().await;
-        sleep(Duration::from_millis(20)).await;
-    }
+    let _ = timeout(Duration::from_secs_f64(0.5), async {
+        loop {
+            drivetrain.update_limelight().await;
+            sleep(Duration::from_millis(20)).await;
+        }
+    }).await;
 
     async_score(
         &mut drivetrain,

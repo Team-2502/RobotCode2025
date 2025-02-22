@@ -185,13 +185,13 @@ impl Drivetrain {
     pub async fn update_limelight(&mut self) {
         self.limelight_lower
             .update(
-                self.get_offset(),
+                self.get_offset_wrapped(),
                 self.odometry.robot_pose_estimate.get_position(),
             )
             .await;
         self.limelight_upper
             .update(
-                self.get_offset(),
+                self.get_offset_wrapped(),
                 self.odometry.robot_pose_estimate.get_position(),
             )
             .await;
@@ -404,7 +404,7 @@ impl Drivetrain {
         let mut transform = Vector2::new(-str, fwd);
         match style {
             SwerveControlStyle::FieldOriented => {
-                transform = Rotation2::new(self.get_offset().get::<radian>()) * transform;
+                transform = Rotation2::new(self.get_offset_wrapped().get::<radian>()) * transform;
             }
             SwerveControlStyle::RobotOriented => {}
         }
@@ -586,13 +586,6 @@ impl Drivetrain {
                 speed.x *= -1.
             }
 
-            self.set_speeds(
-                speed.x,
-                speed.y,
-                error_angle,
-                SwerveControlStyle::FieldOriented,
-            );
-
             Telemetry::put_number("error_position_x", error_position.x).await;
             Telemetry::put_number("error_position_y", error_position.y).await;
             Telemetry::put_number("error_angle", error_angle).await;
@@ -603,11 +596,19 @@ impl Drivetrain {
             Telemetry::put_number("target_x", target.position.x).await;
             Telemetry::put_number("target_y", target.position.y).await;
             Telemetry::put_number("target_angle", target.angle.get::<radian>()).await;
-            if error_position.magnitude().abs() < 0.015 {
+            if error_position.magnitude().abs() < 0.015 && error_angle.abs() < 0.015 {
+                self.stop();
+                self.set_speeds(0., 0., 0., SwerveControlStyle::RobotOriented);
                 // println!("dt at position");
                 true
             } else {
                 // println!("dt not at position");
+                self.set_speeds(
+                    speed.x,
+                    speed.y,
+                    error_angle,
+                    SwerveControlStyle::FieldOriented,
+                );
                 false
             }
         } else {
@@ -671,7 +672,7 @@ impl Drivetrain {
             .sub(Angle::new::<radian>(PI / 2.));
 
         robot_angle = Angle::new::<degree>(calculate_relative_target(
-            self.get_offset().get::<degree>(),
+            self.get_offset_wrapped().get::<degree>(),
             robot_angle.get::<degree>(),
         ));
         if robot_angle.get::<degree>() > 180. {
