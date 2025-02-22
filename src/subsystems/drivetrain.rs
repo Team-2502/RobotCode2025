@@ -75,8 +75,7 @@ pub struct Drivetrain {
 
     pub offset: Angle,
 
-    pub limelight_lower: Vision,
-    pub limelight_upper: Vision,
+    pub limelight: Vision,
 
     abs_offsets: [Angle; 4],
 }
@@ -129,11 +128,7 @@ impl Drivetrain {
         let bl_encoder = CanCoder::new(BL_ENCODER, Some("can0".to_owned()));
         let br_encoder = CanCoder::new(BR_ENCODER, Some("can0".to_owned()));
 
-        let limelight_lower = Vision::new(SocketAddr::new(
-            IpAddr::V4(Ipv4Addr::new(10, 25, 2, 11)),
-            5807,
-        ));
-        let limelight_upper = Vision::new(SocketAddr::new(
+        let limelight = Vision::new(SocketAddr::new(
             IpAddr::V4(Ipv4Addr::new(10, 25, 2, 12)),
             5807,
         ));
@@ -175,21 +170,14 @@ impl Drivetrain {
 
             offset,
 
-            limelight_lower: limelight_lower,
-            limelight_upper: limelight_upper,
+            limelight: limelight,
 
             abs_offsets,
         }
     }
 
     pub async fn update_limelight(&mut self) {
-        self.limelight_lower
-            .update(
-                self.get_offset_wrapped(),
-                self.odometry.robot_pose_estimate.get_position(),
-            )
-            .await;
-        self.limelight_upper
+        self.limelight
             .update(
                 self.get_offset_wrapped(),
                 self.odometry.robot_pose_estimate.get_position(),
@@ -197,7 +185,7 @@ impl Drivetrain {
             .await;
         Telemetry::put_number(
             "limelight upper fom",
-            self.limelight_upper.get_figure_of_merit().get::<meter>(),
+            self.limelight.get_figure_of_merit().get::<meter>(),
         )
         .await;
         /*
@@ -443,7 +431,7 @@ impl Drivetrain {
         }
 
          */
-        if let Some(limelight_upper_estimate) = self.limelight_upper.get_pose_estimate_2d() {
+        if let Some(limelight_upper_estimate) = self.limelight.get_pose_estimate_2d() {
             sensor_measurements.push(limelight_upper_estimate);
         }
         if sensor_measurements.len() != 0 {
@@ -625,12 +613,12 @@ impl Drivetrain {
         side: LineupSide,
         target_level: ElevatorPosition,
     ) -> Option<LineupTarget> {
-        let tag_id = self.limelight_upper.get_saved_id();
+        let tag_id = self.limelight.get_saved_id();
         if tag_id == -1 {
             return None;
         }
 
-        let tag_position = self.limelight_upper.get_tag_position(tag_id)?;
+        let tag_position = self.limelight.get_tag_position(tag_id)?;
         let tag_coords = tag_position.coordinate?;
         let tag_rotation = tag_position.quaternion?;
 
@@ -687,105 +675,105 @@ impl Drivetrain {
         })
     }
 
-    /// Set drivetrain speeds using tx and ty from the lower limelight.
-    /// Cameras are positioned on the robot such that the tag on the base of the reef is in the exact center of the limelight's fov when the robot is fully lined up.
-    /// Uses a basic PID: tx from the limelight (horizontal position of the tag on the screen) feeds into drivetrain strafe, while ty feeds into drivetrain forward.
-    pub fn lineup_2d(&mut self, side: LineupSide) -> bool {
-        // The lower limelight points at the tag when lined up on the right, the upper when lined up on the left
-        let mut limelight = self.limelight_lower.clone();
-        match side {
-            LineupSide::Left => {
-                limelight = self.limelight_upper.clone();
-            }
-            LineupSide::Right => {
-                limelight = self.limelight_lower.clone();
-            }
-        }
-
-        // Only try if a tag is detected
-        if limelight.get_id() != -1 {
-            // Figure out target angle from the tagmap
-            let tag_position = limelight.get_tag_position(limelight.get_id()).unwrap();
-            let tag_rotation = tag_position.quaternion.unwrap();
-            // None of us actually know how the quaternions provided by said map work, this is copied code
-            // Flip the tag normal to be out the back of the tag and wrap to the [0, 360] range
-            let tag_yaw = -(quaternion_to_yaw(tag_rotation) + std::f64::consts::PI);
-            // % (std::f64::consts::PI * 2.);
-            // We score out the left, so forward-to-the-tag isn't very helpful
-            let mut perpendicular_yaw = tag_yaw + std::f64::consts::PI / 2.0;
-            // Convert to angle on [0,180]
-            if perpendicular_yaw > std::f64::consts::PI {
-                perpendicular_yaw = perpendicular_yaw - (std::f64::consts::PI * 2.);
-            } else if perpendicular_yaw < PI {
-                perpendicular_yaw = perpendicular_yaw + (PI * 2.);
-            }
-
-            let target_ty = match side {
-                LineupSide::Left => TARGET_TY_LEFT,
-                LineupSide::Right => TARGET_TY_RIGHT,
-            };
-            let target_tx = match side {
-                LineupSide::Left => TARGET_TX_LEFT,
-                LineupSide::Right => TARGET_TX_RIGHT,
-            };
-
-            // Calculate errors (difference between where you are (tx, ty, or drivetrain angle) and where you want to be (0 deg, 0 deg, or perpendicular_yaw))
-            // Center of the limelight screen is (0,0) so we don't have to subtract anything for ty and tx
-            let error_ty = target_ty - limelight.get_ty().get::<degree>();
-            let error_tx = target_tx - limelight.get_tx().get::<degree>();
-            let error_yaw = perpendicular_yaw - self.get_offset().get::<radian>();
-
-            // Neither limelight faces perfectly straight out.
-            let off_straight_multiplier_str = match side {
-                LineupSide::Left => -1.0,
-                LineupSide::Right => 1.0,
-            };
-            let off_straight_multiplier_fwd = match side {
-                LineupSide::Left => 1.0,
-                LineupSide::Right => -1.0,
-            };
-
-            // Calculate PID stuff
-            // KP - proportional: multiply the error by a tuned constant (KP)
-            let str = constants::drivetrain::LINEUP_2D_TY_STR_KP * error_ty
-                + off_straight_multiplier_str * LINEUP_2D_TX_STR_KP * error_tx;
-
-            let fwd = LINEUP_2D_TX_FWD_KP * error_tx
-                + off_straight_multiplier_fwd * LINEUP_2D_TY_FWD_KP * error_yaw;
-
-            let mut transform = Vector2::new(fwd, str);
-
-            return if error_ty.abs() < TX_ACCEPTABLE_ERROR
-                && error_tx.abs() < TY_ACCEPTABLE_ERROR
-                && error_yaw.abs() < YAW_ACCEPTABLE_ERROR
-            {
-                println!("Drivetrain at target");
-
-                self.stop();
-
-                true
-            } else {
-                println!(
-                    "Drivetrain not at target ty: {} tx: {} yaw: {}",
-                    error_ty.abs(),
-                    error_tx.abs(),
-                    error_yaw.abs()
-                );
-
-                self.set_speeds(
-                    transform.x,
-                    transform.y,
-                    error_yaw * SWERVE_TURN_KP,
-                    SwerveControlStyle::RobotOriented,
-                );
-
-                false
-            };
-        } else {
-            println!("can't lineup - no tag seen");
-            false
-        }
-    }
+    // Set drivetrain speeds using tx and ty from the lower limelight.
+    // Cameras are positioned on the robot such that the tag on the base of the reef is in the exact center of the limelight's fov when the robot is fully lined up.
+    // Uses a basic PID: tx from the limelight (horizontal position of the tag on the screen) feeds into drivetrain strafe, while ty feeds into drivetrain forward.
+    // pub fn lineup_2d(&mut self, side: LineupSide) -> bool {
+    //     // The lower limelight points at the tag when lined up on the right, the upper when lined up on the left
+    //     let mut limelight = self.limelight_lower.clone();
+    //     match side {
+    //         LineupSide::Left => {
+    //             limelight = self.limelight.clone();
+    //         }
+    //         LineupSide::Right => {
+    //             limelight = self.limelight_lower.clone();
+    //         }
+    //     }
+    //
+    //     // Only try if a tag is detected
+    //     if limelight.get_id() != -1 {
+    //         // Figure out target angle from the tagmap
+    //         let tag_position = limelight.get_tag_position(limelight.get_id()).unwrap();
+    //         let tag_rotation = tag_position.quaternion.unwrap();
+    //         // None of us actually know how the quaternions provided by said map work, this is copied code
+    //         // Flip the tag normal to be out the back of the tag and wrap to the [0, 360] range
+    //         let tag_yaw = -(quaternion_to_yaw(tag_rotation) + std::f64::consts::PI);
+    //         // % (std::f64::consts::PI * 2.);
+    //         // We score out the left, so forward-to-the-tag isn't very helpful
+    //         let mut perpendicular_yaw = tag_yaw + std::f64::consts::PI / 2.0;
+    //         // Convert to angle on [0,180]
+    //         if perpendicular_yaw > std::f64::consts::PI {
+    //             perpendicular_yaw = perpendicular_yaw - (std::f64::consts::PI * 2.);
+    //         } else if perpendicular_yaw < PI {
+    //             perpendicular_yaw = perpendicular_yaw + (PI * 2.);
+    //         }
+    //
+    //         let target_ty = match side {
+    //             LineupSide::Left => TARGET_TY_LEFT,
+    //             LineupSide::Right => TARGET_TY_RIGHT,
+    //         };
+    //         let target_tx = match side {
+    //             LineupSide::Left => TARGET_TX_LEFT,
+    //             LineupSide::Right => TARGET_TX_RIGHT,
+    //         };
+    //
+    //         // Calculate errors (difference between where you are (tx, ty, or drivetrain angle) and where you want to be (0 deg, 0 deg, or perpendicular_yaw))
+    //         // Center of the limelight screen is (0,0) so we don't have to subtract anything for ty and tx
+    //         let error_ty = target_ty - limelight.get_ty().get::<degree>();
+    //         let error_tx = target_tx - limelight.get_tx().get::<degree>();
+    //         let error_yaw = perpendicular_yaw - self.get_offset().get::<radian>();
+    //
+    //         // Neither limelight faces perfectly straight out.
+    //         let off_straight_multiplier_str = match side {
+    //             LineupSide::Left => -1.0,
+    //             LineupSide::Right => 1.0,
+    //         };
+    //         let off_straight_multiplier_fwd = match side {
+    //             LineupSide::Left => 1.0,
+    //             LineupSide::Right => -1.0,
+    //         };
+    //
+    //         // Calculate PID stuff
+    //         // KP - proportional: multiply the error by a tuned constant (KP)
+    //         let str = constants::drivetrain::LINEUP_2D_TY_STR_KP * error_ty
+    //             + off_straight_multiplier_str * LINEUP_2D_TX_STR_KP * error_tx;
+    //
+    //         let fwd = LINEUP_2D_TX_FWD_KP * error_tx
+    //             + off_straight_multiplier_fwd * LINEUP_2D_TY_FWD_KP * error_yaw;
+    //
+    //         let mut transform = Vector2::new(fwd, str);
+    //
+    //         return if error_ty.abs() < TX_ACCEPTABLE_ERROR
+    //             && error_tx.abs() < TY_ACCEPTABLE_ERROR
+    //             && error_yaw.abs() < YAW_ACCEPTABLE_ERROR
+    //         {
+    //             println!("Drivetrain at target");
+    //
+    //             self.stop();
+    //
+    //             true
+    //         } else {
+    //             println!(
+    //                 "Drivetrain not at target ty: {} tx: {} yaw: {}",
+    //                 error_ty.abs(),
+    //                 error_tx.abs(),
+    //                 error_yaw.abs()
+    //             );
+    //
+    //             self.set_speeds(
+    //                 transform.x,
+    //                 transform.y,
+    //                 error_yaw * SWERVE_TURN_KP,
+    //                 SwerveControlStyle::RobotOriented,
+    //             );
+    //
+    //             false
+    //         };
+    //     } else {
+    //         println!("can't lineup - no tag seen");
+    //         false
+    //     }
+    // }
 }
 
 fn quaternion_to_yaw(quaternion: Quaternion<f64>) -> f64 {
