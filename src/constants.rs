@@ -93,14 +93,15 @@ pub mod pose_estimation {
     pub const MIN_FOM: f64 = 0.00001;
     pub const START_POSITION_FOM: f64 = 0.01; //meters
     pub const DRIFT_RATIO: f64 = 0.02; // Robot odometry pose estimate drifts [ratio] meters for every meter driven
-    pub const LIMELIGHT_BASE_FOM: f64 = 0.01; // meters
+    pub const LIMELIGHT_BASE_FOM: f64 = 0.001; // meters
+    pub const LIMELIGHT_INACCURACY_PER_DEGREE_TX: f64 = 0.015; // Meters of inaccuracy per degree of tx absolute value (our limelights are miscalibrated)
     pub const LIMELIGHT_INACCURACY_PER_ANGULAR_VELOCITY: f64 = 2.; // Meters of inaccuracy per (radian/second) of drivetrain angular velocity
     pub const LIMELIGHT_INACCURACY_PER_LINEAR_VELOCITY: f64 = 2.; //  Meters of inaccuracy per (meter/second) of drivetrain linear velocity
 }
 pub mod elevator {
     pub const BOTTOM: f64 = 0.0; // unit is rotations
-    pub const L2: f64 = 1.; // unit is rotations
-    pub const L3: f64 = 15.75; // unit is rotations
+    pub const L2: f64 = 2.; // unit is rotations
+    pub const L3: f64 = 16.5; // unit is rotations
     pub const L4: f64 = 39.1; // unit is rotations
     pub const ELEVATOR_TRAPEZOID_DT_MS: u64 = 50; // sleep.await this long in between updating the elevator trapezoidal when running its async function
     pub const POSITION_TOLERANCE: f64 = 0.25; // unit is rotations. finish elevator async move when within this distance of target

@@ -30,6 +30,8 @@ impl Elevator {
         let left = Talon::new(robotmap::elevator::LEFT, Some("can0".to_string()));
         let right = Talon::new(robotmap::elevator::RIGHT, Some("can0".to_string())); //should be inverted (clockwise positive) in config
         // println!("left pos: {} right pos: {} diff: {}",right.get_position(),left.get_position(),right.get_position() - left.get_position());
+        left.zero();
+        right.zero();
 
         //right.follow(&left, true);
 
@@ -105,6 +107,7 @@ impl Elevator {
 
             sleep(Duration::from_millis(20)).await;
         }
+        println!("elevator at target");
     }
 
     pub fn set_speed(&self, speed: f64) {

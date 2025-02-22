@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::ops::Deref;
 use std::time::Duration;
 use tokio::join;
-use tokio::time::sleep;
+use tokio::time::{sleep, Instant};
 
 use crate::{constants, Ferris, score};
 use crate::subsystems::{Drivetrain, Elevator, ElevatorPosition, Indexer, LineupSide};
@@ -87,6 +87,7 @@ pub async fn async_score(
     elevator_position: ElevatorPosition,
 ) -> bool {
     elevator.set_target(elevator_position);
+    println!("running async_score");
 
     join! (
         async {
@@ -94,25 +95,28 @@ pub async fn async_score(
                 drivetrain.update_limelight().await;
                 drivetrain.post_odo().await;
 
-                if drivetrain.lineup(lineup_side).await {
+                if drivetrain.lineup(lineup_side, elevator_position).await {
                     break
                 }
 
                 sleep(Duration::from_millis(20)).await;
             }
+            println!("lineup done")
         },
         elevator.run_to_target_trapezoid_async()
     );
 
+    println!("ready to score");
     while indexer.get_laser_dist() < constants::indexer::LASER_TRIP_DISTANCE_MM {
         let indexer_speed = match elevator_position {
-            ElevatorPosition::Bottom => -0.25,
-            ElevatorPosition::L2 => -0.25,
-            ElevatorPosition::L3 => -0.25,
+            ElevatorPosition::Bottom => -0.5,
+            ElevatorPosition::L2 => -0.5,
+            ElevatorPosition::L3 => -0.5,
             ElevatorPosition::L4 => -0.25
         };
         indexer.set_speed(indexer_speed);
     }
+    println!("game piece past laser");
 
     sleep(Duration::from_secs_f64(0.5)).await;
     indexer.stop();
@@ -183,6 +187,7 @@ pub async fn blue_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
         .odometry
         .set_abs(Vector2::new(Length::new::<meter>(8.020708084106445), Length::new::<meter>(7.632927417755127)));
 
+    println!("driving path 1");
     join!(
         drive("Blue2", &mut drivetrain, 1),
         async {
@@ -192,7 +197,13 @@ pub async fn blue_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
         }
     );
 
-    sleep(Duration::from_secs_f64(1.5)).await;
+    println!("drove path 1");
+    let start = Instant::now();
+    while Instant::now().duration_since(start) < Duration::from_secs_f64(1.5) {
+        drivetrain.update_limelight().await;
+        sleep(Duration::from_millis(20)).await;
+    }
+    println!("wait finished");
 
     async_score(&mut drivetrain, LineupSide::Left, &mut elevator, &mut indexer, L4).await;
 

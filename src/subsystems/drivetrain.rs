@@ -18,7 +18,7 @@ use serde::Serialize;
 
 use crate::constants;
 use crate::constants::vision::ROBOT_CENTER_TO_LIMELIGHT_UPPER_INCHES;
-use crate::subsystems::Vision;
+use crate::subsystems::{ElevatorPosition, Vision};
 use uom::si::angle::{degree, radian, revolution};
 use uom::si::f64::{Angle, Length};
 use uom::si::length::{inch, meter};
@@ -177,6 +177,7 @@ impl Drivetrain {
         self.limelight_upper
             .update(self.get_offset(), self.odometry.robot_pose_estimate.get_position())
             .await;
+        Telemetry::put_number("limelight upper fom", self.limelight_upper.get_figure_of_merit().get::<meter>()).await;
         /*
         let pose = self.limelight_lower.get_botpose();
 
@@ -228,6 +229,14 @@ impl Drivetrain {
 
     pub fn get_offsets(&self) -> [Angle; 4] {
         self.abs_offsets
+    }
+    pub fn get_encoder_positions(&self) -> Vec<Angle> {
+        vec![
+            Angle::new::<degree>((-self.fr_encoder.get_absolute() * 360.) - FR_OFFSET_DEGREES),
+            Angle::new::<degree>((-self.fl_encoder.get_absolute() * 360.) - FL_OFFSET_DEGREES),
+            Angle::new::<degree>((-self.bl_encoder.get_absolute() * 360.) - BL_OFFSET_DEGREES),
+            Angle::new::<degree>((-self.br_encoder.get_absolute() * 360.) - BR_OFFSET_DEGREES),
+        ]
     }
 
     pub async fn post_odo(&self) {
@@ -282,19 +291,11 @@ impl Drivetrain {
         let mut speeds = Vec::new();
 
         for (module, offset) in [&self.fr_turn, &self.fl_turn, &self.bl_turn, &self.br_turn].iter().zip(self.abs_offsets) {
-            let mut rev = -module.get_position() / SWERVE_TURN_RATIO;
-
-            if rev < 0. {
-                rev *= -1.;
-                rev %= 1.;
-                rev *= -1.;
-            } else {
-                rev %= 1.;
-            }
+            let rev = -module.get_position() / SWERVE_TURN_RATIO;
 
             speeds.push(ModuleState {
                 speed: 0.,
-                angle: Angle::new::<revolution>(rev) - offset,
+                angle: Angle::new::<revolution>(rev) + offset,
             });
         }
 
@@ -353,10 +354,18 @@ impl Drivetrain {
 
         let measured = self.get_speeds();
 
-        for  module in &measured {
-            print!("{:.2} : ", module.angle.get::<degree>());
-        }
-        println!(" yo");
+        // for  module in &measured {
+        //     print!("{:.2} : ", module.angle.get::<degree>());
+        // }
+        // println!(" get_speeds values");
+        // for encoder in self.get_encoder_positions() {
+        //     print!("{:.2} : ", encoder.get::<degree>());
+        // }
+        // println!(" get_encoder_positions values");
+        // for motor in [&self.fr_turn, &self.fl_turn, &self.bl_turn, &self.br_turn].iter() {
+        //     print!("{:.2} : ", -motor.get_position()/SWERVE_TURN_RATIO);
+        // }
+        // println!(" motor get_position values (scaled by gear ratio");
 
         let positions = self.get_positions(&measured);
 
@@ -398,19 +407,19 @@ impl Drivetrain {
 
         self.fr_turn.set(
             ControlMode::Position,
-            -(wheel_speeds[0].angle.get::<revolution>() + self.abs_offsets[0].get::<revolution>()) * SWERVE_TURN_RATIO,
+            -(wheel_speeds[0].angle.get::<revolution>() - self.abs_offsets[0].get::<revolution>()) * SWERVE_TURN_RATIO,
         );
         self.fl_turn.set(
             ControlMode::Position,
-            -(wheel_speeds[1].angle.get::<revolution>() + self.abs_offsets[1].get::<revolution>()) * SWERVE_TURN_RATIO,
+            -(wheel_speeds[1].angle.get::<revolution>() - self.abs_offsets[1].get::<revolution>()) * SWERVE_TURN_RATIO,
         );
         self.bl_turn.set(
             ControlMode::Position,
-            -(wheel_speeds[2].angle.get::<revolution>() + self.abs_offsets[2].get::<revolution>()) * SWERVE_TURN_RATIO,
+            -(wheel_speeds[2].angle.get::<revolution>() - self.abs_offsets[2].get::<revolution>()) * SWERVE_TURN_RATIO,
         );
         self.br_turn.set(
             ControlMode::Position,
-            -(wheel_speeds[3].angle.get::<revolution>() + self.abs_offsets[3].get::<revolution>()) * SWERVE_TURN_RATIO,
+            -(wheel_speeds[3].angle.get::<revolution>() - self.abs_offsets[3].get::<revolution>()) * SWERVE_TURN_RATIO,
         );
     }
 
@@ -468,11 +477,11 @@ impl Drivetrain {
         self.offset = self.get_angle();
     }
 
-    pub async fn lineup(&mut self, side: LineupSide) -> bool {
+    pub async fn lineup(&mut self, side: LineupSide, target_level: ElevatorPosition) -> bool {
         let mut last_error = Vector2::zeros();
         let mut i = Vector2::zeros();
 
-        if let Some(target) = self.calculate_target_lineup_position(side) {
+        if let Some(target) = self.calculate_target_lineup_position(side, target_level) {
             let mut error_position = target.position - self.odometry.robot_pose_estimate.get_position_meters();
             let mut error_angle = (-target.angle - self.get_offset()).get::<radian>();
 
@@ -509,7 +518,13 @@ impl Drivetrain {
             Telemetry::put_number("target_x", target.position.x).await;
             Telemetry::put_number("target_y", target.position.y).await;
             Telemetry::put_number("target_angle", target.angle.get::<radian>()).await;
-            if error_position.magnitude().abs() < 0.015 {true} else {false}
+            if error_position.magnitude().abs() < 0.015 {
+                // println!("dt at position");
+                true
+            } else {
+                // println!("dt not at position");
+                false
+            }
         } else {false}
     }
 
@@ -517,13 +532,13 @@ impl Drivetrain {
     // It will return a vector with the x and y coordinates of the target position.
     // The target position will be to the side of the apriltag, half a robot length away from the edge
     // Will account for the robot's orientation with the hexagon lineup
-    pub fn calculate_target_lineup_position(&mut self, side: LineupSide) -> Option<LineupTarget> {
-        let tag_id = self.limelight_lower.get_saved_id();
+    pub fn calculate_target_lineup_position(&mut self, side: LineupSide, target_level: ElevatorPosition) -> Option<LineupTarget> {
+        let tag_id = self.limelight_upper.get_saved_id();
         if tag_id == -1 {
             return None;
         }
 
-        let tag_position = self.limelight_lower.get_tag_position(tag_id)?;
+        let tag_position = self.limelight_upper.get_tag_position(tag_id)?;
         let tag_coords = tag_position.coordinate?;
         let tag_rotation = tag_position.quaternion?;
 
@@ -531,7 +546,12 @@ impl Drivetrain {
 
         let mut side_distance = Length::new::<inch>(13. / 2.); // theoretical is 13. / 2.
         let forward_distance = Length::new::<inch>(16.75); //theoretical is 16.75
-        let elevator_position = Length::new::<inch>(-9.); //theoretical is -11.0
+        let elevator_position = match target_level {
+            ElevatorPosition::Bottom => Length::new::<inch>(-10.5),
+            ElevatorPosition::L2 => Length::new::<inch>(-10.5),
+            ElevatorPosition::L3 => Length::new::<inch>(-10.5),
+            ElevatorPosition::L4 => Length::new::<inch>(-9.),
+        };  //theoretical is -11.0
 
         let side_multiplier = match side {
             LineupSide::Left => -1.0,

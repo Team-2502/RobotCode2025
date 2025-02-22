@@ -141,8 +141,6 @@ impl Robot for Ferris {
         if let Ok(mut drivetrain) = self.drivetrain.try_borrow_mut() {
             //drivetrain.update_limelight().await;
             drivetrain.post_odo().await;
-
-            drivetrain.print_offsets();
         }
 
         if let Some(handle) = self.auto_handle.take() {
@@ -187,9 +185,9 @@ impl Robot for Ferris {
                     drivetrain.post_odo().await;
 
                     let drivetrain_aligned = if self.controllers.right_drive.get(LINEUP_LEFT) {
-                        drivetrain.lineup(LineupSide::Left).await
+                        drivetrain.lineup(LineupSide::Left, elevator.get_target()).await
                     } else if self.controllers.right_drive.get(LINEUP_RIGHT) {
-                        drivetrain.lineup(LineupSide::Right).await
+                        drivetrain.lineup(LineupSide::Right, elevator.get_target()).await
                     } else if self.controllers.operator.get(WHEELS_ZERO) {
                         drivetrain.set_wheels_zero();
                         false
@@ -226,7 +224,7 @@ impl Robot for Ferris {
                             ElevatorPosition::L4,
                         )
                     } else if self.controllers.right_drive.get(INTAKE) {
-                        elevator.set_target(ElevatorPosition::L2);
+                        elevator.set_target(ElevatorPosition::Bottom);
                         elevator.run_to_target_trapezoid();
 
                         if indexer.get_laser_dist() > constants::indexer::LASER_TRIP_DISTANCE_MM
@@ -319,9 +317,9 @@ pub fn score(
     if elevator_at_target && drivetrain_aligned {
         if indexer.get_laser_dist() < constants::indexer::LASER_TRIP_DISTANCE_MM {
             let indexer_speed = match elevator_position {
-                ElevatorPosition::Bottom => -0.25,
-                ElevatorPosition::L2 => -0.25,
-                ElevatorPosition::L3 => -0.25,
+                ElevatorPosition::Bottom => -0.5,
+                ElevatorPosition::L2 => -0.5,
+                ElevatorPosition::L3 => -0.5,
                 ElevatorPosition::L4 => -0.25
             };
             indexer.set_speed(indexer_speed);

@@ -16,7 +16,7 @@ use uom::si::{
 
 use std::net::SocketAddr;
 use tokio::time::Instant;
-use crate::constants::pose_estimation::{LIMELIGHT_BASE_FOM, LIMELIGHT_INACCURACY_PER_ANGULAR_VELOCITY, LIMELIGHT_INACCURACY_PER_LINEAR_VELOCITY};
+use crate::constants::pose_estimation::{LIMELIGHT_BASE_FOM, LIMELIGHT_INACCURACY_PER_ANGULAR_VELOCITY, LIMELIGHT_INACCURACY_PER_DEGREE_TX, LIMELIGHT_INACCURACY_PER_LINEAR_VELOCITY};
 use crate::swerve::odometry::PoseEstimate;
 
 #[derive(Clone)]
@@ -273,6 +273,7 @@ impl Vision {
 
         let mut fom_meters = LIMELIGHT_INACCURACY_PER_ANGULAR_VELOCITY * angular_velocity_rad_per_sec.abs();
         fom_meters += LIMELIGHT_INACCURACY_PER_LINEAR_VELOCITY * linear_velocity_meters_per_sec.abs();
+        //fom_meters += LIMELIGHT_INACCURACY_PER_DEGREE_TX * self.get_tx().get::<degree>().abs();
         fom_meters += LIMELIGHT_BASE_FOM;
         Length::new::<meter>(fom_meters)
     }
