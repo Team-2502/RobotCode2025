@@ -68,14 +68,24 @@ impl Vision {
         self.last_results = self.results.clone();
         self.last_robot_position = self.robot_position;
         self.robot_position = robot_position;
-        self.results = self.limelight.results().await.unwrap();
+
+        let results = self.limelight.results().await;
+        if let Ok(r) = results {
+            self.results = r;
+        } else {
+            eprintln!("Failed to fetch results from limelight")
+        }
+
         self.last_drivetrain_angle = self.drivetrain_angle;
         self.drivetrain_angle = dt_angle;
         self.last_update_time = Instant::now();
-        self.limelight
+
+        if self.limelight
             .update_robot_orientation(-dt_angle.get::<radian>()) // Why do we use clockwise positive
             .await
-            .unwrap();
+            .is_err() {
+            eprintln!("Failed to update robot orientation on limelight")
+        }
 
         if !self.results.Fiducial.is_empty() {
             if self.results.Fiducial[0].fID != -1 && self.results.Fiducial[0].fID != self.saved_id {
