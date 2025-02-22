@@ -6,7 +6,7 @@ use std::ops::{Add, Sub};
 
 use frcrs::ctre::{talon_encoder_tick, ControlMode, Pigeon, Talon, CanCoder};
 
-use crate::constants::drivetrain::{BL_OFFSET, BR_OFFSET, FL_OFFSET, FR_OFFSET, LINEUP_2D_TX_FWD_KP, LINEUP_2D_TX_STR_KP, LINEUP_2D_TY_FWD_KP, PIGEON_OFFSET, SWERVE_DRIVE_IE, SWERVE_DRIVE_KP, SWERVE_ROTATIONS_TO_INCHES, SWERVE_TURN_KP, TARGET_TX_LEFT, TARGET_TX_RIGHT, TARGET_TY_LEFT, TARGET_TY_RIGHT, TX_ACCEPTABLE_ERROR, TY_ACCEPTABLE_ERROR, YAW_ACCEPTABLE_ERROR};
+use crate::constants::drivetrain::{BL_OFFSET_DEGREES, BR_OFFSET_DEGREES, FL_OFFSET_DEGREES, FR_OFFSET_DEGREES, LINEUP_2D_TX_FWD_KP, LINEUP_2D_TX_STR_KP, LINEUP_2D_TY_FWD_KP, PIGEON_OFFSET, SWERVE_DRIVE_IE, SWERVE_DRIVE_KP, SWERVE_ROTATIONS_TO_INCHES, SWERVE_TURN_KP, SWERVE_TURN_RATIO, TARGET_TX_LEFT, TARGET_TX_RIGHT, TARGET_TY_LEFT, TARGET_TY_RIGHT, TX_ACCEPTABLE_ERROR, TY_ACCEPTABLE_ERROR, YAW_ACCEPTABLE_ERROR};
 use crate::constants::robotmap::swerve::*;
 use crate::swerve::kinematics::{ModuleState, Swerve};
 use crate::swerve::odometry::{ModuleReturn, Odometry};
@@ -101,6 +101,12 @@ impl Drivetrain {
         let bl_turn = Talon::new(BL_TURN, Some("can0".to_owned()));
         let br_turn = Talon::new(BR_TURN, Some("can0".to_owned()));
 
+        fr_turn.zero();
+        fl_turn.zero();
+        bl_turn.zero();
+        br_turn.zero();
+        println!("These should be 0: {} {} {} {}", fr_turn.get_position(), fl_turn.get_position(), br_turn.get_position(), bl_turn.get_position());
+
         let fr_drive = Talon::new(FR_DRIVE, Some("can0".to_owned()));
         let fl_drive = Talon::new(FL_DRIVE, Some("can0".to_owned()));
         let bl_drive = Talon::new(BL_DRIVE, Some("can0".to_owned()));
@@ -127,10 +133,10 @@ impl Drivetrain {
         };
 
         let abs_offsets = [
-            Angle::new::<degree>((fr_encoder.get_absolute() * 360.) + FR_OFFSET),
-            Angle::new::<degree>((fl_encoder.get_absolute() * 360.) + FL_OFFSET),
-            Angle::new::<degree>((bl_encoder.get_absolute() * 360.) + BL_OFFSET),
-            Angle::new::<degree>((br_encoder.get_absolute() * 360.) + BR_OFFSET),
+            Angle::new::<degree>((-fr_encoder.get_absolute() * 360.) - FR_OFFSET_DEGREES),
+            Angle::new::<degree>((-fl_encoder.get_absolute() * 360.) - FL_OFFSET_DEGREES),
+            Angle::new::<degree>((-bl_encoder.get_absolute() * 360.) - BL_OFFSET_DEGREES),
+            Angle::new::<degree>((-br_encoder.get_absolute() * 360.) - BR_OFFSET_DEGREES),
         ];
 
         Self {
@@ -206,12 +212,12 @@ impl Drivetrain {
         //println!("upper ll tx: {}", self.limelight_upper.get_tx().get::<degree>());
     }
 
-    pub fn reset_turn_angles(&self) {
+    /*pub fn reset_turn_angles(&self) {
         self.fr_turn.set_position(0.);
         self.fl_turn.set_position(0.);
         self.br_turn.set_position(0.);
         self.fr_turn.set_position(0.);
-    }
+    }*/
 
     pub fn set_wheels_zero(&mut self) {
         self.fr_turn.set(ControlMode::Position, 0.);
@@ -276,7 +282,7 @@ impl Drivetrain {
         let mut speeds = Vec::new();
 
         for (module, offset) in [&self.fr_turn, &self.fl_turn, &self.bl_turn, &self.br_turn].iter().zip(self.abs_offsets) {
-            let mut rev = -module.get_position() / 12.8;
+            let mut rev = -module.get_position() / SWERVE_TURN_RATIO;
 
             if rev < 0. {
                 rev *= -1.;
@@ -288,7 +294,7 @@ impl Drivetrain {
 
             speeds.push(ModuleState {
                 speed: 0.,
-                angle: Angle::new::<revolution>(rev) + offset,
+                angle: Angle::new::<revolution>(rev) - offset,
             });
         }
 
@@ -350,7 +356,7 @@ impl Drivetrain {
         for  module in &measured {
             print!("{:.2} : ", module.angle.get::<degree>());
         }
-        println!();
+        println!(" yo");
 
         let positions = self.get_positions(&measured);
 
@@ -381,31 +387,31 @@ impl Drivetrain {
             .map(|(calculated, measured)| calculated.optimize(measured))
             .collect();
 
-        // self.fr_drive
-        //     .set(ControlMode::Percent, wheel_speeds[0].speed);
-        // self.fl_drive
-        //     .set(ControlMode::Percent, wheel_speeds[1].speed);
-        // self.bl_drive
-        //     .set(ControlMode::Percent, wheel_speeds[2].speed);
-        // self.br_drive
-        //     .set(ControlMode::Percent, wheel_speeds[3].speed);
-        //
-        // self.fr_turn.set(
-        //     ControlMode::Position,
-        //     -wheel_speeds[0].angle.get::<talon_encoder_tick>(),
-        // );
-        // self.fl_turn.set(
-        //     ControlMode::Position,
-        //     -wheel_speeds[1].angle.get::<talon_encoder_tick>(),
-        // );
-        // self.bl_turn.set(
-        //     ControlMode::Position,
-        //     -wheel_speeds[2].angle.get::<talon_encoder_tick>(),
-        // );
-        // self.br_turn.set(
-        //     ControlMode::Position,
-        //     -wheel_speeds[3].angle.get::<talon_encoder_tick>(),
-        // );
+        self.fr_drive
+            .set(ControlMode::Percent, wheel_speeds[0].speed);
+        self.fl_drive
+            .set(ControlMode::Percent, wheel_speeds[1].speed);
+        self.bl_drive
+            .set(ControlMode::Percent, wheel_speeds[2].speed);
+        self.br_drive
+            .set(ControlMode::Percent, wheel_speeds[3].speed);
+
+        self.fr_turn.set(
+            ControlMode::Position,
+            -(wheel_speeds[0].angle.get::<revolution>() + self.abs_offsets[0].get::<revolution>()) * SWERVE_TURN_RATIO,
+        );
+        self.fl_turn.set(
+            ControlMode::Position,
+            -(wheel_speeds[1].angle.get::<revolution>() + self.abs_offsets[1].get::<revolution>()) * SWERVE_TURN_RATIO,
+        );
+        self.bl_turn.set(
+            ControlMode::Position,
+            -(wheel_speeds[2].angle.get::<revolution>() + self.abs_offsets[2].get::<revolution>()) * SWERVE_TURN_RATIO,
+        );
+        self.br_turn.set(
+            ControlMode::Position,
+            -(wheel_speeds[3].angle.get::<revolution>() + self.abs_offsets[3].get::<revolution>()) * SWERVE_TURN_RATIO,
+        );
     }
 
     pub fn dbg_set(&self, angle: f64) {

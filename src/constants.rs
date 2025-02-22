@@ -53,16 +53,17 @@ pub mod vision {
 pub mod drivetrain {
     use std::f64::consts::PI;
 
-    pub const FR_OFFSET: f64 = -0.079833984375 * 360.;
-    pub const FL_OFFSET: f64 = -0.080810546875 * 360.;
-    pub const BR_OFFSET: f64 = -0.16943359375 * 360.;
-    pub const BL_OFFSET: f64 = 0.05712890625 * 360.;
+    pub const FR_OFFSET_DEGREES: f64 = 0.081299 * 360.;
+    pub const FL_OFFSET_DEGREES: f64 = 0.079102 * 360.;
+    pub const BR_OFFSET_DEGREES: f64 = -0.056641 * 360.;
+    pub const BL_OFFSET_DEGREES: f64 = 0.170898 * 360.;
 
     pub const PIGEON_OFFSET: f64 = -1.5;
 
     pub const SWERVE_TURN_KP: f64 = 0.6;
 
     pub const SWERVE_ROTATIONS_TO_INCHES: f64 = (1. / 6.75) * (3.84 * PI);
+    pub const SWERVE_TURN_RATIO: f64 = 12.8;
 
     pub const SWERVE_DRIVE_KP: f64 = 0.7;
     pub const SWERVE_DRIVE_KI: f64 = 2.;

@@ -7,6 +7,7 @@ use uom::si::{
 };
 
 use nalgebra::{ComplexField, Rotation2, Vector2};
+use crate::constants::drivetrain::SWERVE_TURN_RATIO;
 
 pub type WheelSpeeds = Vec<ModuleState>;
 pub type ModulePosition = Vector2<f64>;
@@ -114,11 +115,11 @@ pub trait ToTalonEncoder {
 
 impl ToTalonEncoder for f64 {
     fn talon_encoder_ticks(&self) -> f64 {
-        self / ((360.) / (2048. * 12.8))
+        self / ((360.) / (2048. * SWERVE_TURN_RATIO))
     }
 
     fn from_talon_encoder_ticks(&self) -> f64 {
-        self * ((360.) / (2048. * 12.8))
+        self * ((360.) / (2048. * SWERVE_TURN_RATIO))
     }
 }
 
