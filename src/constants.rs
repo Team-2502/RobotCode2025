@@ -35,6 +35,11 @@ pub mod robotmap {
         pub const RAISE: i32 = 1;
         pub const GRAB: i32 = 0;
     }
+
+    pub mod led {
+        pub const PORT: i32 = 1;
+        pub const COUNT: i32 = 0;
+    }
 }
 
 // TODO: get 2025 field dimensions
