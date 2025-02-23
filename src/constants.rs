@@ -6,15 +6,19 @@ pub mod robotmap {
 
         pub const FR_DRIVE: i32 = 1;
         pub const FR_TURN: i32 = 2;
+        pub const FR_ENCODER: i32 = 13;
 
         pub const FL_DRIVE: i32 = 4;
         pub const FL_TURN: i32 = 3;
+        pub const FL_ENCODER: i32 = 14;
 
         pub const BL_DRIVE: i32 = 5;
         pub const BL_TURN: i32 = 6;
+        pub const BL_ENCODER: i32 = 15;
 
         pub const BR_DRIVE: i32 = 7;
         pub const BR_TURN: i32 = 8;
+        pub const BR_ENCODER: i32 = 16;
     }
 
     pub mod elevator {
@@ -40,28 +44,36 @@ pub const HALF_FIELD_LENGTH_METERS: f64 = 8.2296; // 54/2 feet
 pub mod vision {
     use nalgebra::Vector2;
 
-    pub const LIMELIGHT_PITCH_DEGREES: f64 = 18.1;
-    pub const LIMELIGHT_YAW_DEGREES: f64 = 180.;
-    pub const LIMELIGHT_HEIGHT_INCHES: f64 = 11.75;
-    pub const ROBOT_CENTER_TO_LIMELIGHT_INCHES: Vector2<f64> = Vector2::new(-14.45, 0.);
+    pub const LIMELIGHT_UPPER_PITCH_DEGREES: f64 = -35.15;
+    pub const LIMELIGHT_UPPER_YAW_DEGREES: f64 = 90.; // Counterclockwise positive
+    pub const LIMELIGHT_UPPER_HEIGHT_INCHES: f64 = 20.8;
+    pub const ROBOT_CENTER_TO_LIMELIGHT_UPPER_INCHES: Vector2<f64> = Vector2::new(11.118, 10.352);
 }
 
 pub mod drivetrain {
     use std::f64::consts::PI;
 
-    pub const SWERVE_TURN_KP: f64 = 0.3;
+    pub const FR_OFFSET_DEGREES: f64 = 0.081299 * 360.;
+    pub const FL_OFFSET_DEGREES: f64 = 0.079102 * 360.;
+    pub const BR_OFFSET_DEGREES: f64 = -0.056641 * 360.;
+    pub const BL_OFFSET_DEGREES: f64 = 0.170898 * 360.;
 
-    pub const SWERVE_ROTATIONS_TO_INCHES: f64 = (1. / 5.906) * (4. * PI);
+    pub const PIGEON_OFFSET: f64 = -1.5;
 
-    pub const SWERVE_DRIVE_KP: f64 = 0.3;
-    pub const SWERVE_DRIVE_KI: f64 = 0.;
-    pub const SWERVE_DRIVE_KD: f64 = 0.;
+    pub const SWERVE_TURN_KP: f64 = 0.6;
+
+    pub const SWERVE_ROTATIONS_TO_INCHES: f64 = (1. / 6.75) * (3.84 * PI);
+    pub const SWERVE_TURN_RATIO: f64 = 12.8;
+
+    pub const SWERVE_DRIVE_KP: f64 = 0.7;
+    pub const SWERVE_DRIVE_KI: f64 = 2.;
+    pub const SWERVE_DRIVE_KD: f64 = 50.;
     pub const SWERVE_DRIVE_KF: f64 = 0.; // Velocity ff
     pub const SWERVE_DRIVE_KFA: f64 = 0.; // Acceleration ff
 
     pub const SWERVE_DRIVE_MAX_ERR: f64 = 0.15;
     pub const SWERVE_DRIVE_SUGGESTION_ERR: f64 = 0.35;
-    pub const SWERVE_DRIVE_IE: f64 = 0.0; //0.175; // integral enable
+    pub const SWERVE_DRIVE_IE: f64 = 0.175; //0.175; // integral enable
 
     pub const LINEUP_2D_TX_STR_KP: f64 = 0.005;
     pub const LINEUP_2D_TX_FWD_KP: f64 = 0.005;
@@ -74,19 +86,22 @@ pub mod drivetrain {
     pub const TX_ACCEPTABLE_ERROR: f64 = 1.8;
     pub const TY_ACCEPTABLE_ERROR: f64 = 1.8;
     pub const YAW_ACCEPTABLE_ERROR: f64 = 0.02;
-
 }
 pub mod pose_estimation {
     pub const ARC_ODOMETRY_MINIMUM_DELTA_THETA_RADIANS: f64 = 0.000001;
     pub const MIN_FOM: f64 = 0.00001;
     pub const START_POSITION_FOM: f64 = 0.01; //meters
     pub const DRIFT_RATIO: f64 = 0.02; // Robot odometry pose estimate drifts [ratio] meters for every meter driven
+    pub const LIMELIGHT_BASE_FOM: f64 = 0.001; // meters
+    pub const LIMELIGHT_INACCURACY_PER_DEGREE_TX: f64 = 0.015; // Meters of inaccuracy per degree of tx absolute value (our limelights are miscalibrated)
+    pub const LIMELIGHT_INACCURACY_PER_ANGULAR_VELOCITY: f64 = 2.; // Meters of inaccuracy per (radian/second) of drivetrain angular velocity
+    pub const LIMELIGHT_INACCURACY_PER_LINEAR_VELOCITY: f64 = 2.; //  Meters of inaccuracy per (meter/second) of drivetrain linear velocity
 }
 pub mod elevator {
     pub const BOTTOM: f64 = 0.0; // unit is rotations
-    pub const L2: f64 = 1.; // unit is rotations
-    pub const L3: f64 = 15.75; // unit is rotations
-    pub const L4: f64 = 38.8; // unit is rotations
+    pub const L2: f64 = 2.; // unit is rotations
+    pub const L3: f64 = 16.5; // unit is rotations
+    pub const L4: f64 = 39.1; // unit is rotations
     pub const ELEVATOR_TRAPEZOID_DT_MS: u64 = 50; // sleep.await this long in between updating the elevator trapezoidal when running its async function
     pub const POSITION_TOLERANCE: f64 = 0.25; // unit is rotations. finish elevator async move when within this distance of target
 }
@@ -125,4 +140,5 @@ pub mod joystick_map {
     pub const SET_TARGET_L2: usize = 14;
     pub const SET_TARGET_L3: usize = 15;
     pub const SET_TARGET_L4: usize = 16;
+    pub const WHEELS_ZERO: usize = 5;
 }

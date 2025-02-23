@@ -2,9 +2,9 @@ use frcrs::limelight::{Limelight, LimelightResults};
 use std::fs::File;
 
 use crate::constants::vision;
-use crate::constants::vision::ROBOT_CENTER_TO_LIMELIGHT_INCHES;
+use crate::constants::vision::ROBOT_CENTER_TO_LIMELIGHT_UPPER_INCHES;
 use frcrs::telemetry::Telemetry;
-use nalgebra::{Quaternion, Vector2, Vector3};
+use nalgebra::{Quaternion, Rotation2, Vector2, Vector3};
 use serde_json::Value;
 use uom::num::FromPrimitive;
 use uom::si::length::inch;
@@ -14,7 +14,13 @@ use uom::si::{
     length::meter,
 };
 
+use crate::constants::pose_estimation::{
+    LIMELIGHT_BASE_FOM, LIMELIGHT_INACCURACY_PER_ANGULAR_VELOCITY,
+    LIMELIGHT_INACCURACY_PER_DEGREE_TX, LIMELIGHT_INACCURACY_PER_LINEAR_VELOCITY,
+};
+use crate::swerve::odometry::PoseEstimate;
 use std::net::SocketAddr;
+use tokio::time::Instant;
 
 #[derive(Clone)]
 pub struct Vision {
@@ -23,6 +29,11 @@ pub struct Vision {
     results: LimelightResults,
     last_results: LimelightResults,
     saved_id: i32,
+    drivetrain_angle: Angle,
+    last_drivetrain_angle: Angle,
+    last_update_time: Instant,
+    robot_position: Vector2<Length>,
+    last_robot_position: Vector2<Length>,
 }
 
 pub struct FieldPosition {
@@ -45,16 +56,36 @@ impl Vision {
             results: LimelightResults::default(),
             last_results: LimelightResults::default(),
             saved_id: 0,
+            drivetrain_angle: Angle::new::<degree>(0.),
+            last_drivetrain_angle: Angle::new::<degree>(0.),
+            last_update_time: Instant::now(),
+            robot_position: Vector2::new(Length::new::<meter>(0.), Length::new::<meter>(0.)),
+            last_robot_position: Vector2::new(Length::new::<meter>(0.), Length::new::<meter>(0.)),
         }
     }
     /// Updates the results from the limelight, also posts telemetry data
-    pub async fn update(&mut self, dt_angle: f64) {
+    pub async fn update(&mut self, dt_angle: Angle, robot_position: Vector2<Length>) {
         self.last_results = self.results.clone();
-        self.results = self.limelight.results().await.unwrap();
-        self.limelight
-            .update_robot_orientation(dt_angle)
+        self.last_robot_position = self.robot_position;
+        self.robot_position = robot_position;
+
+        let results = self.limelight.results().await;
+        if let Ok(r) = results {
+            self.results = r;
+        } else {
+            eprintln!("Failed to fetch results from limelight")
+        }
+
+        self.last_drivetrain_angle = self.drivetrain_angle;
+        self.drivetrain_angle = dt_angle;
+        self.last_update_time = Instant::now();
+
+        if self.limelight
+            .update_robot_orientation(-dt_angle.get::<radian>()) // Why do we use clockwise positive
             .await
-            .unwrap();
+            .is_err() {
+            eprintln!("Failed to update robot orientation on limelight")
+        }
 
         if !self.results.Fiducial.is_empty() {
             if self.results.Fiducial[0].fID != -1 && self.results.Fiducial[0].fID != self.saved_id {
@@ -63,7 +94,9 @@ impl Vision {
 
             Telemetry::put_number("id", self.results.Fiducial[0].fID as f64).await;
         }
-
+        if let Some(dist) = self.get_dist() {
+            Telemetry::put_number("dist from tag inches", dist.get::<inch>()).await;
+        }
         Telemetry::put_number("tx", self.results.tx).await;
         Telemetry::put_number("ty", self.results.ty).await;
         Telemetry::put_number("saved_id", self.saved_id as f64).await;
@@ -109,9 +142,9 @@ impl Vision {
                     .unwrap()
                     .z
                     .get::<inch>();
-                let height_diff = tag_height - vision::LIMELIGHT_HEIGHT_INCHES;
+                let height_diff = tag_height - vision::LIMELIGHT_UPPER_HEIGHT_INCHES;
                 let pitch_to_tag: Angle = Angle::new::<degree>(
-                    vision::LIMELIGHT_PITCH_DEGREES + self.get_ty().get::<degree>(),
+                    vision::LIMELIGHT_UPPER_PITCH_DEGREES + self.get_ty().get::<degree>(),
                 );
                 Some(Length::new::<inch>(height_diff) / f64::tan(pitch_to_tag.get::<radian>()))
             }
@@ -167,25 +200,21 @@ impl Vision {
     /// Estimates robot position (always blue origin) given a drivetrain angle (CCW+, always blue origin) and last updates' limelight measurements
     /// Uses 2D calculations: distance from tag center & angle to tag center
     /// Returns Option::None if no tag is currently targeted
-    pub fn get_position_from_tag_2d(&self, drivetrain_angle: Angle) -> Option<Vector2<Length>> {
+    pub fn get_position_from_tag_2d(&self) -> Option<Vector2<Length>> {
         let id = self.get_id();
         let dist = self.get_dist()?;
+        let drivetrain_angle = Angle::new::<radian>(-self.drivetrain_angle.get::<radian>());
 
-        println!("dist: {}", dist.get::<meter>());
+        //println!("dist: {}", dist.get::<meter>());
 
         // Get tag position and rotation
         let tag_data = self.get_tag_position(id)?;
         let tag_xy = Vector2::new(tag_data.coordinate?.x, tag_data.coordinate?.y);
-        let tag_quaternion = tag_data.quaternion?;
 
-        let tag_yaw = Angle::new::<radian>(f64::atan2(
-            2.0 * (tag_quaternion.w * tag_quaternion.k + tag_quaternion.i * tag_quaternion.j),
-            1.0 - 2.0 * (tag_quaternion.j * tag_quaternion.j + tag_quaternion.k * tag_quaternion.k),
-        ));
-
-        let angle_to_tag: Angle =
-            drivetrain_angle + Angle::new::<degree>(vision::LIMELIGHT_YAW_DEGREES) - self.get_tx()
-                + tag_yaw;
+        let angle_to_tag: Angle = (drivetrain_angle)
+            + Angle::new::<degree>(vision::LIMELIGHT_UPPER_YAW_DEGREES)
+            - self.get_tx();
+        //println!("angle to tag degrees: dt angle {} + ll yaw {} + tx {} = {}",drivetrain_angle.get::<degree>(),vision::LIMELIGHT_UPPER_YAW_DEGREES,self.get_tx().get::<degree>(),angle_to_tag.get::<degree>());
 
         // Calculate limelight's position relative to tag
         let limelight_to_tag: Vector2<Length> = Vector2::new(
@@ -194,25 +223,18 @@ impl Vision {
         );
 
         // Calculate offset from robot center to limelight
-        let robot_center_to_limelight_unrotated: Vector2<Length> = Vector2::new(
-            Length::new::<inch>(ROBOT_CENTER_TO_LIMELIGHT_INCHES.x),
-            Length::new::<inch>(ROBOT_CENTER_TO_LIMELIGHT_INCHES.y),
+        let robot_center_to_limelight_unrotated_inches: Vector2<f64> = Vector2::new(
+            ROBOT_CENTER_TO_LIMELIGHT_UPPER_INCHES.x,
+            ROBOT_CENTER_TO_LIMELIGHT_UPPER_INCHES.y,
         );
 
         // Rotate the limelight offset by drivetrain angle
+        let drivetrain_angle_rotation = Rotation2::new(drivetrain_angle.get::<radian>());
+        let robot_to_limelight_inches =
+            drivetrain_angle_rotation * robot_center_to_limelight_unrotated_inches;
         let robot_to_limelight: Vector2<Length> = Vector2::new(
-            Length::new::<meter>(
-                robot_center_to_limelight_unrotated.x.get::<meter>()
-                    * f64::cos(drivetrain_angle.get::<radian>())
-                    - robot_center_to_limelight_unrotated.y.get::<meter>()
-                        * f64::sin(drivetrain_angle.get::<radian>()),
-            ),
-            Length::new::<meter>(
-                robot_center_to_limelight_unrotated.x.get::<meter>()
-                    * f64::sin(drivetrain_angle.get::<radian>())
-                    + robot_center_to_limelight_unrotated.y.get::<meter>()
-                        * f64::cos(drivetrain_angle.get::<radian>()),
-            ),
+            Length::new::<inch>(robot_to_limelight_inches.x),
+            Length::new::<inch>(robot_to_limelight_inches.y),
         );
 
         // Calculate final robot position
@@ -220,11 +242,59 @@ impl Vision {
     }
 
     /// Returns the botpose: x, y
-    pub fn get_botpose_orb(&self) -> Vector2<Length> {
-        Vector2::new(
+    pub fn get_botpose_orb(&self) -> Option<Vector2<Length>> {
+        let pose: Vector2<Length> = Vector2::new(
             Length::new::<meter>(self.results.botpose_orb_wpiblue[0]),
             Length::new::<meter>(self.results.botpose_orb_wpiblue[1]),
-        )
+        );
+        if pose.x.get::<meter>() == 0. {
+            None
+        } else {
+            Some(pose)
+        }
+    }
+
+    pub fn get_pose_estimate_orb(&self) -> Option<PoseEstimate> {
+        if let Some(pose) = self.get_botpose_orb() {
+            Some(PoseEstimate {
+                position: pose,
+                figure_of_merit: self.get_figure_of_merit(),
+            })
+        } else {
+            None
+        }
+    }
+    pub fn get_pose_estimate_2d(&self) -> Option<PoseEstimate> {
+        let pose = self.get_position_from_tag_2d()?;
+        Some(PoseEstimate {
+            position: pose,
+            figure_of_merit: self.get_figure_of_merit(),
+        })
+    }
+
+    pub fn get_figure_of_merit(&self) -> Length {
+        let dt = Instant::now() - self.last_update_time;
+        let angular_velocity_rad_per_sec = (self.drivetrain_angle.get::<radian>()
+            - self.last_drivetrain_angle.get::<radian>())
+            / dt.as_secs_f64();
+        let robot_position_meters: Vector2<f64> = Vector2::new(
+            self.robot_position.x.get::<meter>(),
+            self.robot_position.y.get::<meter>(),
+        );
+        let last_robot_position_meters: Vector2<f64> = Vector2::new(
+            self.last_robot_position.x.get::<meter>(),
+            self.last_robot_position.y.get::<meter>(),
+        );
+        let linear_velocity_meters_per_sec =
+            (robot_position_meters - last_robot_position_meters).magnitude() / dt.as_secs_f64();
+
+        let mut fom_meters =
+            LIMELIGHT_INACCURACY_PER_ANGULAR_VELOCITY * angular_velocity_rad_per_sec.abs();
+        fom_meters +=
+            LIMELIGHT_INACCURACY_PER_LINEAR_VELOCITY * linear_velocity_meters_per_sec.abs();
+        //fom_meters += LIMELIGHT_INACCURACY_PER_DEGREE_TX * self.get_tx().get::<degree>().abs();
+        fom_meters += LIMELIGHT_BASE_FOM;
+        Length::new::<meter>(fom_meters)
     }
 
     pub fn get_botpose(&self) -> Vector2<Length> {
