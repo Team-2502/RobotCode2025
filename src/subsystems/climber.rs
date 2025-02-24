@@ -18,8 +18,8 @@ impl Default for Climber {
 impl Climber {
     pub fn new() -> Self {
         Self {
-            raise: Solenoid::new(ModuleType::Rev, RAISE),
-            grab: Solenoid::new(ModuleType::Rev, GRAB),
+            raise: Solenoid::new(ModuleType::CTRE, RAISE),
+            grab: Solenoid::new(ModuleType::CTRE, GRAB),
         }
     }
 
