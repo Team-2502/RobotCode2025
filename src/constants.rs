@@ -1,3 +1,6 @@
+use uom::si::f64::Length;
+use uom::si::length::meter;
+
 pub const FPS_LIMIT: f64 = 250.;
 
 pub mod robotmap {
@@ -43,8 +46,8 @@ pub mod robotmap {
 }
 
 // TODO: get 2025 field dimensions
-pub const HALF_FIELD_WIDTH_METERS: f64 = 4.1148; // 54/4 feet
-pub const HALF_FIELD_LENGTH_METERS: f64 = 8.2296; // 54/2 feet
+pub const HALF_FIELD_WIDTH_METERS: Length = Length::new::<meter>(17.55 / 2.);
+pub const HALF_FIELD_LENGTH_METERS: Length = Length::new::<meter>(8.05 / 2.);
 
 pub mod vision {
     use nalgebra::Vector2;
