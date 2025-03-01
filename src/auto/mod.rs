@@ -9,6 +9,8 @@ use std::time::Duration;
 use tokio::join;
 use tokio::time::{sleep, Instant, timeout};
 use uom::si::{f64::Length, length::meter};
+use uom::si::angle::degree;
+use uom::si::f64::Angle;
 
 use crate::subsystems::{Drivetrain, Elevator, ElevatorPosition, Indexer, LineupSide};
 use crate::{constants, score, Ferris};
@@ -22,6 +24,8 @@ pub enum Auto {
     BlueLong,
     Blue2,
     RotationTest,
+    BlueMidLeft2,
+    Center1,
 }
 
 impl Auto {
@@ -33,6 +37,8 @@ impl Auto {
             "BlueLong" => Auto::BlueLong,
             "Blue2" => Auto::Blue2,
             "RotationTest" => Auto::RotationTest,
+            "BlueMidLeft2" => Auto::BlueMidLeft2,
+            "Center1" => Auto::Center1,
             _ => Auto::Nothing,
         }
     }
@@ -45,6 +51,8 @@ impl Auto {
             Auto::BlueLong => "BlueLong",
             Auto::Blue2 => "Blue2",
             Auto::RotationTest => "RotationTest",
+            Auto::BlueMidLeft2 => "BlueMidLeft2",
+            Auto::Center1 => "Center1",
             _ => "none",
         }
     }
@@ -52,11 +60,13 @@ impl Auto {
     pub fn iterator() -> Vec<Self> {
         vec![
             Auto::Nothing,
-            Auto::BlueTriangle,
-            Auto::Blue180,
-            Auto::BlueLong,
+            // Auto::BlueTriangle,
+            // Auto::Blue180,
+            // Auto::BlueLong,
             Auto::Blue2,
-            Auto::RotationTest,
+            // Auto::RotationTest,
+            Auto::BlueMidLeft2,
+            Auto::Center1,
         ]
     }
 
@@ -81,6 +91,8 @@ impl Auto {
             Auto::BlueLong => blue_long(ferris).await.expect("Failed running auto"),
             Auto::Blue2 => blue_2(ferris).await.expect("Failed running auto"),
             Auto::RotationTest => rotation_test(ferris).await.expect("Failed running auto"),
+            Auto::BlueMidLeft2 => blue_mid_left_2(ferris).await.expect("Failed running auto"),
+            Auto::Center1 => center_1(ferris).await.expect("Failed running auto"),
         }
     }
 }
@@ -270,6 +282,85 @@ async fn rotation_test(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> 
     ));
 
     drive("RotationTest", &mut drivetrain, 1).await?;
+
+    Ok(())
+}
+
+async fn blue_mid_left_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
+    let mut drivetrain = robot.drivetrain.deref().borrow_mut();
+    let mut elevator = robot.elevator.deref().borrow_mut();
+    let mut indexer = robot.indexer.deref().borrow_mut();
+
+    drivetrain.reset_heading_offset(Angle::new::<degree>(180.));
+
+    drivetrain.odometry.set_abs(Vector2::new(
+        Length::new::<meter>(7.2230658531188965),
+        Length::new::<meter>(5.444962978363037)
+    ));
+
+    join!(
+        drive("BlueHighMid2", &mut drivetrain, 1),
+        async {
+            sleep(Duration::from_secs_f64(0.5)).await;
+            elevator.set_target(ElevatorPosition::L4);
+            elevator.run_to_target_trapezoid();
+        }
+    );
+
+    let _ = timeout(Duration::from_secs_f64(0.5), async {
+        loop {
+            drivetrain.update_limelight().await;
+            sleep(Duration::from_millis(20)).await;
+        }
+    }).await;
+
+    async_score(
+        &mut drivetrain,
+        LineupSide::Right,
+        &mut elevator,
+        &mut indexer,
+        ElevatorPosition::L4,
+    ).await;
+
+    join!(drive("BlueHighMid2", &mut drivetrain, 3), async {
+        elevator.set_target(ElevatorPosition::Bottom);
+        elevator.run_to_target_trapezoid_async().await;
+
+        indexer.set_speed(-0.25);
+
+        wait(|| indexer.get_laser_dist() < LASER_TRIP_DISTANCE_MM && indexer.get_laser_dist() != -1).await;
+
+        indexer.stop();
+    });
+
+    join!(drive("BlueHighMid2", &mut drivetrain, 4), async {
+        sleep(Duration::from_secs_f64(1.25)).await;
+        elevator.set_target(ElevatorPosition::L4);
+        elevator.run_to_target_trapezoid();
+    });
+
+    let _ = timeout(Duration::from_secs_f64(0.5), async {
+        loop {
+            drivetrain.update_limelight().await;
+            sleep(Duration::from_millis(20)).await;
+        }
+    }).await;
+
+    async_score(
+        &mut drivetrain,
+        LineupSide::Left,
+        &mut elevator,
+        &mut indexer,
+        ElevatorPosition::L4,
+    )
+        .await;
+
+    Ok(())
+}
+
+async fn center_1(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
+
+
 
     Ok(())
 }
