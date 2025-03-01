@@ -13,6 +13,7 @@ use RobotCode2025::constants::joystick_map::{CLIMB, CLIMB_FALL, CLIMBER_GRAB, CL
 use RobotCode2025::container::control_drivetrain;
 use RobotCode2025::{constants, Ferris, score, TeleopState};
 use RobotCode2025::auto::Auto;
+use RobotCode2025::constants::indexer::INTAKE_SPEED;
 use RobotCode2025::subsystems::{Climber, ElevatorPosition, LineupSide};
 
 fn main() {
@@ -152,7 +153,7 @@ async fn teleop(robot: &mut Ferris) {
                     if indexer.get_laser_dist() > constants::indexer::LASER_TRIP_DISTANCE_MM
                         || indexer.get_laser_dist() == -1
                     {
-                        indexer.set_speed(-0.25);
+                        indexer.set_speed(INTAKE_SPEED);
                     } else {
                         indexer.stop();
                     }

@@ -30,6 +30,7 @@ use tokio::runtime::Handle;
 use tokio::task::{spawn_local, AbortHandle};
 use tokio::time::sleep;
 use uom::si::angle::degree;
+use crate::constants::indexer::{BOTTOM_SPEED, INTAKE_SPEED, L2_SPEED, L3_SPEED, L4_SPEED};
 
 #[derive(Clone)]
 pub struct Controllers {
@@ -252,7 +253,7 @@ impl Robot for Ferris {
                         if indexer.get_laser_dist() > constants::indexer::LASER_TRIP_DISTANCE_MM
                             || indexer.get_laser_dist() == -1
                         {
-                            indexer.set_speed(-0.25);
+                            indexer.set_speed(INTAKE_SPEED);
                         } else {
                             indexer.stop();
                         }
@@ -340,10 +341,10 @@ pub fn score(
     if elevator_at_target && drivetrain_aligned {
         if indexer.get_laser_dist() < constants::indexer::LASER_TRIP_DISTANCE_MM {
             let indexer_speed = match elevator_position {
-                ElevatorPosition::Bottom => -0.7,
-                ElevatorPosition::L2 => -0.7,
-                ElevatorPosition::L3 => -0.7,
-                ElevatorPosition::L4 => -0.5,
+                ElevatorPosition::Bottom => BOTTOM_SPEED,
+                ElevatorPosition::L2 => L2_SPEED,
+                ElevatorPosition::L3 => L3_SPEED,
+                ElevatorPosition::L4 => L4_SPEED,
             };
             indexer.set_speed(indexer_speed);
         } else {

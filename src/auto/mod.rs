@@ -14,7 +14,7 @@ use uom::si::f64::Angle;
 
 use crate::subsystems::{Drivetrain, Elevator, ElevatorPosition, Indexer, LineupSide};
 use crate::{constants, score, Ferris};
-use crate::constants::indexer::LASER_TRIP_DISTANCE_MM;
+use crate::constants::indexer::{BOTTOM_SPEED, INTAKE_SPEED, L2_SPEED, L3_SPEED, L4_SPEED, LASER_TRIP_DISTANCE_MM};
 
 #[derive(Serialize, Deserialize)]
 pub enum Auto {
@@ -134,10 +134,10 @@ pub async fn async_score(
 
     while indexer.get_laser_dist() < constants::indexer::LASER_TRIP_DISTANCE_MM {
         let indexer_speed = match elevator_position {
-            ElevatorPosition::Bottom => -0.5,
-            ElevatorPosition::L2 => -0.5,
-            ElevatorPosition::L3 => -0.5,
-            ElevatorPosition::L4 => -0.25,
+            ElevatorPosition::Bottom => BOTTOM_SPEED,
+            ElevatorPosition::L2 => L2_SPEED,
+            ElevatorPosition::L3 => L3_SPEED,
+            ElevatorPosition::L4 => L4_SPEED,
         };
         indexer.set_speed(indexer_speed);
     }
@@ -217,7 +217,7 @@ pub async fn blue_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
         elevator.set_target(ElevatorPosition::L2);
         elevator.run_to_target_trapezoid();
 
-        indexer.set_speed(-0.25);
+        indexer.set_speed(INTAKE_SPEED);
         wait(|| indexer.get_laser_dist() < LASER_TRIP_DISTANCE_MM && indexer.get_laser_dist() != -1).await;
         indexer.stop();
 
@@ -245,7 +245,7 @@ pub async fn blue_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
         elevator.set_target(ElevatorPosition::Bottom);
         elevator.run_to_target_trapezoid_async().await;
 
-        indexer.set_speed(-0.25);
+        indexer.set_speed(INTAKE_SPEED);
 
         wait(|| indexer.get_laser_dist() < LASER_TRIP_DISTANCE_MM && indexer.get_laser_dist() != -1).await;
 
@@ -332,7 +332,7 @@ async fn blue_mid_left_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>
         elevator.set_target(ElevatorPosition::Bottom);
         elevator.run_to_target_trapezoid_async().await;
 
-        indexer.set_speed(-0.25);
+        indexer.set_speed(INTAKE_SPEED);
 
         wait(|| indexer.get_laser_dist() < LASER_TRIP_DISTANCE_MM && indexer.get_laser_dist() != -1).await;
 
