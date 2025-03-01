@@ -539,6 +539,10 @@ impl Drivetrain {
         self.offset = self.get_angle();
     }
 
+    pub fn reset_heading_offset(&mut self, offset: Angle) {
+        self.offset = self.get_angle() + offset;
+    }
+
     pub async fn lineup(&mut self, side: LineupSide, target_level: ElevatorPosition) -> bool {
         let mut last_error = Vector2::zeros();
         let mut i = Vector2::zeros();
