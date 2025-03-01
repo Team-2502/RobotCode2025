@@ -21,6 +21,7 @@ use frcrs::telemetry::Telemetry;
 use nalgebra::{Quaternion, Rotation2, Vector2};
 use serde::Deserialize;
 use serde::Serialize;
+use tokio::time::Instant;
 
 use crate::constants;
 use crate::constants::vision::ROBOT_CENTER_TO_LIMELIGHT_UPPER_INCHES;
@@ -268,7 +269,7 @@ impl Drivetrain {
                 .get::<meter>(),
         )
         .await;
-        Telemetry::put_number("angle", self.get_offset().get::<radian>()).await;
+        Telemetry::put_number("angle", self.get_offset().get::<degree>()).await;
         Telemetry::put_number(
             "FOM",
             self.odometry
@@ -507,11 +508,7 @@ impl Drivetrain {
     }
 
     pub fn get_angle(&self) -> Angle {
-        if alliance_station().red() {
-            Angle::new::<radian>(-self.pigeon.get_rotation().z + 180. + PIGEON_OFFSET)
-        } else {
-            Angle::new::<radian>(-self.pigeon.get_rotation().z + PIGEON_OFFSET)
-        }
+        Angle::new::<radian>(-self.pigeon.get_rotation().z + PIGEON_OFFSET)
     }
 
     pub fn get_offset(&self) -> Angle {
@@ -566,8 +563,8 @@ impl Drivetrain {
                 i += error_position;
             }
 
-            error_angle *= SWERVE_TURN_KP;
-            error_position *= -SWERVE_DRIVE_KP * 1.25;
+            error_angle *= SWERVE_TURN_KP * 1.2;
+            error_position *= -SWERVE_DRIVE_KP * 1.65;
 
             let mut speed = error_position;
 
@@ -588,9 +585,9 @@ impl Drivetrain {
             Telemetry::put_number("target_x", target.position.x).await;
             Telemetry::put_number("target_y", target.position.y).await;
             Telemetry::put_number("target_angle", target.angle.get::<radian>()).await;
-            if error_position.magnitude().abs() < 0.015 && error_angle.abs() < 0.015 {
+            if error_position.magnitude().abs() < 0.0125 && error_angle.abs() < 0.015 {
                 self.stop();
-                self.set_speeds(0., 0., 0., SwerveControlStyle::RobotOriented);
+                //self.set_speeds(0., 0., 0., SwerveControlStyle::RobotOriented);
                 // println!("dt at position");
                 true
             } else {

@@ -98,7 +98,9 @@ pub async fn follow_path_segment(
         }
 
         let setpoint = if red {
-            path.get(Time::new::<second>(elapsed)).mirror(HALF_FIELD_LENGTH_METERS, HALF_FIELD_WIDTH_METERS)
+            path.get(Time::new::<second>(elapsed)).mirror(
+                Length::new::<meter>(HALF_FIELD_LENGTH_METERS),
+                Length::new::<meter>(HALF_FIELD_WIDTH_METERS))
         } else {
             path.get(Time::new::<second>(elapsed))
         };

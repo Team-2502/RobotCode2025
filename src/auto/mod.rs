@@ -206,7 +206,7 @@ pub async fn blue_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
     let mut elevator = robot.elevator.deref().borrow_mut();
     let mut indexer = robot.indexer.deref().borrow_mut();
 
-    drivetrain.reset_heading();
+    drivetrain.reset_heading_offset(Angle::new::<degree>(180.));
 
     drivetrain.odometry.set_abs(Vector2::new(
         Length::new::<meter>(8.020708084106445),
@@ -214,12 +214,18 @@ pub async fn blue_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
     ));
 
     join!(drive("Blue2", &mut drivetrain, 1), async {
-        sleep(Duration::from_secs_f64(2.5)).await;
+        elevator.set_target(ElevatorPosition::L2);
+        elevator.run_to_target_trapezoid();
+
+        indexer.set_speed(-0.25);
+        wait(|| indexer.get_laser_dist() < LASER_TRIP_DISTANCE_MM && indexer.get_laser_dist() != -1).await;
+        indexer.stop();
+
         elevator.set_target(ElevatorPosition::L4);
         elevator.run_to_target_trapezoid();
     });
 
-    let _ = timeout(Duration::from_secs_f64(0.5), async {
+    let _ = timeout(Duration::from_secs_f64(0.75), async {
         loop {
             drivetrain.update_limelight().await;
             sleep(Duration::from_millis(20)).await;

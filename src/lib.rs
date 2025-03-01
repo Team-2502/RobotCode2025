@@ -23,7 +23,8 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use tokio::time::Instant;
 use axum::response::IntoResponse;
 use tokio::runtime::Handle;
 use tokio::task::{spawn_local, AbortHandle};
@@ -339,10 +340,10 @@ pub fn score(
     if elevator_at_target && drivetrain_aligned {
         if indexer.get_laser_dist() < constants::indexer::LASER_TRIP_DISTANCE_MM {
             let indexer_speed = match elevator_position {
-                ElevatorPosition::Bottom => -0.5,
-                ElevatorPosition::L2 => -0.5,
-                ElevatorPosition::L3 => -0.5,
-                ElevatorPosition::L4 => -0.25,
+                ElevatorPosition::Bottom => -0.7,
+                ElevatorPosition::L2 => -0.7,
+                ElevatorPosition::L3 => -0.7,
+                ElevatorPosition::L4 => -0.5,
             };
             indexer.set_speed(indexer_speed);
         } else {
@@ -351,6 +352,8 @@ pub fn score(
             //elevator.set_target(ElevatorPosition::Bottom);
             //elevator.run_to_target_trapezoid();
         }
+    } else {
+        indexer.stop();
     }
 }
 

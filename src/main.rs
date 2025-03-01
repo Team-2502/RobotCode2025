@@ -1,7 +1,7 @@
 #![warn(non_snake_case)]
 
 use std::ops::Deref;
-use std::time::{Duration, Instant};
+use tokio::time::{Duration, Instant};
 use frcrs::{init_hal, observe_user_program_starting, refresh_data, Robot};
 use frcrs::input::{RobotMode, RobotState};
 use frcrs::networktables::NetworkTable;
