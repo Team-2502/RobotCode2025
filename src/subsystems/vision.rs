@@ -148,7 +148,7 @@ impl Vision {
                 );
                 let mut dist = Length::new::<inch>(height_diff) / f64::tan(pitch_to_tag.get::<radian>());
                 dist += (dist * TX_FUDGE_FACTOR * self.get_tx().get::<degree>().abs());
-                Some(Length::new::<inch>(height_diff) / f64::tan(pitch_to_tag.get::<radian>()))
+                Some(dist)
             }
             None => None,
         }
