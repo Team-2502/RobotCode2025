@@ -223,7 +223,6 @@ impl Robot for Ferris {
 
                         false
                     };
-
                     if self.controllers.left_drive.get(SCORE_L2) {
                         score(
                             drivetrain_aligned,
@@ -333,6 +332,7 @@ pub fn score(
     indexer: &mut Indexer,
     elevator_position: ElevatorPosition,
 ) {
+    println!("dt_aligned: {}", drivetrain_aligned);
     elevator.set_target(elevator_position);
     let elevator_at_target = elevator.run_to_target_trapezoid();
 

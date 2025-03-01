@@ -625,7 +625,7 @@ impl Drivetrain {
         let yaw = quaternion_to_yaw(tag_rotation);
 
         let mut side_distance = Length::new::<inch>(13. / 2.); // theoretical is 13. / 2.
-        let forward_distance = Length::new::<inch>(16.75); //theoretical is 16.75
+        let forward_distance = Length::new::<inch>(16.25); //theoretical is 16.75
         let elevator_position = match target_level {
             ElevatorPosition::Bottom => Length::new::<inch>(-10.5),
             ElevatorPosition::L2 => Length::new::<inch>(-10.5),

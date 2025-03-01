@@ -2,7 +2,7 @@ use frcrs::limelight::{Limelight, LimelightResults};
 use std::fs::File;
 
 use crate::constants::vision;
-use crate::constants::vision::ROBOT_CENTER_TO_LIMELIGHT_UPPER_INCHES;
+use crate::constants::vision::{ROBOT_CENTER_TO_LIMELIGHT_UPPER_INCHES, TX_FUDGE_FACTOR};
 use frcrs::telemetry::Telemetry;
 use nalgebra::{Quaternion, Rotation2, Vector2, Vector3};
 use serde_json::Value;
@@ -146,6 +146,8 @@ impl Vision {
                 let pitch_to_tag: Angle = Angle::new::<degree>(
                     vision::LIMELIGHT_UPPER_PITCH_DEGREES + self.get_ty().get::<degree>(),
                 );
+                let mut dist = Length::new::<inch>(height_diff) / f64::tan(pitch_to_tag.get::<radian>());
+                dist += (dist * TX_FUDGE_FACTOR * self.get_tx().get::<degree>().abs());
                 Some(Length::new::<inch>(height_diff) / f64::tan(pitch_to_tag.get::<radian>()))
             }
             None => None,
