@@ -48,7 +48,7 @@ pub const HALF_FIELD_LENGTH_METERS: f64 = 8.05 / 2.;
 pub mod vision {
     use nalgebra::Vector2;
 
-    pub const LIMELIGHT_UPPER_PITCH_DEGREES: f64 = -34.12;
+    pub const LIMELIGHT_UPPER_PITCH_DEGREES: f64 = -34.483; //Last measured: -36.67
     pub const LIMELIGHT_UPPER_YAW_DEGREES: f64 = 90.; // Counterclockwise positive
     pub const LIMELIGHT_UPPER_HEIGHT_INCHES: f64 = 20.92;
     pub const ROBOT_CENTER_TO_LIMELIGHT_UPPER_INCHES: Vector2<f64> = Vector2::new(11.118, 10.352);
@@ -95,7 +95,7 @@ pub mod drivetrain {
     pub const TY_ACCEPTABLE_ERROR: f64 = 1.8;
     pub const YAW_ACCEPTABLE_ERROR: f64 = 0.02;
 
-    pub const LINEUP_DRIVE_KP: f64 = 0.6;
+    pub const LINEUP_DRIVE_KP: f64 = 0.7;
     pub const LINEUP_DRIVE_KI: f64 = 10.;
     pub const LINEUP_DRIVE_KD: f64 = 10.;
     pub const LINEUP_DRIVE_IE: f64 = 0.25;
@@ -113,7 +113,7 @@ pub mod pose_estimation {
 pub mod elevator {
     pub const BOTTOM: f64 = 0.0; // unit is rotations
     pub const L2: f64 = 2.; // unit is rotations
-    pub const L3: f64 = 16.5; // unit is rotations
+    pub const L3: f64 = 15.5; // unit is rotations
     pub const L4: f64 = 39.1; // unit is rotations
     pub const ELEVATOR_TRAPEZOID_DT_MS: u64 = 50; // sleep.await this long in between updating the elevator trapezoidal when running its async function
     pub const POSITION_TOLERANCE: f64 = 0.25; // unit is rotations. finish elevator async move when within this distance of target
@@ -121,9 +121,9 @@ pub mod elevator {
 pub mod indexer {
     pub const LASER_TRIP_DISTANCE_MM: i32 = 2;
     pub const INTAKE_SPEED: f64 = -0.25;
-    pub const BOTTOM_SPEED: f64 = -0.7;
-    pub const L2_SPEED: f64 = -0.7;
-    pub const L3_SPEED: f64 = -0.7;
+    pub const BOTTOM_SPEED: f64 = -0.5;
+    pub const L2_SPEED: f64 = -0.5;
+    pub const L3_SPEED: f64 = -0.5;
     pub const L4_SPEED: f64 = -0.35;
 }
 pub mod joystick_map {

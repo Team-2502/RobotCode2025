@@ -582,8 +582,7 @@ impl Drivetrain {
             Telemetry::put_number("target_x", target.position.x).await;
             Telemetry::put_number("target_y", target.position.y).await;
             Telemetry::put_number("target_angle", target.angle.get::<radian>()).await;
-            if error_position.x.abs() < 0.015
-                && error_position.y.abs() < 0.015
+            if error_position.magnitude().abs() < 0.015
                 && error_angle.abs() < 0.015
             {
                 self.stop();
@@ -628,9 +627,9 @@ impl Drivetrain {
         let mut side_distance = Length::new::<inch>(13. / 2.); // theoretical is 13. / 2.
         let forward_distance = Length::new::<inch>(16.75); //theoretical is 16.75
         let elevator_position = match target_level {
-            ElevatorPosition::Bottom => Length::new::<inch>(-10.5),
-            ElevatorPosition::L2 => Length::new::<inch>(-10.5),
-            ElevatorPosition::L3 => Length::new::<inch>(-10.5),
+            ElevatorPosition::Bottom => Length::new::<inch>(-9.),
+            ElevatorPosition::L2 => Length::new::<inch>(-9.),
+            ElevatorPosition::L3 => Length::new::<inch>(-9.),
             ElevatorPosition::L4 => Length::new::<inch>(-9.),
         }; //theoretical is -11.0
 
