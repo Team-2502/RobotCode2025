@@ -99,8 +99,8 @@ pub async fn follow_path_segment(
 
         let setpoint = if red {
             path.get(Time::new::<second>(elapsed)).mirror(
-                Length::new::<meter>(HALF_FIELD_LENGTH_METERS),
-                Length::new::<meter>(HALF_FIELD_WIDTH_METERS))
+                Length::new::<meter>(HALF_FIELD_WIDTH_METERS),
+                Length::new::<meter>(HALF_FIELD_LENGTH_METERS))
         } else {
             path.get(Time::new::<second>(elapsed))
         };
@@ -163,6 +163,10 @@ pub async fn follow_path_segment(
         speed += (speed - last_error) * SWERVE_DRIVE_KD * dt.as_secs_f64();
         last_error = speed_s;
 
+        if red {
+            speed *= -1.;
+        }
+
         drivetrain.set_speeds(
             speed.x,
             speed.y,
@@ -170,8 +174,8 @@ pub async fn follow_path_segment(
             SwerveControlStyle::FieldOriented,
         );
 
-        Telemetry::put_number("path_turn_err", error_angle).await;
-        Telemetry::put_number("path_target_angle", angle.get::<radian>()).await;
+        Telemetry::put_number("Auto X", position.x).await;
+        Telemetry::put_number("Auto Y", position.y).await;
 
         sleep(Duration::from_millis(20)).await;
     }

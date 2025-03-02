@@ -60,7 +60,7 @@ impl Auto {
     pub fn iterator() -> Vec<Self> {
         vec![
             Auto::Nothing,
-            // Auto::BlueTriangle,
+            Auto::BlueTriangle,
             // Auto::Blue180,
             Auto::BlueLong,
             Auto::Blue2,
@@ -153,7 +153,9 @@ pub async fn async_score(
 pub async fn blue_triangle(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
     let mut drivetrain = robot.drivetrain.deref().borrow_mut();
 
-    drivetrain.odometry.set_abs(Vector2::new(
+    drivetrain.reset_heading();
+
+    drivetrain.odometry.set(Vector2::new(
         Length::new::<meter>(8.075126647949219),
         Length::new::<meter>(2.0993127822875977),
     ));
@@ -211,7 +213,7 @@ pub async fn blue_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
 
     drivetrain.reset_heading_offset(Angle::new::<degree>(180.));
 
-    drivetrain.odometry.set_abs(Vector2::new(
+    drivetrain.odometry.set(Vector2::new(
         Length::new::<meter>(7.215517520904541),
         Length::new::<meter>(5.439107418060303),
     ));
