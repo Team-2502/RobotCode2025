@@ -111,6 +111,7 @@ pub async fn async_score(
     elevator: &mut Elevator,
     indexer: &mut Indexer,
     elevator_position: ElevatorPosition,
+    dt: Duration,
 ) -> bool {
     elevator.set_target(elevator_position);
 
@@ -120,7 +121,7 @@ pub async fn async_score(
                 drivetrain.update_limelight().await;
                 drivetrain.post_odo().await;
 
-                if drivetrain.lineup(lineup_side, elevator_position).await {
+                if drivetrain.lineup(lineup_side, elevator_position, dt).await {
                     break;
                 }
 
@@ -238,6 +239,7 @@ pub async fn blue_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
         &mut elevator,
         &mut indexer,
         ElevatorPosition::L4,
+        robot.dt,
     )
     .await;
 
@@ -271,6 +273,7 @@ pub async fn blue_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
         &mut elevator,
         &mut indexer,
         ElevatorPosition::L4,
+        robot.dt,
     )
     .await;
 
@@ -326,6 +329,7 @@ async fn blue_mid_left_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>
         &mut elevator,
         &mut indexer,
         ElevatorPosition::L4,
+        robot.dt,
     ).await;
 
     join!(drive("BlueHighMid2", &mut drivetrain, 3), async {
@@ -358,6 +362,7 @@ async fn blue_mid_left_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>
         &mut elevator,
         &mut indexer,
         ElevatorPosition::L4,
+        robot.dt,
     )
         .await;
 

@@ -3,16 +3,11 @@ use std::f64::consts::PI;
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::ops::{Add, Sub};
+use std::time::Duration;
 
 use frcrs::ctre::{talon_encoder_tick, CanCoder, ControlMode, Pigeon, Talon};
 
-use crate::constants::drivetrain::{
-    BL_OFFSET_DEGREES, BR_OFFSET_DEGREES, FL_OFFSET_DEGREES, FR_OFFSET_DEGREES,
-    LINEUP_2D_TX_FWD_KP, LINEUP_2D_TX_STR_KP, LINEUP_2D_TY_FWD_KP, PIGEON_OFFSET, SWERVE_DRIVE_IE,
-    SWERVE_DRIVE_KP, SWERVE_ROTATIONS_TO_INCHES, SWERVE_TURN_KP, SWERVE_TURN_RATIO, TARGET_TX_LEFT,
-    TARGET_TX_RIGHT, TARGET_TY_LEFT, TARGET_TY_RIGHT, TX_ACCEPTABLE_ERROR, TY_ACCEPTABLE_ERROR,
-    YAW_ACCEPTABLE_ERROR,
-};
+use crate::constants::drivetrain::{BL_OFFSET_DEGREES, BR_OFFSET_DEGREES, FL_OFFSET_DEGREES, FR_OFFSET_DEGREES, LINEUP_2D_TX_FWD_KP, LINEUP_2D_TX_STR_KP, LINEUP_2D_TY_FWD_KP, LINEUP_DRIVE_IE, LINEUP_DRIVE_KD, LINEUP_DRIVE_KI, LINEUP_DRIVE_KP, PIGEON_OFFSET, SWERVE_DRIVE_IE, SWERVE_DRIVE_KD, SWERVE_DRIVE_KI, SWERVE_DRIVE_KP, SWERVE_ROTATIONS_TO_INCHES, SWERVE_TURN_KP, SWERVE_TURN_RATIO, TARGET_TX_LEFT, TARGET_TX_RIGHT, TARGET_TY_LEFT, TARGET_TY_RIGHT, TX_ACCEPTABLE_ERROR, TY_ACCEPTABLE_ERROR, YAW_ACCEPTABLE_ERROR};
 use crate::constants::robotmap::swerve::*;
 use crate::swerve::kinematics::{ModuleState, Swerve};
 use crate::swerve::odometry::{ModuleReturn, Odometry};
@@ -540,7 +535,7 @@ impl Drivetrain {
         self.offset = self.get_angle() + offset;
     }
 
-    pub async fn lineup(&mut self, side: LineupSide, target_level: ElevatorPosition) -> bool {
+    pub async fn lineup(&mut self, side: LineupSide, target_level: ElevatorPosition, dt: Duration) -> bool {
         let mut last_error = Vector2::zeros();
         let mut i = Vector2::zeros();
 
@@ -559,14 +554,16 @@ impl Drivetrain {
 
             let mut error_angle = (-target.angle - dt_angle).get::<radian>();
 
-            if error_position.abs().max() < SWERVE_DRIVE_IE {
+            if error_position.abs().max() < LINEUP_DRIVE_IE {
                 i += error_position;
             }
 
-            error_angle *= SWERVE_TURN_KP * 1.2;
-            error_position *= -SWERVE_DRIVE_KP * 1.65;
+            error_angle *= SWERVE_TURN_KP;
+            error_position *= -LINEUP_DRIVE_KP;
 
             let mut speed = error_position;
+            speed += i * -LINEUP_DRIVE_KI * dt.as_secs_f64();
+            speed += (speed - last_error) * LINEUP_DRIVE_KD * dt.as_secs_f64();
 
             let speed_s = speed;
             last_error = speed_s;
@@ -585,7 +582,10 @@ impl Drivetrain {
             Telemetry::put_number("target_x", target.position.x).await;
             Telemetry::put_number("target_y", target.position.y).await;
             Telemetry::put_number("target_angle", target.angle.get::<radian>()).await;
-            if error_position.magnitude().abs() < 0.0125 && error_angle.abs() < 0.015 {
+            if error_position.x.abs() < 0.015
+                && error_position.y.abs() < 0.015
+                && error_angle.abs() < 0.015
+            {
                 self.stop();
                 //self.set_speeds(0., 0., 0., SwerveControlStyle::RobotOriented);
                 // println!("dt at position");
@@ -626,7 +626,7 @@ impl Drivetrain {
         let yaw = quaternion_to_yaw(tag_rotation);
 
         let mut side_distance = Length::new::<inch>(13. / 2.); // theoretical is 13. / 2.
-        let forward_distance = Length::new::<inch>(16.25); //theoretical is 16.75
+        let forward_distance = Length::new::<inch>(16.75); //theoretical is 16.75
         let elevator_position = match target_level {
             ElevatorPosition::Bottom => Length::new::<inch>(-10.5),
             ElevatorPosition::L2 => Length::new::<inch>(-10.5),

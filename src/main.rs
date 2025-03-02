@@ -37,7 +37,6 @@ fn main() {
         Telemetry::put_selector("auto chooser", Auto::names()).await;
 
         let mut last_loop = Instant::now();
-        let mut dt = Duration::from_millis(0);
 
         let mut auto: Option<AbortHandle> = None;
 
@@ -83,8 +82,10 @@ fn main() {
                 auto.abort();
             }
 
-            dt = last_loop.elapsed();
-            let elapsed = dt.as_secs_f64();
+            Telemetry::put_number("Loop Rate", 1. / last_loop.elapsed().as_secs_f64()).await;
+
+            ferris.dt = last_loop.elapsed();
+            let elapsed = ferris.dt.as_secs_f64();
             let left = (1. / 250. - elapsed).max(0.);
             sleep(Duration::from_secs_f64(left)).await;
             last_loop = Instant::now();
@@ -105,11 +106,11 @@ async fn teleop(robot: &mut Ferris) {
 
                 let drivetrain_aligned = if robot.controllers.right_drive.get(LINEUP_LEFT) {
                     drivetrain
-                        .lineup(LineupSide::Left, elevator.get_target())
+                        .lineup(LineupSide::Left, elevator.get_target(), robot.dt)
                         .await
                 } else if robot.controllers.right_drive.get(LINEUP_RIGHT) {
                     drivetrain
-                        .lineup(LineupSide::Right, elevator.get_target())
+                        .lineup(LineupSide::Right, elevator.get_target(), robot.dt)
                         .await
                 } else if robot.controllers.operator.get(WHEELS_ZERO) {
                     drivetrain.set_wheels_zero();

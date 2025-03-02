@@ -48,9 +48,9 @@ pub const HALF_FIELD_LENGTH_METERS: f64 = 8.05 / 2.;
 pub mod vision {
     use nalgebra::Vector2;
 
-    pub const LIMELIGHT_UPPER_PITCH_DEGREES: f64 = -34.4;
+    pub const LIMELIGHT_UPPER_PITCH_DEGREES: f64 = -34.12;
     pub const LIMELIGHT_UPPER_YAW_DEGREES: f64 = 90.; // Counterclockwise positive
-    pub const LIMELIGHT_UPPER_HEIGHT_INCHES: f64 = 20.8;
+    pub const LIMELIGHT_UPPER_HEIGHT_INCHES: f64 = 20.92;
     pub const ROBOT_CENTER_TO_LIMELIGHT_UPPER_INCHES: Vector2<f64> = Vector2::new(11.118, 10.352);
 
     // Increase distance by 10% for every 20 degrees of absolute value of tx
@@ -70,7 +70,7 @@ pub mod drivetrain {
 
     pub const SWERVE_TURN_KP: f64 = 0.6;
 
-    pub const SWERVE_ROTATIONS_TO_INCHES: f64 = (1. / 6.75) * (3.84 * PI);
+    pub const SWERVE_ROTATIONS_TO_INCHES: f64 = (1. / 6.75) * (3.65 * PI);
     pub const SWERVE_TURN_RATIO: f64 = 12.8;
 
     pub const SWERVE_DRIVE_KP: f64 = 0.7;
@@ -94,6 +94,11 @@ pub mod drivetrain {
     pub const TX_ACCEPTABLE_ERROR: f64 = 1.8;
     pub const TY_ACCEPTABLE_ERROR: f64 = 1.8;
     pub const YAW_ACCEPTABLE_ERROR: f64 = 0.02;
+
+    pub const LINEUP_DRIVE_KP: f64 = 0.6;
+    pub const LINEUP_DRIVE_KI: f64 = 10.;
+    pub const LINEUP_DRIVE_KD: f64 = 10.;
+    pub const LINEUP_DRIVE_IE: f64 = 0.25;
 }
 pub mod pose_estimation {
     pub const ARC_ODOMETRY_MINIMUM_DELTA_THETA_RADIANS: f64 = 0.000001;
