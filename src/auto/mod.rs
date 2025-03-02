@@ -62,7 +62,7 @@ impl Auto {
             Auto::Nothing,
             // Auto::BlueTriangle,
             // Auto::Blue180,
-            // Auto::BlueLong,
+            Auto::BlueLong,
             Auto::Blue2,
             // Auto::RotationTest,
             Auto::BlueMidLeft2,
@@ -112,37 +112,39 @@ pub async fn async_score(
     indexer: &mut Indexer,
     elevator_position: ElevatorPosition,
     dt: Duration,
+    use_tag: Option<i32>,
 ) -> bool {
     elevator.set_target(elevator_position);
 
     join!(
-        async {
+        timeout(Duration::from_secs_f64(2.), async {
             loop {
                 drivetrain.update_limelight().await;
                 drivetrain.post_odo().await;
 
-                if drivetrain.lineup(lineup_side, elevator_position, dt).await {
+                if drivetrain.lineup(lineup_side, elevator_position, dt, use_tag).await {
                     break;
                 }
 
                 sleep(Duration::from_millis(20)).await;
             }
-        },
+        }),
         elevator.run_to_target_trapezoid_async()
     );
 
     drivetrain.stop();
 
-    while indexer.get_laser_dist() < constants::indexer::LASER_TRIP_DISTANCE_MM {
-        let indexer_speed = match elevator_position {
-            ElevatorPosition::Bottom => BOTTOM_SPEED,
-            ElevatorPosition::L2 => L2_SPEED,
-            ElevatorPosition::L3 => L3_SPEED,
-            ElevatorPosition::L4 => L4_SPEED,
-        };
-        indexer.set_speed(indexer_speed);
-    }
-    sleep(Duration::from_secs_f64(0.5)).await;
+    let indexer_speed = match elevator_position {
+        ElevatorPosition::Bottom => BOTTOM_SPEED,
+        ElevatorPosition::L2 => L2_SPEED,
+        ElevatorPosition::L3 => L3_SPEED,
+        ElevatorPosition::L4 => L4_SPEED,
+    };
+    indexer.set_speed(indexer_speed);
+
+    wait(|| indexer.get_laser_dist() > LASER_TRIP_DISTANCE_MM || indexer.get_laser_dist() == -1).await;
+
+    sleep(Duration::from_secs_f64(0.25)).await;
     indexer.stop();
 
     true
@@ -210,8 +212,8 @@ pub async fn blue_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
     drivetrain.reset_heading_offset(Angle::new::<degree>(180.));
 
     drivetrain.odometry.set_abs(Vector2::new(
-        Length::new::<meter>(8.020708084106445),
-        Length::new::<meter>(7.632927417755127),
+        Length::new::<meter>(7.215517520904541),
+        Length::new::<meter>(5.439107418060303),
     ));
 
     join!(drive("Blue2", &mut drivetrain, 1), async {
@@ -226,9 +228,11 @@ pub async fn blue_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
         elevator.run_to_target_trapezoid();
     });
 
-    let _ = timeout(Duration::from_secs_f64(0.75), async {
+    let _ = timeout(Duration::from_secs_f64(1.25), async {
         loop {
             drivetrain.update_limelight().await;
+            drivetrain.post_odo().await;
+
             sleep(Duration::from_millis(20)).await;
         }
     }).await;
@@ -240,6 +244,7 @@ pub async fn blue_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
         &mut indexer,
         ElevatorPosition::L4,
         robot.dt,
+        Some(19)
     )
     .await;
 
@@ -260,7 +265,7 @@ pub async fn blue_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
         elevator.run_to_target_trapezoid();
     });
 
-    let _ = timeout(Duration::from_secs_f64(0.5), async {
+    let _ = timeout(Duration::from_secs_f64(0.75), async {
         loop {
             drivetrain.update_limelight().await;
             sleep(Duration::from_millis(20)).await;
@@ -274,6 +279,7 @@ pub async fn blue_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
         &mut indexer,
         ElevatorPosition::L4,
         robot.dt,
+        Some(19)
     )
     .await;
 
@@ -330,6 +336,7 @@ async fn blue_mid_left_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>
         &mut indexer,
         ElevatorPosition::L4,
         robot.dt,
+        None,
     ).await;
 
     join!(drive("BlueHighMid2", &mut drivetrain, 3), async {
@@ -363,6 +370,7 @@ async fn blue_mid_left_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>
         &mut indexer,
         ElevatorPosition::L4,
         robot.dt,
+        None,
     )
         .await;
 

@@ -81,8 +81,8 @@ pub async fn follow_path_segment(
             break
         }
 
-        drivetrain.post_odo().await;
         drivetrain.update_limelight().await;
+        drivetrain.post_odo().await;
 
         let now = Instant::now();
         let dt = now - last_loop;

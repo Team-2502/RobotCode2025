@@ -535,11 +535,11 @@ impl Drivetrain {
         self.offset = self.get_angle() + offset;
     }
 
-    pub async fn lineup(&mut self, side: LineupSide, target_level: ElevatorPosition, dt: Duration) -> bool {
+    pub async fn lineup(&mut self, side: LineupSide, target_level: ElevatorPosition, dt: Duration, use_tag: Option<i32>) -> bool {
         let mut last_error = Vector2::zeros();
         let mut i = Vector2::zeros();
 
-        if let Some(target) = self.calculate_target_lineup_position(side, target_level) {
+        if let Some(target) = self.calculate_target_lineup_position(side, target_level, use_tag) {
             let mut error_position =
                 target.position - self.odometry.robot_pose_estimate.get_position_meters();
 
@@ -612,8 +612,14 @@ impl Drivetrain {
         &mut self,
         side: LineupSide,
         target_level: ElevatorPosition,
+        use_tag: Option<i32>,
     ) -> Option<LineupTarget> {
-        let tag_id = self.limelight.get_saved_id();
+        let tag_id = if use_tag.is_some() {
+            use_tag.unwrap()
+        } else {
+            self.limelight.get_saved_id()
+        };
+
         if tag_id == -1 {
             return None;
         }

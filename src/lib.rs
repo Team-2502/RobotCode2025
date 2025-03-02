@@ -345,8 +345,8 @@ pub fn score(
         if indexer.get_laser_dist() < constants::indexer::LASER_TRIP_DISTANCE_MM {
             let indexer_speed = match elevator_position {
                 ElevatorPosition::Bottom => -0.35,
-                ElevatorPosition::L2 => -0.35,
-                ElevatorPosition::L3 => -0.35,
+                ElevatorPosition::L2 => -0.425,
+                ElevatorPosition::L3 => -0.425,
                 ElevatorPosition::L4 => -0.25,
             };
             indexer.set_speed(indexer_speed);
@@ -357,7 +357,7 @@ pub fn score(
             //elevator.run_to_target_trapezoid();
         }
     } else {
-        indexer.stop();
+        //indexer.stop();
     }
 }
 

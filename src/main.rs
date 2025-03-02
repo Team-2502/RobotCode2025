@@ -4,7 +4,7 @@ use std::ops::Deref;
 use tokio::time::{Duration, Instant};
 use frcrs::{init_hal, observe_user_program_starting, refresh_data, Robot};
 use frcrs::input::{RobotMode, RobotState};
-use frcrs::networktables::NetworkTable;
+use frcrs::networktables::{NetworkTable, SmartDashboard};
 use frcrs::telemetry::Telemetry;
 use tokio::task;
 use tokio::task::{AbortHandle, spawn_local};
@@ -35,6 +35,8 @@ fn main() {
         NetworkTable::init();
 
         Telemetry::put_selector("auto chooser", Auto::names()).await;
+
+        SmartDashboard::start_camera_server();
 
         let mut last_loop = Instant::now();
 
@@ -106,11 +108,11 @@ async fn teleop(robot: &mut Ferris) {
 
                 let drivetrain_aligned = if robot.controllers.right_drive.get(LINEUP_LEFT) {
                     drivetrain
-                        .lineup(LineupSide::Left, elevator.get_target(), robot.dt)
+                        .lineup(LineupSide::Left, elevator.get_target(), robot.dt, None)
                         .await
                 } else if robot.controllers.right_drive.get(LINEUP_RIGHT) {
                     drivetrain
-                        .lineup(LineupSide::Right, elevator.get_target(), robot.dt)
+                        .lineup(LineupSide::Right, elevator.get_target(), robot.dt, None)
                         .await
                 } else if robot.controllers.operator.get(WHEELS_ZERO) {
                     drivetrain.set_wheels_zero();
