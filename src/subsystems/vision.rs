@@ -1,3 +1,4 @@
+use std::f64::consts::PI;
 use frcrs::limelight::{Limelight, LimelightResults};
 use std::fs::File;
 
@@ -20,6 +21,7 @@ use crate::constants::pose_estimation::{
 };
 use crate::swerve::odometry::PoseEstimate;
 use std::net::SocketAddr;
+use frcrs::alliance_station;
 use tokio::time::Instant;
 
 #[derive(Clone)]
@@ -205,7 +207,12 @@ impl Vision {
     pub fn get_position_from_tag_2d(&self) -> Option<Vector2<Length>> {
         let id = self.get_id();
         let dist = self.get_dist()?;
-        let drivetrain_angle = Angle::new::<radian>(-self.drivetrain_angle.get::<radian>());
+
+        let drivetrain_angle = if alliance_station().red() {
+            Angle::new::<radian>(-self.drivetrain_angle.get::<radian>() + PI)
+        } else {
+            Angle::new::<radian>(-self.drivetrain_angle.get::<radian>())
+        };
 
         //println!("dist: {}", dist.get::<meter>());
 

@@ -129,12 +129,6 @@ impl Drivetrain {
             5807,
         ));
 
-        let offset = if alliance_station().red() {
-            Angle::new::<degree>(180.)
-        } else {
-            Angle::new::<degree>(0.)
-        };
-
         let abs_offsets = [
             Angle::new::<degree>((-fr_encoder.get_absolute() * 360.) - FR_OFFSET_DEGREES),
             Angle::new::<degree>((-fl_encoder.get_absolute() * 360.) - FL_OFFSET_DEGREES),
@@ -164,7 +158,7 @@ impl Drivetrain {
             kinematics: Swerve::rectangle(Length::new::<inch>(21.5), Length::new::<inch>(21.5)),
             odometry: Odometry::new(),
 
-            offset,
+            offset: Angle::new::<degree>(0.),
 
             limelight: limelight,
 
@@ -264,7 +258,7 @@ impl Drivetrain {
                 .get::<meter>(),
         )
         .await;
-        Telemetry::put_number("angle", self.get_offset().get::<degree>()).await;
+        Telemetry::put_number("angle", self.get_offset().get::<radian>()).await;
         Telemetry::put_number(
             "FOM",
             self.odometry
