@@ -171,8 +171,9 @@ pub async fn follow_path_segment(
             SwerveControlStyle::FieldOriented,
         );
 
-        Telemetry::put_number("Auto X", position.x).await;
-        Telemetry::put_number("Auto Y", position.y).await;
+        Telemetry::put_number("target_x", position.x).await;
+        Telemetry::put_number("target_y", position.y).await;
+        Telemetry::put_number("target_angle", angle.get::<radian>()).await;
 
         sleep(Duration::from_millis(20)).await;
     }

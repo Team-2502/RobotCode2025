@@ -121,10 +121,10 @@ pub mod elevator {
 pub mod indexer {
     pub const LASER_TRIP_DISTANCE_MM: i32 = 2;
     pub const INTAKE_SPEED: f64 = -0.25;
-    pub const BOTTOM_SPEED: f64 = -0.5;
-    pub const L2_SPEED: f64 = -0.5;
-    pub const L3_SPEED: f64 = -0.5;
-    pub const L4_SPEED: f64 = -0.35;
+    pub const BOTTOM_SPEED: f64 = -0.35;
+    pub const L2_SPEED: f64 = -0.425;
+    pub const L3_SPEED: f64 = -0.425;
+    pub const L4_SPEED: f64 = -0.25;
 }
 pub mod joystick_map {
     // Joystick IDs (set in driver station)
