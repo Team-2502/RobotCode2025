@@ -1,6 +1,8 @@
 #![warn(non_snake_case)]
 
+use std::cell::RefCell;
 use std::ops::Deref;
+use std::rc::Rc;
 use tokio::time::{Duration, Instant};
 use frcrs::{init_hal, observe_user_program_starting, refresh_data, Robot};
 use frcrs::input::{RobotMode, RobotState};
@@ -20,7 +22,7 @@ fn main() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let local = task::LocalSet::new();
 
-    let mut ferris = Ferris::new();
+    let mut ferris = Rc::new(RefCell::new(Ferris::new()));
     // ferris.start_competition(runtime, local);
 
     runtime.block_on(local.run_until(async {
@@ -55,27 +57,30 @@ fn main() {
             }
 
             if state.enabled() && state.teleop() {
-                teleop(&mut ferris).await;
+                teleop(&mut *ferris.borrow_mut()).await;
             }
 
             if state.enabled() && state.auto() {
-                if let Ok(mut drivetrain) = ferris.drivetrain.try_borrow_mut() {
-                    drivetrain.update_limelight().await;
-                    drivetrain.post_odo().await;
+                {
+                    let mut ferris_mut = ferris.borrow_mut();
+                    if let Ok(mut drivetrain) = ferris_mut.drivetrain.try_borrow_mut() {
+                        drivetrain.update_limelight().await;
+                        drivetrain.post_odo().await;
+                    };
                 }
 
                 if let None = auto {
-                    let f = ferris.clone();
+                    let ferris_clone = Rc::clone(&ferris);
 
                     if let Some(selected_auto) = Telemetry::get_selection("auto chooser").await {
                         let chosen = Auto::from_dashboard(selected_auto.as_str());
 
-                        let run = Auto::run_auto(f, chosen);
+                        let run = Auto::run_auto(ferris_clone, chosen);
                         auto = Some(local.spawn_local(run).abort_handle());
                     } else {
                         eprintln!("Failed to get selected auto from telemetry, running default");
 
-                        let run = Auto::run_auto(f, Auto::Nothing);
+                        let run = Auto::run_auto(ferris_clone, Auto::Nothing);
                         auto = Some(local.spawn_local(run).abort_handle());
                     }
                 }
@@ -86,8 +91,10 @@ fn main() {
 
             Telemetry::put_number("Loop Rate", 1. / last_loop.elapsed().as_secs_f64()).await;
 
-            ferris.dt = last_loop.elapsed();
-            let elapsed = ferris.dt.as_secs_f64();
+            let dt = last_loop.elapsed();
+            ferris.borrow_mut().dt = dt;
+
+            let elapsed = dt.as_secs_f64();
             let left = (1. / 250. - elapsed).max(0.);
             sleep(Duration::from_secs_f64(left)).await;
             last_loop = Instant::now();

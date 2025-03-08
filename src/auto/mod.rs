@@ -3,8 +3,9 @@ mod path;
 use crate::auto::path::drive;
 use nalgebra::Vector2;
 use serde::{Deserialize, Serialize};
-use std::cell::RefMut;
+use std::cell::{RefCell, RefMut};
 use std::ops::Deref;
+use std::rc::Rc;
 use std::time::Duration;
 use frcrs::alliance_station;
 use tokio::join;
@@ -78,22 +79,22 @@ impl Auto {
             .collect()
     }
 
-    pub async fn run_auto<'a>(ferris: Ferris, chosen: Auto) {
+    pub async fn run_auto<'a>(ferris: Rc<RefCell<Ferris>>, chosen: Auto) {
         match chosen {
             Auto::Nothing => {
                 println!("No auto was selected!");
             }
             Auto::BlueTriangle => {
-                blue_triangle(ferris).await.expect("Failed running auto");
+                blue_triangle(Rc::clone(&ferris)).await.expect("Failed running auto");
             }
             Auto::Blue180 => {
-                blue_180(ferris).await.expect("Failed running auto");
+                blue_180(Rc::clone(&ferris)).await.expect("Failed running auto");
             }
-            Auto::BlueLong => blue_long(ferris).await.expect("Failed running auto"),
-            Auto::Blue2 => blue_2(ferris).await.expect("Failed running auto"),
-            Auto::RotationTest => rotation_test(ferris).await.expect("Failed running auto"),
-            Auto::BlueMidLeft2 => blue_mid_left_2(ferris).await.expect("Failed running auto"),
-            Auto::Center1 => center_1(ferris).await.expect("Failed running auto"),
+            Auto::BlueLong => blue_long(Rc::clone(&ferris)).await.expect("Failed running auto"),
+            Auto::Blue2 => blue_2(Rc::clone(&ferris)).await.expect("Failed running auto"),
+            Auto::RotationTest => rotation_test(Rc::clone(&ferris)).await.expect("Failed running auto"),
+            Auto::BlueMidLeft2 => blue_mid_left_2(Rc::clone(&ferris)).await.expect("Failed running auto"),
+            Auto::Center1 => center_1(Rc::clone(&ferris)).await.expect("Failed running auto"),
         }
     }
 }
@@ -151,8 +152,9 @@ pub async fn async_score(
     true
 }
 
-pub async fn blue_triangle(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
-    let mut drivetrain = robot.drivetrain.deref().borrow_mut();
+pub async fn blue_triangle(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::error::Error>> {
+    let mut robot_ref = robot.borrow_mut();
+    let mut drivetrain = robot_ref.drivetrain.deref().borrow_mut();
 
     drivetrain.reset_heading();
 
@@ -177,8 +179,11 @@ pub async fn blue_triangle(robot: Ferris) -> Result<(), Box<dyn std::error::Erro
     Ok(())
 }
 
-pub async fn blue_180(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
-    let mut drivetrain = robot.drivetrain.deref().borrow_mut();
+pub async fn blue_180(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::error::Error>> {
+    let mut robot_ref = robot.borrow_mut();
+    let mut drivetrain = robot_ref.drivetrain.deref().borrow_mut();
+    let mut elevator = robot_ref.elevator.deref().borrow_mut();
+    let mut indexer = robot_ref.indexer.deref().borrow_mut();
 
     drivetrain.odometry.set_abs(Vector2::new(
         Length::new::<meter>(7.8775811195373535),
@@ -191,8 +196,11 @@ pub async fn blue_180(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-pub async fn blue_long(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
-    let mut drivetrain = robot.drivetrain.deref().borrow_mut();
+pub async fn blue_long(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::error::Error>> {
+    let mut robot_ref = robot.borrow_mut();
+    let mut drivetrain = robot_ref.drivetrain.deref().borrow_mut();
+    let mut elevator = robot_ref.elevator.deref().borrow_mut();
+    let mut indexer = robot_ref.indexer.deref().borrow_mut();
 
     drivetrain.reset_heading();
 
@@ -207,10 +215,11 @@ pub async fn blue_long(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> 
     Ok(())
 }
 
-pub async fn blue_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
-    let mut drivetrain = robot.drivetrain.deref().borrow_mut();
-    let mut elevator = robot.elevator.deref().borrow_mut();
-    let mut indexer = robot.indexer.deref().borrow_mut();
+pub async fn blue_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::error::Error>> {
+    let mut robot_ref = robot.borrow_mut();
+    let mut drivetrain = robot_ref.drivetrain.deref().borrow_mut();
+    let mut elevator = robot_ref.elevator.deref().borrow_mut();
+    let mut indexer = robot_ref.indexer.deref().borrow_mut();
 
     drivetrain.reset_heading_offset(
         if alliance_station().red() {
@@ -250,7 +259,7 @@ pub async fn blue_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
         &mut elevator,
         &mut indexer,
         ElevatorPosition::L4,
-        robot.dt,
+        robot_ref.dt,
         if alliance_station().red() {Some(6)} else { Some(19)}
     )
     .await;
@@ -285,7 +294,7 @@ pub async fn blue_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
         &mut elevator,
         &mut indexer,
         ElevatorPosition::L4,
-        robot.dt,
+        robot_ref.dt,
         if alliance_station().red() {Some(6)} else { Some(19)}
     )
     .await;
@@ -293,8 +302,11 @@ pub async fn blue_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn rotation_test(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
-    let mut drivetrain = robot.drivetrain.deref().borrow_mut();
+async fn rotation_test(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::error::Error>> {
+    let mut robot_ref = robot.borrow_mut();
+    let mut drivetrain = robot_ref.drivetrain.deref().borrow_mut();
+    let mut elevator = robot_ref.elevator.deref().borrow_mut();
+    let mut indexer = robot_ref.indexer.deref().borrow_mut();
 
     drivetrain.reset_heading();
 
@@ -308,10 +320,11 @@ async fn rotation_test(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> 
     Ok(())
 }
 
-async fn blue_mid_left_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
-    let mut drivetrain = robot.drivetrain.deref().borrow_mut();
-    let mut elevator = robot.elevator.deref().borrow_mut();
-    let mut indexer = robot.indexer.deref().borrow_mut();
+async fn blue_mid_left_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::error::Error>> {
+    let mut robot_ref = robot.borrow_mut();
+    let mut drivetrain = robot_ref.drivetrain.deref().borrow_mut();
+    let mut elevator = robot_ref.elevator.deref().borrow_mut();
+    let mut indexer = robot_ref.indexer.deref().borrow_mut();
 
     drivetrain.reset_heading_offset(Angle::new::<degree>(180.));
 
@@ -342,7 +355,7 @@ async fn blue_mid_left_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>
         &mut elevator,
         &mut indexer,
         ElevatorPosition::L4,
-        robot.dt,
+        robot_ref.dt,
         None,
     ).await;
 
@@ -376,7 +389,7 @@ async fn blue_mid_left_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>
         &mut elevator,
         &mut indexer,
         ElevatorPosition::L4,
-        robot.dt,
+        robot_ref.dt,
         None,
     )
         .await;
@@ -384,7 +397,7 @@ async fn blue_mid_left_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>
     Ok(())
 }
 
-async fn center_1(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
+async fn center_1(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::error::Error>> {
 
 
 
