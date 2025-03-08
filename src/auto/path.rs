@@ -163,9 +163,6 @@ pub async fn follow_path_segment(
         speed += (speed - last_error) * SWERVE_DRIVE_KD * dt.as_secs_f64();
         last_error = speed_s;
 
-        if red {
-            speed *= -1.;
-        }
 
         drivetrain.set_speeds(
             speed.x,

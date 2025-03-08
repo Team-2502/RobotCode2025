@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::cell::RefMut;
 use std::ops::Deref;
 use std::time::Duration;
+use frcrs::alliance_station;
 use tokio::join;
 use tokio::time::{sleep, Instant, timeout};
 use uom::si::{f64::Length, length::meter};
@@ -211,8 +212,12 @@ pub async fn blue_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
     let mut elevator = robot.elevator.deref().borrow_mut();
     let mut indexer = robot.indexer.deref().borrow_mut();
 
-    drivetrain.reset_heading_offset(Angle::new::<degree>(180.));
-
+    drivetrain.reset_heading_offset(
+        if alliance_station().red() {
+            Angle::new::<degree>(0.)
+        } else {
+            Angle::new::<degree>(180.)
+        });
     drivetrain.odometry.set(Vector2::new(
         Length::new::<meter>(7.215517520904541),
         Length::new::<meter>(5.439107418060303),
@@ -246,7 +251,7 @@ pub async fn blue_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
         &mut indexer,
         ElevatorPosition::L4,
         robot.dt,
-        Some(19)
+        if alliance_station().red() {Some(6)} else { Some(19)}
     )
     .await;
 
@@ -281,7 +286,7 @@ pub async fn blue_2(robot: Ferris) -> Result<(), Box<dyn std::error::Error>> {
         &mut indexer,
         ElevatorPosition::L4,
         robot.dt,
-        Some(19)
+        if alliance_station().red() {Some(6)} else { Some(19)}
     )
     .await;
 

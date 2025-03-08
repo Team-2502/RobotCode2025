@@ -411,11 +411,7 @@ impl Drivetrain {
         let mut sensor_measurements = Vec::new();
         if let Some(odo_estimate) = self
             .odometry
-            .calculate_arcs(positions, (angle + if alliance_station().red() {
-                Angle::new::<degree>(0.)
-            } else {
-                Angle::new::<degree>(180.)
-            }))
+            .calculate_arcs(positions, (angle + Angle::new::<degree>(180.)))
         {
             //println!("new odo pose estimate: x {} y {} fom {}",odo_estimate.get_position_meters().x, odo_estimate.get_position_meters().y, odo_estimate.figure_of_merit.get::<meter>());
             sensor_measurements.push(odo_estimate);
@@ -566,9 +562,9 @@ impl Drivetrain {
             let speed_s = speed;
             last_error = speed_s;
 
-            if alliance_station().red() {
-                speed.x *= -1.
-            }
+            // if alliance_station().red() {
+            //     speed.x *= -1.
+            // }
 
             Telemetry::put_number("error_position_x", error_position.x).await;
             Telemetry::put_number("error_position_y", error_position.y).await;

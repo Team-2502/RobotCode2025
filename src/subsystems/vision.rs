@@ -208,11 +208,7 @@ impl Vision {
         let id = self.get_id();
         let dist = self.get_dist()?;
 
-        let drivetrain_angle = if alliance_station().red() {
-            Angle::new::<radian>(-self.drivetrain_angle.get::<radian>() + PI)
-        } else {
-            Angle::new::<radian>(-self.drivetrain_angle.get::<radian>())
-        };
+        let drivetrain_angle = -self.drivetrain_angle;
 
         //println!("dist: {}", dist.get::<meter>());
 

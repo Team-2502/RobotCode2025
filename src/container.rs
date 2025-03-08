@@ -2,7 +2,8 @@ use crate::constants::drivetrain::SWERVE_TURN_KP;
 use crate::constants::joystick_map::*;
 use crate::subsystems::{Drivetrain, DrivetrainControlState, SwerveControlStyle};
 use crate::Controllers;
-use frcrs::deadzone;
+use frcrs::{alliance_station, deadzone};
+use frcrs::input::RobotState;
 use nalgebra::ComplexField;
 use uom::si::angle::{degree, radian};
 
@@ -45,8 +46,8 @@ pub async fn control_drivetrain(
     } else {
         0.0..1.
     };
-    let deadly = deadzone(left_drive.get_y(), &joystick_range, &power_translate);
-    let deadlx = deadzone(left_drive.get_x(), &joystick_range, &power_translate);
+    let mut deadly = deadzone(left_drive.get_y(), &joystick_range, &power_translate);
+    let mut deadlx = deadzone(left_drive.get_x(), &joystick_range, &power_translate);
     let deadrz = deadzone(right_drive.get_z(), &joystick_range, &power_rotate);
 
     let hold_angle = deadrz == 0. && right_drive.get(3);
@@ -72,6 +73,12 @@ pub async fn control_drivetrain(
     else {
         deadrz
     };
+
+    // Flip because the driver is facing the other way
+    if alliance_station().red() {
+        deadlx *= -1.;
+        deadly *= -1.;
+    }
 
     drivetrain.set_speeds(deadly, deadlx, rot, SwerveControlStyle::FieldOriented);
 
