@@ -398,8 +398,49 @@ async fn blue_mid_left_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::
 }
 
 async fn center_1(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::error::Error>> {
+    let mut robot = robot.borrow_mut();
+    let mut drivetrain = robot.drivetrain.deref().borrow_mut();
+    let mut elevator = robot.elevator.deref().borrow_mut();
+    let mut indexer = robot.indexer.deref().borrow_mut();
 
+    drivetrain.reset_heading_offset(Angle::new::<degree>(90.));
 
+    drivetrain.odometry.set_abs(Vector2::new(
+        Length::new::<meter>(7.211895942687988),
+        Length::new::<meter>(4.088092803955078)
+    ));
+
+    join!(drive("BlueCenter1", &mut drivetrain, 1), async {
+        elevator.set_target(ElevatorPosition::L2);
+        elevator.run_to_target_trapezoid();
+
+        indexer.set_speed(INTAKE_SPEED);
+        wait(|| indexer.get_laser_dist() < LASER_TRIP_DISTANCE_MM && indexer.get_laser_dist() != -1).await;
+        indexer.stop();
+
+        elevator.set_target(ElevatorPosition::L4);
+        elevator.run_to_target_trapezoid();
+    });
+
+    let _ = timeout(Duration::from_secs_f64(1.25), async {
+        loop {
+            drivetrain.update_limelight().await;
+            drivetrain.post_odo().await;
+
+            sleep(Duration::from_millis(20)).await;
+        }
+    }).await;
+
+    async_score(
+        &mut drivetrain,
+        LineupSide::Right,
+        &mut elevator,
+        &mut indexer,
+        ElevatorPosition::L4,
+        robot.dt,
+        if alliance_station().red() {Some(10)} else { Some(21)}
+    )
+        .await;
 
     Ok(())
 }
