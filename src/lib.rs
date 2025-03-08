@@ -338,7 +338,7 @@ pub fn score(
     indexer: &mut Indexer,
     elevator_position: ElevatorPosition,
 ) {
-    println!("dt_aligned: {}", drivetrain_aligned);
+    // println!("dt_aligned: {}", drivetrain_aligned);
     elevator.set_target(elevator_position);
     let elevator_at_target = elevator.run_to_target_trapezoid();
 

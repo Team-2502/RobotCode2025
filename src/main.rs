@@ -3,6 +3,9 @@
 use std::cell::RefCell;
 use std::ops::Deref;
 use std::rc::Rc;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::SystemTime;
 use tokio::time::{Duration, Instant};
 use frcrs::{init_hal, observe_user_program_starting, refresh_data, Robot};
 use frcrs::input::{RobotMode, RobotState};
@@ -43,6 +46,29 @@ fn main() {
         let mut last_loop = Instant::now();
 
         let mut auto: Option<AbortHandle> = None;
+
+        // Watchdog setup
+        let last_loop_time = Arc::new(AtomicU64::new(0));
+        let watchdog_last_loop = Arc::clone(&last_loop_time);
+        let watchdog_ferris = ferris.clone();
+
+        // Spawn watchdog task
+        spawn_local(async move {
+            loop {
+                sleep(Duration::from_millis(500)).await;
+                let last = watchdog_last_loop.load(Ordering::Relaxed);
+                let now = SystemTime::now()
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .unwrap()
+                    .as_millis() as u64;
+
+                if last != 0 && now - last > 500 {
+                    let mut ferris = watchdog_ferris.borrow_mut();
+                    ferris.stop();
+                    println!("Watchdog triggered: Motors stopped");
+                }
+            }
+        });
 
         loop {
             refresh_data();
