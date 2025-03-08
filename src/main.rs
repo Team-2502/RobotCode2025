@@ -120,6 +120,12 @@ fn main() {
             let dt = last_loop.elapsed();
             ferris.borrow_mut().dt = dt;
 
+            let now_millis = SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_millis() as u64;
+            last_loop_time.store(now_millis, Ordering::Relaxed);
+
             let elapsed = dt.as_secs_f64();
             let left = (1. / 250. - elapsed).max(0.);
             sleep(Duration::from_secs_f64(left)).await;
