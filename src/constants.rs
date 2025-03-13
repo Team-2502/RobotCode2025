@@ -111,7 +111,7 @@ pub mod pose_estimation {
     pub const LIMELIGHT_INACCURACY_PER_LINEAR_VELOCITY: f64 = 2.; //  Meters of inaccuracy per (meter/second) of drivetrain linear velocity
 }
 pub mod elevator {
-    pub const BOTTOM: f64 = 1.0; // unit is rotations
+    pub const BOTTOM: f64 = 0.5; // unit is rotations
     pub const L2: f64 = 2.; // unit is rotations
     pub const L3: f64 = 15.5; // unit is rotations
     pub const L4: f64 = 39.1; // unit is rotations
