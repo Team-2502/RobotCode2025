@@ -82,12 +82,12 @@ impl Vision {
         self.drivetrain_angle = dt_angle;
         self.last_update_time = Instant::now();
 
-        if self.limelight
-            .update_robot_orientation(-dt_angle.get::<radian>()) // Why do we use clockwise positive
-            .await
-            .is_err() {
-            eprintln!("Failed to update robot orientation on limelight")
-        }
+        // if self.limelight
+        //     .update_robot_orientation(-dt_angle.get::<radian>()) // Why do we use clockwise positive
+        //     .await
+        //     .is_err() {
+        //     eprintln!("Failed to update robot orientation on limelight")
+        // }
 
         if !self.results.Fiducial.is_empty() {
             if self.results.Fiducial[0].fID != -1 && self.results.Fiducial[0].fID != self.saved_id {

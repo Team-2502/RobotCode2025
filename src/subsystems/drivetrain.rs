@@ -16,7 +16,7 @@ use frcrs::telemetry::Telemetry;
 use nalgebra::{Quaternion, Rotation2, Vector2};
 use serde::Deserialize;
 use serde::Serialize;
-use tokio::time::Instant;
+use tokio::time::{Instant, timeout};
 
 use crate::constants;
 use crate::constants::vision::ROBOT_CENTER_TO_LIMELIGHT_UPPER_INCHES;
@@ -167,12 +167,11 @@ impl Drivetrain {
     }
 
     pub async fn update_limelight(&mut self) {
-        self.limelight
+        let _ = timeout(Duration::from_millis(10), self.limelight
             .update(
                 self.get_offset_wrapped(),
                 self.odometry.robot_pose_estimate.get_position(),
-            )
-            .await;
+            )).await;
         Telemetry::put_number(
             "limelight upper fom",
             self.limelight.get_figure_of_merit().get::<meter>(),

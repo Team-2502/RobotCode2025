@@ -2,6 +2,7 @@
 
 use std::cell::RefCell;
 use std::ops::Deref;
+use std::process::exit;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -55,16 +56,21 @@ fn main() {
         // Spawn watchdog task
         spawn_local(async move {
             loop {
-                sleep(Duration::from_millis(500)).await;
+                sleep(Duration::from_millis(20)).await;
                 let last = watchdog_last_loop.load(Ordering::Relaxed);
                 let now = SystemTime::now()
                     .duration_since(SystemTime::UNIX_EPOCH)
                     .unwrap()
                     .as_millis() as u64;
 
-                if last != 0 && now - last > 500 {
-                    let mut ferris = watchdog_ferris.borrow_mut();
-                    ferris.stop();
+                if last != 0 && now - last > 125 {
+                    println!("Loop Overrun: {}ms", now - last);
+                    if let Ok(ferris) = watchdog_ferris.try_borrow_mut() {
+                        ferris.stop();
+                    } else {
+                        println!("FAILED TO GET FERRIS TO STOP");
+                        exit(1);
+                    }
                     println!("Watchdog triggered: Motors stopped");
                 }
             }
@@ -74,28 +80,41 @@ fn main() {
             refresh_data();
 
             let state = RobotState::get();
+            let dt = last_loop.elapsed();
 
             if !state.enabled() {
                 if let Some(handle) = auto.take() {
                     println!("Aborted");
                     handle.abort();
                 }
+
+                if let Ok(f) = ferris.try_borrow() {
+                    f.stop();
+                } else {
+                    println!("Didnt borrow ferris");
+                }
             }
 
             if state.enabled() && state.teleop() {
-                teleop(&mut *ferris.borrow_mut()).await;
+                if let Ok(mut robot) = ferris.try_borrow_mut() {
+                    robot.dt = dt;
+                    teleop(&mut robot).await;
+                }
             }
 
             if state.enabled() && state.auto() {
-                {
-                    let mut ferris_mut = ferris.borrow_mut();
+                // Update dt before using it in auto
+                if let Ok(mut ferris_mut) = ferris.try_borrow_mut() {
+                    ferris_mut.dt = dt;
+
+                    // Now access drivetrain
                     if let Ok(mut drivetrain) = ferris_mut.drivetrain.try_borrow_mut() {
                         drivetrain.update_limelight().await;
                         drivetrain.post_odo().await;
-                    };
+                    }
                 }
 
-                if let None = auto {
+                if auto.is_none() {
                     let ferris_clone = Rc::clone(&ferris);
 
                     if let Some(selected_auto) = Telemetry::get_selection("auto chooser").await {
@@ -115,10 +134,7 @@ fn main() {
                 auto.abort();
             }
 
-            Telemetry::put_number("Loop Rate", 1. / last_loop.elapsed().as_secs_f64()).await;
-
-            let dt = last_loop.elapsed();
-            ferris.borrow_mut().dt = dt;
+            Telemetry::put_number("Loop Rate", 1. / dt.as_secs_f64()).await;
 
             let now_millis = SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)

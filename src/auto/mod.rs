@@ -202,9 +202,14 @@ pub async fn blue_long(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::er
     let mut elevator = robot_ref.elevator.deref().borrow_mut();
     let mut indexer = robot_ref.indexer.deref().borrow_mut();
 
-    drivetrain.reset_heading();
+    drivetrain.reset_heading_offset(
+        if alliance_station().red() {
+            Angle::new::<degree>(180.)
+        } else {
+            Angle::new::<degree>(0.)
+        });
 
-    drivetrain.odometry.set_abs(Vector2::new(
+    drivetrain.odometry.set(Vector2::new(
         Length::new::<meter>(7.5),
         Length::new::<meter>(7.),
     ));
@@ -403,14 +408,21 @@ async fn center_1(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::error::
     let mut elevator = robot.elevator.deref().borrow_mut();
     let mut indexer = robot.indexer.deref().borrow_mut();
 
-    drivetrain.reset_heading_offset(Angle::new::<degree>(90.));
+    drivetrain.reset_heading_offset(
+        if alliance_station().red() {
+            Angle::new::<degree>(-90.)
+        } else {
+            Angle::new::<degree>(90.)
+        });
 
-    drivetrain.odometry.set_abs(Vector2::new(
-        Length::new::<meter>(7.211895942687988),
-        Length::new::<meter>(4.088092803955078)
+    drivetrain.odometry.set(Vector2::new(
+        Length::new::<meter>(7.16530704498291),
+        Length::new::<meter>(4.919252395629883)
     ));
 
-    join!(drive("BlueCenter1", &mut drivetrain, 1), async {
+    drive("BlueCenter1", &mut drivetrain, 1).await?;
+
+    join!(drive("BlueCenter1", &mut drivetrain, 2), async {
         elevator.set_target(ElevatorPosition::L2);
         elevator.run_to_target_trapezoid();
 
