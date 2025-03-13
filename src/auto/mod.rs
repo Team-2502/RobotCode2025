@@ -146,7 +146,7 @@ pub async fn async_score(
 
     wait(|| indexer.get_laser_dist() > LASER_TRIP_DISTANCE_MM || indexer.get_laser_dist() == -1).await;
 
-    sleep(Duration::from_secs_f64(0.25)).await;
+    sleep(Duration::from_secs_f64(0.2)).await;
     indexer.stop();
 
     true
@@ -249,7 +249,7 @@ pub async fn blue_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::error
         elevator.run_to_target_trapezoid();
     });
 
-    let _ = timeout(Duration::from_secs_f64(1.25), async {
+    let _ = timeout(Duration::from_secs_f64(1.5), async {
         loop {
             drivetrain.update_limelight().await;
             drivetrain.post_odo().await;
@@ -286,7 +286,7 @@ pub async fn blue_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::error
         elevator.run_to_target_trapezoid();
     });
 
-    let _ = timeout(Duration::from_secs_f64(0.75), async {
+    let _ = timeout(Duration::from_secs_f64(1.25), async {
         loop {
             drivetrain.update_limelight().await;
             sleep(Duration::from_millis(20)).await;
