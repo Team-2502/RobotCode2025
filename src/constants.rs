@@ -48,14 +48,14 @@ pub const HALF_FIELD_LENGTH_METERS: f64 = 8.05 / 2.;
 pub mod vision {
     use nalgebra::Vector2;
 
-    pub const LIMELIGHT_UPPER_PITCH_DEGREES: f64 = -35.7; //Last measured: -36.67
+    pub const LIMELIGHT_UPPER_PITCH_DEGREES: f64 = -35.25; //Last measured: -36.67
     pub const LIMELIGHT_UPPER_YAW_DEGREES: f64 = 90.; // Counterclockwise positive
     pub const LIMELIGHT_UPPER_HEIGHT_INCHES: f64 = 20.92;
     pub const ROBOT_CENTER_TO_LIMELIGHT_UPPER_INCHES: Vector2<f64> = Vector2::new(11.118, 10.352);
 
     // Increase distance by 10% for every 20 degrees of absolute value of tx
     // Set this to 0 for new robots
-    pub const TX_FUDGE_FACTOR: f64 = 0.105 / 20.;
+    pub const TX_FUDGE_FACTOR: f64 = 0.135 / 20.;
 }
 
 pub mod drivetrain {
