@@ -63,13 +63,13 @@ fn main() {
                     .unwrap()
                     .as_millis() as u64;
 
-                if last != 0 && now - last > 125 {
+                if last != 0 && now - last > 150 {
                     println!("Loop Overrun: {}ms", now - last);
                     if let Ok(ferris) = watchdog_ferris.try_borrow_mut() {
                         ferris.stop();
                     } else {
                         println!("FAILED TO GET FERRIS TO STOP");
-                        exit(1);
+                        // exit(1);
                     }
                     println!("Watchdog triggered: Motors stopped");
                 }
@@ -83,10 +83,10 @@ fn main() {
             let dt = last_loop.elapsed();
 
             if !state.enabled() {
-                if let Some(handle) = auto.take() {
-                    println!("Aborted");
-                    handle.abort();
-                }
+                // if let Some(handle) = auto.take() {
+                //     println!("Aborted");
+                //     handle.abort();
+                // }
 
                 if let Ok(f) = ferris.try_borrow() {
                     f.stop();

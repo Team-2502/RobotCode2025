@@ -521,6 +521,8 @@ impl Drivetrain {
     }
 
     pub fn reset_heading(&mut self) {
+        println!("Resetting heading: {}", self.get_offset_wrapped().get::<degree>());
+
         self.offset = self.get_angle();
     }
 
