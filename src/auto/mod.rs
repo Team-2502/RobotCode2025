@@ -27,7 +27,7 @@ pub enum Auto {
     Blue2,
     RotationTest,
     BlueMidLeft2,
-    Center1,
+    TushPush1,
 }
 
 impl Auto {
@@ -40,7 +40,7 @@ impl Auto {
             "Blue2" => Auto::Blue2,
             "RotationTest" => Auto::RotationTest,
             "BlueMidLeft2" => Auto::BlueMidLeft2,
-            "Center1" => Auto::Center1,
+            "TushPush1" => Auto::TushPush1,
             _ => Auto::Nothing,
         }
     }
@@ -54,7 +54,7 @@ impl Auto {
             Auto::Blue2 => "Blue2",
             Auto::RotationTest => "RotationTest",
             Auto::BlueMidLeft2 => "BlueMidLeft2",
-            Auto::Center1 => "Center1",
+            Auto::TushPush1 => "TushPush1",
             _ => "none",
         }
     }
@@ -68,7 +68,7 @@ impl Auto {
             Auto::Blue2,
             // Auto::RotationTest,
             Auto::BlueMidLeft2,
-            Auto::Center1,
+            Auto::TushPush1,
         ]
     }
 
@@ -94,7 +94,7 @@ impl Auto {
             Auto::Blue2 => blue_2(Rc::clone(&ferris)).await.expect("Failed running auto"),
             Auto::RotationTest => rotation_test(Rc::clone(&ferris)).await.expect("Failed running auto"),
             Auto::BlueMidLeft2 => blue_mid_left_2(Rc::clone(&ferris)).await.expect("Failed running auto"),
-            Auto::Center1 => center_1(Rc::clone(&ferris)).await.expect("Failed running auto"),
+            Auto::TushPush1 => tush_push_1(Rc::clone(&ferris)).await.expect("Failed running auto"),
         }
     }
 }
@@ -402,7 +402,7 @@ async fn blue_mid_left_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::
     Ok(())
 }
 
-async fn center_1(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::error::Error>> {
+async fn tush_push_1(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::error::Error>> {
     let mut robot = robot.borrow_mut();
     let mut drivetrain = robot.drivetrain.deref().borrow_mut();
     let mut elevator = robot.elevator.deref().borrow_mut();
