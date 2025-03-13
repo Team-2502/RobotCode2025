@@ -95,7 +95,7 @@ pub mod drivetrain {
     pub const TY_ACCEPTABLE_ERROR: f64 = 1.8;
     pub const YAW_ACCEPTABLE_ERROR: f64 = 0.02;
 
-    pub const LINEUP_DRIVE_KP: f64 = 0.7;
+    pub const LINEUP_DRIVE_KP: f64 = 0.85;
     pub const LINEUP_DRIVE_KI: f64 = 10.;
     pub const LINEUP_DRIVE_KD: f64 = 10.;
     pub const LINEUP_DRIVE_IE: f64 = 0.25;
