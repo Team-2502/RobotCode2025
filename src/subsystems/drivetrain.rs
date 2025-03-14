@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use frcrs::alliance_station;
 use std::f64::consts::PI;
 
@@ -47,6 +48,12 @@ pub struct LineupTarget {
     pub angle: Angle,
 }
 
+#[derive(Copy, Clone)]
+pub struct LineupLocation {
+    side_distance: Length,
+    forward_distance: Length,
+}
+
 pub struct Drivetrain {
     pigeon: Pigeon,
 
@@ -74,6 +81,8 @@ pub struct Drivetrain {
     pub limelight: Vision,
 
     abs_offsets: [Angle; 4],
+
+    lineup_locations: HashMap<i32, LineupLocation>
 }
 
 #[derive(Serialize, Deserialize)]
@@ -136,6 +145,16 @@ impl Drivetrain {
             Angle::new::<degree>((-br_encoder.get_absolute() * 360.) - BR_OFFSET_DEGREES),
         ];
 
+        let mut lineup_locations = HashMap::new();
+
+        /// default is:
+        // side_distance: Length::new::<inch>(13. / 2.),
+        // forward_distance: Length::new::<inch>(16.275),
+        lineup_locations.insert(17, LineupLocation {
+            side_distance: Length::new::<inch>(13. / 2.),
+            forward_distance: Length::new::<inch>(16.),
+        });
+
         Self {
             pigeon: Pigeon::new(PIGEON, Some("can0".to_owned())),
 
@@ -163,6 +182,8 @@ impl Drivetrain {
             limelight: limelight,
 
             abs_offsets,
+
+            lineup_locations,
         }
     }
 
@@ -625,8 +646,19 @@ impl Drivetrain {
 
         let yaw = quaternion_to_yaw(tag_rotation);
 
-        let mut side_distance = Length::new::<inch>(13. / 2.); // theoretical is 13. / 2.
-        let forward_distance = Length::new::<inch>(16.275); //theoretical is 16.75
+        let lineup_location = match self.lineup_locations.get(&tag_id) {
+            None => {
+                LineupLocation {
+                    side_distance: Length::new::<inch>(13. / 2.),
+                    forward_distance: Length::new::<inch>(16.275),
+                }
+            }
+            Some(l) => { *l }
+        };
+
+        let mut side_distance = lineup_location.side_distance;
+        let mut forward_distance = lineup_location.forward_distance;
+
         let elevator_position = match target_level {
             ElevatorPosition::Bottom => Length::new::<inch>(-9.),
             ElevatorPosition::L2 => Length::new::<inch>(-9.),
@@ -814,18 +846,19 @@ pub fn calculate_relative_target(current: f64, target: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
     use nalgebra::{Quaternion, Vector2, Vector3};
     use std::f64::consts::PI;
+    use std::ops::{Add, Sub};
 
     use crate::subsystems::drivetrain::{calculate_relative_target, quaternion_to_yaw};
-    use crate::subsystems::{FieldPosition, LineupSide};
-    use uom::si::angle::radian;
+    use crate::subsystems::{ElevatorPosition, FieldPosition, LineupLocation, LineupSide, LineupTarget};
+    use uom::si::angle::{degree, radian};
     use uom::si::f32::Angle;
     use uom::si::f64::Length;
-    use uom::si::length::meter;
+    use uom::si::length::{inch, meter};
 
     #[test]
-    #[ignore]
     fn calculate_target_lineup_position() {
         let side = LineupSide::Right;
 
@@ -848,18 +881,36 @@ mod tests {
 
         let yaw = quaternion_to_yaw(tag_rotation);
 
-        let side_distance = Length::new::<meter>(0.5);
-        let forward_distance = Length::new::<meter>(0.5);
+        let mut lineup_locations = HashMap::new();
+
+        lineup_locations.insert(17, LineupLocation {
+            side_distance: Length::new::<inch>(13. / 2.),
+            forward_distance: Length::new::<inch>(20.275),
+        });
+
+        let lineup_location = match lineup_locations.get(&17) {
+            None => {
+                LineupLocation {
+                    side_distance: Length::new::<inch>(13. / 2.),
+                    forward_distance: Length::new::<inch>(16.275),
+                }
+            }
+            Some(l) => { *l }
+        };
+
+        let mut side_distance = lineup_location.side_distance;
+        let mut forward_distance = lineup_location.forward_distance;
 
         let side_multiplier = match side {
             LineupSide::Left => -1.0,
             LineupSide::Right => 1.0,
         };
+        side_distance *= side_multiplier;
 
         let perpendicular_yaw = yaw + std::f64::consts::PI / 2.0;
 
-        let offset_x = side_distance.get::<meter>() * f64::cos(perpendicular_yaw) * side_multiplier;
-        let offset_y = side_distance.get::<meter>() * f64::sin(perpendicular_yaw) * side_multiplier;
+        let offset_x = side_distance.get::<meter>() * f64::cos(perpendicular_yaw);
+        let offset_y = side_distance.get::<meter>() * f64::sin(perpendicular_yaw);
 
         let forward_x = forward_distance.get::<meter>() * f64::cos(yaw);
         let forward_y = forward_distance.get::<meter>() * f64::sin(yaw);
@@ -871,7 +922,19 @@ mod tests {
                 .get::<meter>(),
         );
 
-        let robot_angle = Angle::new::<radian>(yaw as f32);
+        let mut robot_angle = uom::si::f64::Angle::new::<radian>(yaw)
+            .add(uom::si::f64::Angle::new::<radian>(PI))
+            .sub(uom::si::f64::Angle::new::<radian>(PI / 2.));
+
+        // robot_angle = uom::si::f64::Angle::new::<degree>(calculate_relative_target(
+        //     self.get_offset_wrapped().get::<degree>(),
+        //     robot_angle.get::<degree>(),
+        // ));
+        if robot_angle.get::<degree>() > 180. {
+            robot_angle -= uom::si::f64::Angle::new::<degree>(360.)
+        } else if robot_angle.get::<degree>() < -180. {
+            robot_angle += uom::si::f64::Angle::new::<degree>(360.)
+        }
 
         println!("{:?}", target_pos);
         println!("{:?}", robot_angle);
