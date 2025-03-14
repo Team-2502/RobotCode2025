@@ -163,11 +163,11 @@ async fn teleop(robot: &mut Ferris) {
 
                 let drivetrain_aligned = if robot.controllers.right_drive.get(LINEUP_LEFT) {
                     drivetrain
-                        .lineup(LineupSide::Left, elevator.get_target(), robot.dt, None)
+                        .ram_align(LineupSide::Left, elevator.get_target())
                         .await
                 } else if robot.controllers.right_drive.get(LINEUP_RIGHT) {
                     drivetrain
-                        .lineup(LineupSide::Right, elevator.get_target(), robot.dt, None)
+                        .ram_align(LineupSide::Right, elevator.get_target())
                         .await
                 } else if robot.controllers.operator.get(WHEELS_ZERO) {
                     drivetrain.set_wheels_zero();

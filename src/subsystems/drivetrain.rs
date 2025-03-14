@@ -551,6 +551,37 @@ impl Drivetrain {
         self.offset = self.get_angle() + offset;
     }
 
+    /// Ram into reef, then automatically move sideways to align. Maybe add fwd and str to give control while aligning.
+    pub async fn ram_align(&mut self, side: LineupSide, target_level: ElevatorPosition) -> bool {
+        if let Some(target) = self.calculate_target_lineup_position(side, target_level, None) {
+            let mut error_position =
+                target.position - self.odometry.robot_pose_estimate.get_position_meters();
+
+            error_position *= -LINEUP_DRIVE_KP * 1.25; // Bump because we are pushing on reef
+
+            let mut speed = error_position;
+
+            Telemetry::put_number("error_position_y", error_position.y).await;
+            Telemetry::put_number("speed_y", -speed.y).await;
+            Telemetry::put_number("target_y", target.position.y).await;
+
+            if error_position.y.abs() < 0.015 {
+                self.stop();
+                true
+            } else {
+                self.set_speeds(
+                    0.,
+                    speed.y,
+                    0.,
+                    SwerveControlStyle::RobotOriented,
+                );
+                false
+            }
+        } else {
+            false
+        }
+    }
+
     pub async fn lineup(&mut self, side: LineupSide, target_level: ElevatorPosition, dt: Duration, use_tag: Option<i32>) -> bool {
         let mut last_error = Vector2::zeros();
         let mut i = Vector2::zeros();
