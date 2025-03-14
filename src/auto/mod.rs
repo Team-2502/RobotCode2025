@@ -420,9 +420,9 @@ async fn tush_push_1(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::erro
         Length::new::<meter>(4.919252395629883)
     ));
 
-    drive("BlueCenter1", &mut drivetrain, 1).await?;
+    drive("TushPush1", &mut drivetrain, 1).await?;
 
-    join!(drive("BlueCenter1", &mut drivetrain, 2), async {
+    join!(drive("TushPush1", &mut drivetrain, 2), async {
         elevator.set_target(ElevatorPosition::L2);
         elevator.run_to_target_trapezoid();
 
