@@ -601,8 +601,8 @@ impl Drivetrain {
             if error_position.magnitude().abs() < 0.015
                 && error_angle.abs() < 0.015
             {
-                self.stop();
-                //self.set_speeds(0., 0., 0., SwerveControlStyle::RobotOriented);
+                // self.stop();
+                self.set_speeds(0., 0.1, 0., SwerveControlStyle::RobotOriented);
                 // println!("dt at position");
                 true
             } else {
