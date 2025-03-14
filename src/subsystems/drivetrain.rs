@@ -577,16 +577,17 @@ impl Drivetrain {
             error_angle *= SWERVE_TURN_KP;
             error_position *= -LINEUP_DRIVE_KP;
 
+            // Give KP boost when close
+            if error_position.magnitude().abs() < 0.1 {
+                error_position *= 2.75;
+            }
+
             let mut speed = error_position;
             speed += i * -LINEUP_DRIVE_KI * dt.as_secs_f64();
             speed += (speed - last_error) * LINEUP_DRIVE_KD * dt.as_secs_f64();
 
             let speed_s = speed;
             last_error = speed_s;
-
-            // if alliance_station().red() {
-            //     speed.x *= -1.
-            // }
 
             Telemetry::put_number("error_position_x", error_position.x).await;
             Telemetry::put_number("error_position_y", error_position.y).await;
@@ -601,8 +602,8 @@ impl Drivetrain {
             if error_position.magnitude().abs() < 0.015
                 && error_angle.abs() < 0.015
             {
-                // self.stop();
-                self.set_speeds(0., 0.1, 0., SwerveControlStyle::RobotOriented);
+                self.stop();
+                // self.set_speeds(0., 0.1, 0., SwerveControlStyle::RobotOriented);
                 // println!("dt at position");
                 true
             } else {
