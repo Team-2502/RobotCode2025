@@ -124,7 +124,7 @@ pub mod indexer {
     pub const BOTTOM_SPEED: f64 = -0.35;
     pub const L2_SPEED: f64 = -0.4;
     pub const L3_SPEED: f64 = -0.4;
-    pub const L4_SPEED: f64 = -0.2;
+    pub const L4_SPEED: f64 = -0.4;
 }
 pub mod joystick_map {
     // Joystick IDs (set in driver station)
