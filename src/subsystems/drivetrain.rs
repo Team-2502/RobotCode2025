@@ -579,7 +579,7 @@ impl Drivetrain {
 
             // Give KP boost when close
             if error_position.magnitude().abs() < 0.15 {
-                error_position *= 2.5;
+                error_position *= 2.;
             }
 
             let mut speed = error_position;
