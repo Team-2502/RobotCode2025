@@ -1,3 +1,6 @@
+use uom::si::f64::Length;
+use uom::si::length::meter;
+
 pub const FPS_LIMIT: f64 = 250.;
 
 pub mod robotmap {
@@ -29,6 +32,7 @@ pub mod robotmap {
     pub mod indexer {
         pub const MOTOR: i32 = 12;
         pub const LASER_CAN: i32 = 0; // Cant save can id
+
     }
 
     pub mod climber {
@@ -43,16 +47,20 @@ pub mod robotmap {
 }
 
 // TODO: get 2025 field dimensions
-pub const HALF_FIELD_WIDTH_METERS: f64 = 4.1148; // 54/4 feet
-pub const HALF_FIELD_LENGTH_METERS: f64 = 8.2296; // 54/2 feet
+pub const HALF_FIELD_WIDTH_METERS: f64 = 17.55 / 2.;
+pub const HALF_FIELD_LENGTH_METERS: f64 = 8.05 / 2.;
 
 pub mod vision {
     use nalgebra::Vector2;
 
-    pub const LIMELIGHT_UPPER_PITCH_DEGREES: f64 = -35.15;
+    pub const LIMELIGHT_UPPER_PITCH_DEGREES: f64 = -34.5; //Last measured: -37.0
     pub const LIMELIGHT_UPPER_YAW_DEGREES: f64 = 90.; // Counterclockwise positive
-    pub const LIMELIGHT_UPPER_HEIGHT_INCHES: f64 = 20.8;
+    pub const LIMELIGHT_UPPER_HEIGHT_INCHES: f64 = 20.92;
     pub const ROBOT_CENTER_TO_LIMELIGHT_UPPER_INCHES: Vector2<f64> = Vector2::new(11.118, 10.352);
+
+    // Increase distance by 10% for every 20 degrees of absolute value of tx
+    // Set this to 0 for new robots
+    pub const TX_FUDGE_FACTOR: f64 = 0.135 / 20.;
 }
 
 pub mod drivetrain {
@@ -63,11 +71,11 @@ pub mod drivetrain {
     pub const BR_OFFSET_DEGREES: f64 = -0.056641 * 360.;
     pub const BL_OFFSET_DEGREES: f64 = 0.170898 * 360.;
 
-    pub const PIGEON_OFFSET: f64 = -1.5;
+    pub const PIGEON_OFFSET: f64 = -0.4;
 
     pub const SWERVE_TURN_KP: f64 = 0.6;
 
-    pub const SWERVE_ROTATIONS_TO_INCHES: f64 = (1. / 6.75) * (3.84 * PI);
+    pub const SWERVE_ROTATIONS_TO_INCHES: f64 = (1. / 6.75) * (3.65 * PI);
     pub const SWERVE_TURN_RATIO: f64 = 12.8;
 
     pub const SWERVE_DRIVE_KP: f64 = 0.7;
@@ -91,6 +99,11 @@ pub mod drivetrain {
     pub const TX_ACCEPTABLE_ERROR: f64 = 1.8;
     pub const TY_ACCEPTABLE_ERROR: f64 = 1.8;
     pub const YAW_ACCEPTABLE_ERROR: f64 = 0.02;
+
+    pub const LINEUP_DRIVE_KP: f64 = 1.;
+    pub const LINEUP_DRIVE_KI: f64 = 10.;
+    pub const LINEUP_DRIVE_KD: f64 = 10.;
+    pub const LINEUP_DRIVE_IE: f64 = 0.25;
 }
 pub mod pose_estimation {
     pub const ARC_ODOMETRY_MINIMUM_DELTA_THETA_RADIANS: f64 = 0.000001;
@@ -103,15 +116,20 @@ pub mod pose_estimation {
     pub const LIMELIGHT_INACCURACY_PER_LINEAR_VELOCITY: f64 = 2.; //  Meters of inaccuracy per (meter/second) of drivetrain linear velocity
 }
 pub mod elevator {
-    pub const BOTTOM: f64 = 0.0; // unit is rotations
-    pub const L2: f64 = 2.; // unit is rotations
-    pub const L3: f64 = 16.5; // unit is rotations
-    pub const L4: f64 = 39.1; // unit is rotations
+    pub const BOTTOM: f64 = 0.25; // unit is rotations
+    pub const L2: f64 = 1.5; // unit is rotations
+    pub const L3: f64 = 13.; // unit is rotations
+    pub const L4: f64 = 39.5; // unit is rotations
     pub const ELEVATOR_TRAPEZOID_DT_MS: u64 = 50; // sleep.await this long in between updating the elevator trapezoidal when running its async function
     pub const POSITION_TOLERANCE: f64 = 0.25; // unit is rotations. finish elevator async move when within this distance of target
 }
 pub mod indexer {
     pub const LASER_TRIP_DISTANCE_MM: i32 = 2;
+    pub const INTAKE_SPEED: f64 = -0.25;
+    pub const BOTTOM_SPEED: f64 = -0.35;
+    pub const L2_SPEED: f64 = -0.4;
+    pub const L3_SPEED: f64 = -0.4;
+    pub const L4_SPEED: f64 = -0.4;
 }
 pub mod joystick_map {
     // Joystick IDs (set in driver station)

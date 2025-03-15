@@ -2,6 +2,7 @@ use frcrs::telemetry::Telemetry;
 use std::f64::consts::PI;
 use std::ops::{Add, Neg};
 use std::time::Duration;
+use frcrs::alliance_station;
 use frcrs::input::RobotState;
 use tokio::fs::File;
 
@@ -26,6 +27,7 @@ use crate::{
     },
     subsystems::Drivetrain,
 };
+use crate::constants::{HALF_FIELD_LENGTH_METERS, HALF_FIELD_WIDTH_METERS};
 
 // TODO: Test
 pub async fn drive(
@@ -70,6 +72,7 @@ pub async fn follow_path_segment(
     let mut last_error = Vector2::zeros();
     let mut last_loop = Instant::now();
     let mut i = Vector2::zeros();
+    let red = alliance_station().red();
 
     loop {
         let state = RobotState::get();
@@ -78,8 +81,8 @@ pub async fn follow_path_segment(
             break
         }
 
-        drivetrain.post_odo().await;
         drivetrain.update_limelight().await;
+        drivetrain.post_odo().await;
 
         let now = Instant::now();
         let dt = now - last_loop;
@@ -94,7 +97,14 @@ pub async fn follow_path_segment(
             break;
         }
 
-        let setpoint = path.get(Time::new::<second>(elapsed));
+        let setpoint = if red {
+            path.get(Time::new::<second>(elapsed)).mirror(
+                Length::new::<meter>(HALF_FIELD_WIDTH_METERS),
+                Length::new::<meter>(HALF_FIELD_LENGTH_METERS))
+        } else {
+            path.get(Time::new::<second>(elapsed))
+        };
+
 
         let mut angle = -setpoint.heading;
         // let mut angle_radians: f64 = setpoint.heading.get::<radian>();
@@ -153,6 +163,7 @@ pub async fn follow_path_segment(
         speed += (speed - last_error) * SWERVE_DRIVE_KD * dt.as_secs_f64();
         last_error = speed_s;
 
+
         drivetrain.set_speeds(
             speed.x,
             speed.y,
@@ -160,8 +171,9 @@ pub async fn follow_path_segment(
             SwerveControlStyle::FieldOriented,
         );
 
-        Telemetry::put_number("path_turn_err", error_angle).await;
-        Telemetry::put_number("path_target_angle", angle.get::<radian>()).await;
+        Telemetry::put_number("target_x", position.x).await;
+        Telemetry::put_number("target_y", position.y).await;
+        Telemetry::put_number("target_angle", angle.get::<radian>()).await;
 
         sleep(Duration::from_millis(20)).await;
     }

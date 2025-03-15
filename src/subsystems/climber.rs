@@ -18,8 +18,8 @@ impl Default for Climber {
 impl Climber {
     pub fn new() -> Self {
         Self {
-            raise: Solenoid::new(ModuleType::Rev, RAISE),
-            grab: Solenoid::new(ModuleType::Rev, GRAB),
+            raise: Solenoid::new(ModuleType::CTRE, RAISE),
+            grab: Solenoid::new(ModuleType::CTRE, GRAB),
         }
     }
 
@@ -42,7 +42,7 @@ impl Climber {
     pub async fn climb(ferris: Ferris) {
         if let Ok(climber) = ferris.climber.try_borrow_mut() {
             climber.set_raise(true);
-            sleep(Duration::from_secs(1)).await;
+            sleep(Duration::from_secs_f64(1.75)).await;
             climber.set_grab(true);
             sleep(Duration::from_secs_f64(0.25)).await;
             climber.set_raise(false);

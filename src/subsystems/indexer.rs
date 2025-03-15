@@ -7,6 +7,7 @@ use std::rc::Rc;
 use std::time::Duration;
 use std::time::Instant;
 use tokio::time::sleep;
+use crate::constants::indexer::INTAKE_SPEED;
 
 pub struct Indexer {
     motor: Talon,
@@ -37,7 +38,7 @@ impl Indexer {
                 || indexer.laser_can.get_measurement() == -1
             {
                 println!("Dist: {}", indexer.get_laser_dist());
-                indexer.set_speed(-0.3);
+                indexer.set_speed(INTAKE_SPEED);
             }
 
             indexer.motor.stop();

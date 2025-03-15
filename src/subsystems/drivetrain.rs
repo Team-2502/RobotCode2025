@@ -1,18 +1,14 @@
+use std::collections::HashMap;
 use frcrs::alliance_station;
 use std::f64::consts::PI;
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::ops::{Add, Sub};
+use std::time::Duration;
 
 use frcrs::ctre::{talon_encoder_tick, CanCoder, ControlMode, Pigeon, Talon};
 
-use crate::constants::drivetrain::{
-    BL_OFFSET_DEGREES, BR_OFFSET_DEGREES, FL_OFFSET_DEGREES, FR_OFFSET_DEGREES,
-    LINEUP_2D_TX_FWD_KP, LINEUP_2D_TX_STR_KP, LINEUP_2D_TY_FWD_KP, PIGEON_OFFSET, SWERVE_DRIVE_IE,
-    SWERVE_DRIVE_KP, SWERVE_ROTATIONS_TO_INCHES, SWERVE_TURN_KP, SWERVE_TURN_RATIO, TARGET_TX_LEFT,
-    TARGET_TX_RIGHT, TARGET_TY_LEFT, TARGET_TY_RIGHT, TX_ACCEPTABLE_ERROR, TY_ACCEPTABLE_ERROR,
-    YAW_ACCEPTABLE_ERROR,
-};
+use crate::constants::drivetrain::{BL_OFFSET_DEGREES, BR_OFFSET_DEGREES, FL_OFFSET_DEGREES, FR_OFFSET_DEGREES, LINEUP_2D_TX_FWD_KP, LINEUP_2D_TX_STR_KP, LINEUP_2D_TY_FWD_KP, LINEUP_DRIVE_IE, LINEUP_DRIVE_KD, LINEUP_DRIVE_KI, LINEUP_DRIVE_KP, PIGEON_OFFSET, SWERVE_DRIVE_IE, SWERVE_DRIVE_KD, SWERVE_DRIVE_KI, SWERVE_DRIVE_KP, SWERVE_ROTATIONS_TO_INCHES, SWERVE_TURN_KP, SWERVE_TURN_RATIO, TARGET_TX_LEFT, TARGET_TX_RIGHT, TARGET_TY_LEFT, TARGET_TY_RIGHT, TX_ACCEPTABLE_ERROR, TY_ACCEPTABLE_ERROR, YAW_ACCEPTABLE_ERROR};
 use crate::constants::robotmap::swerve::*;
 use crate::swerve::kinematics::{ModuleState, Swerve};
 use crate::swerve::odometry::{ModuleReturn, Odometry};
@@ -21,6 +17,7 @@ use frcrs::telemetry::Telemetry;
 use nalgebra::{Quaternion, Rotation2, Vector2};
 use serde::Deserialize;
 use serde::Serialize;
+use tokio::time::{Instant, timeout};
 
 use crate::constants;
 use crate::constants::vision::ROBOT_CENTER_TO_LIMELIGHT_UPPER_INCHES;
@@ -51,6 +48,12 @@ pub struct LineupTarget {
     pub angle: Angle,
 }
 
+#[derive(Copy, Clone)]
+pub struct LineupLocation {
+    side_distance: Length,
+    forward_distance: Length,
+}
+
 pub struct Drivetrain {
     pigeon: Pigeon,
 
@@ -78,6 +81,8 @@ pub struct Drivetrain {
     pub limelight: Vision,
 
     abs_offsets: [Angle; 4],
+
+    lineup_locations: HashMap<i32, LineupLocation>
 }
 
 #[derive(Serialize, Deserialize)]
@@ -133,18 +138,22 @@ impl Drivetrain {
             5807,
         ));
 
-        let offset = if alliance_station().red() {
-            Angle::new::<degree>(180.)
-        } else {
-            Angle::new::<degree>(0.)
-        };
-
         let abs_offsets = [
             Angle::new::<degree>((-fr_encoder.get_absolute() * 360.) - FR_OFFSET_DEGREES),
             Angle::new::<degree>((-fl_encoder.get_absolute() * 360.) - FL_OFFSET_DEGREES),
             Angle::new::<degree>((-bl_encoder.get_absolute() * 360.) - BL_OFFSET_DEGREES),
             Angle::new::<degree>((-br_encoder.get_absolute() * 360.) - BR_OFFSET_DEGREES),
         ];
+
+        let mut lineup_locations = HashMap::new();
+
+        /// default is:
+        // side_distance: Length::new::<inch>(13. / 2.),
+        // forward_distance: Length::new::<inch>(16.275),
+        lineup_locations.insert(17, LineupLocation {
+            side_distance: Length::new::<inch>(13. / 2.),
+            forward_distance: Length::new::<inch>(16.),
+        });
 
         Self {
             pigeon: Pigeon::new(PIGEON, Some("can0".to_owned())),
@@ -168,21 +177,22 @@ impl Drivetrain {
             kinematics: Swerve::rectangle(Length::new::<inch>(21.5), Length::new::<inch>(21.5)),
             odometry: Odometry::new(),
 
-            offset,
+            offset: Angle::new::<degree>(0.),
 
             limelight: limelight,
 
             abs_offsets,
+
+            lineup_locations,
         }
     }
 
     pub async fn update_limelight(&mut self) {
-        self.limelight
+        let _ = timeout(Duration::from_millis(10), self.limelight
             .update(
                 self.get_offset_wrapped(),
                 self.odometry.robot_pose_estimate.get_position(),
-            )
-            .await;
+            )).await;
         Telemetry::put_number(
             "limelight upper fom",
             self.limelight.get_figure_of_merit().get::<meter>(),
@@ -507,11 +517,7 @@ impl Drivetrain {
     }
 
     pub fn get_angle(&self) -> Angle {
-        if alliance_station().red() {
-            Angle::new::<radian>(-self.pigeon.get_rotation().z + 180. + PIGEON_OFFSET)
-        } else {
-            Angle::new::<radian>(-self.pigeon.get_rotation().z + PIGEON_OFFSET)
-        }
+        Angle::new::<radian>(-self.pigeon.get_rotation().z + PIGEON_OFFSET)
     }
 
     pub fn get_offset(&self) -> Angle {
@@ -536,14 +542,20 @@ impl Drivetrain {
     }
 
     pub fn reset_heading(&mut self) {
+        println!("Resetting heading: {}", self.get_offset_wrapped().get::<degree>());
+
         self.offset = self.get_angle();
     }
 
-    pub async fn lineup(&mut self, side: LineupSide, target_level: ElevatorPosition) -> bool {
+    pub fn reset_heading_offset(&mut self, offset: Angle) {
+        self.offset = self.get_angle() + offset;
+    }
+
+    pub async fn lineup(&mut self, side: LineupSide, target_level: ElevatorPosition, dt: Duration, use_tag: Option<i32>) -> bool {
         let mut last_error = Vector2::zeros();
         let mut i = Vector2::zeros();
 
-        if let Some(target) = self.calculate_target_lineup_position(side, target_level) {
+        if let Some(target) = self.calculate_target_lineup_position(side, target_level, use_tag) {
             let mut error_position =
                 target.position - self.odometry.robot_pose_estimate.get_position_meters();
 
@@ -558,21 +570,24 @@ impl Drivetrain {
 
             let mut error_angle = (-target.angle - dt_angle).get::<radian>();
 
-            if error_position.abs().max() < SWERVE_DRIVE_IE {
+            if error_position.abs().max() < LINEUP_DRIVE_IE {
                 i += error_position;
             }
 
             error_angle *= SWERVE_TURN_KP;
-            error_position *= -SWERVE_DRIVE_KP * 1.25;
+            error_position *= -LINEUP_DRIVE_KP;
+
+            // Give KP boost when close
+            if error_position.magnitude().abs() < 0.15 {
+                error_position *= 2.;
+            }
 
             let mut speed = error_position;
+            speed += i * -LINEUP_DRIVE_KI * dt.as_secs_f64();
+            speed += (speed - last_error) * LINEUP_DRIVE_KD * dt.as_secs_f64();
 
             let speed_s = speed;
             last_error = speed_s;
-
-            if alliance_station().red() {
-                speed.x *= -1.
-            }
 
             Telemetry::put_number("error_position_x", error_position.x).await;
             Telemetry::put_number("error_position_y", error_position.y).await;
@@ -584,9 +599,11 @@ impl Drivetrain {
             Telemetry::put_number("target_x", target.position.x).await;
             Telemetry::put_number("target_y", target.position.y).await;
             Telemetry::put_number("target_angle", target.angle.get::<radian>()).await;
-            if error_position.magnitude().abs() < 0.015 && error_angle.abs() < 0.015 {
+            if error_position.magnitude().abs() < 0.015
+                && error_angle.abs() < 0.015
+            {
                 self.stop();
-                self.set_speeds(0., 0., 0., SwerveControlStyle::RobotOriented);
+                // self.set_speeds(0., 0.1, 0., SwerveControlStyle::RobotOriented);
                 // println!("dt at position");
                 true
             } else {
@@ -612,8 +629,14 @@ impl Drivetrain {
         &mut self,
         side: LineupSide,
         target_level: ElevatorPosition,
+        use_tag: Option<i32>,
     ) -> Option<LineupTarget> {
-        let tag_id = self.limelight.get_saved_id();
+        let tag_id = if use_tag.is_some() {
+            use_tag.unwrap()
+        } else {
+            self.limelight.get_saved_id()
+        };
+
         if tag_id == -1 {
             return None;
         }
@@ -624,12 +647,23 @@ impl Drivetrain {
 
         let yaw = quaternion_to_yaw(tag_rotation);
 
-        let mut side_distance = Length::new::<inch>(13. / 2.); // theoretical is 13. / 2.
-        let forward_distance = Length::new::<inch>(16.75); //theoretical is 16.75
+        let lineup_location = match self.lineup_locations.get(&tag_id) {
+            None => {
+                LineupLocation {
+                    side_distance: Length::new::<inch>(13. / 2.),
+                    forward_distance: Length::new::<inch>(16.275),
+                }
+            }
+            Some(l) => { *l }
+        };
+
+        let mut side_distance = lineup_location.side_distance;
+        let mut forward_distance = lineup_location.forward_distance;
+
         let elevator_position = match target_level {
-            ElevatorPosition::Bottom => Length::new::<inch>(-10.5),
-            ElevatorPosition::L2 => Length::new::<inch>(-10.5),
-            ElevatorPosition::L3 => Length::new::<inch>(-10.5),
+            ElevatorPosition::Bottom => Length::new::<inch>(-9.),
+            ElevatorPosition::L2 => Length::new::<inch>(-9.),
+            ElevatorPosition::L3 => Length::new::<inch>(-9.),
             ElevatorPosition::L4 => Length::new::<inch>(-9.),
         }; //theoretical is -11.0
 
@@ -813,18 +847,19 @@ pub fn calculate_relative_target(current: f64, target: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
     use nalgebra::{Quaternion, Vector2, Vector3};
     use std::f64::consts::PI;
+    use std::ops::{Add, Sub};
 
     use crate::subsystems::drivetrain::{calculate_relative_target, quaternion_to_yaw};
-    use crate::subsystems::{FieldPosition, LineupSide};
-    use uom::si::angle::radian;
+    use crate::subsystems::{ElevatorPosition, FieldPosition, LineupLocation, LineupSide, LineupTarget};
+    use uom::si::angle::{degree, radian};
     use uom::si::f32::Angle;
     use uom::si::f64::Length;
-    use uom::si::length::meter;
+    use uom::si::length::{inch, meter};
 
     #[test]
-    #[ignore]
     fn calculate_target_lineup_position() {
         let side = LineupSide::Right;
 
@@ -847,18 +882,36 @@ mod tests {
 
         let yaw = quaternion_to_yaw(tag_rotation);
 
-        let side_distance = Length::new::<meter>(0.5);
-        let forward_distance = Length::new::<meter>(0.5);
+        let mut lineup_locations = HashMap::new();
+
+        lineup_locations.insert(17, LineupLocation {
+            side_distance: Length::new::<inch>(13. / 2.),
+            forward_distance: Length::new::<inch>(20.275),
+        });
+
+        let lineup_location = match lineup_locations.get(&17) {
+            None => {
+                LineupLocation {
+                    side_distance: Length::new::<inch>(13. / 2.),
+                    forward_distance: Length::new::<inch>(16.275),
+                }
+            }
+            Some(l) => { *l }
+        };
+
+        let mut side_distance = lineup_location.side_distance;
+        let mut forward_distance = lineup_location.forward_distance;
 
         let side_multiplier = match side {
             LineupSide::Left => -1.0,
             LineupSide::Right => 1.0,
         };
+        side_distance *= side_multiplier;
 
         let perpendicular_yaw = yaw + std::f64::consts::PI / 2.0;
 
-        let offset_x = side_distance.get::<meter>() * f64::cos(perpendicular_yaw) * side_multiplier;
-        let offset_y = side_distance.get::<meter>() * f64::sin(perpendicular_yaw) * side_multiplier;
+        let offset_x = side_distance.get::<meter>() * f64::cos(perpendicular_yaw);
+        let offset_y = side_distance.get::<meter>() * f64::sin(perpendicular_yaw);
 
         let forward_x = forward_distance.get::<meter>() * f64::cos(yaw);
         let forward_y = forward_distance.get::<meter>() * f64::sin(yaw);
@@ -870,7 +923,19 @@ mod tests {
                 .get::<meter>(),
         );
 
-        let robot_angle = Angle::new::<radian>(yaw as f32);
+        let mut robot_angle = uom::si::f64::Angle::new::<radian>(yaw)
+            .add(uom::si::f64::Angle::new::<radian>(PI))
+            .sub(uom::si::f64::Angle::new::<radian>(PI / 2.));
+
+        // robot_angle = uom::si::f64::Angle::new::<degree>(calculate_relative_target(
+        //     self.get_offset_wrapped().get::<degree>(),
+        //     robot_angle.get::<degree>(),
+        // ));
+        if robot_angle.get::<degree>() > 180. {
+            robot_angle -= uom::si::f64::Angle::new::<degree>(360.)
+        } else if robot_angle.get::<degree>() < -180. {
+            robot_angle += uom::si::f64::Angle::new::<degree>(360.)
+        }
 
         println!("{:?}", target_pos);
         println!("{:?}", robot_angle);

@@ -4,6 +4,7 @@ use frcrs::ctre::{ControlMode, Talon};
 use std::fmt::Display;
 use std::time::Duration;
 use tokio::time::sleep;
+use crate::auto::wait;
 
 pub struct Elevator {
     left: Talon,
@@ -101,12 +102,11 @@ impl Elevator {
             ElevatorPosition::L4 => elevator::L4,
         };
 
-        while (self.right.get_position() - target_position).abs() > elevator::POSITION_TOLERANCE {
-            self.right.set(ControlMode::MotionMagic, target_position);
-            self.left.follow(&self.right, true);
+        self.right.set(ControlMode::MotionMagic, target_position);
+        self.left.follow(&self.right, true);
 
-            sleep(Duration::from_millis(20)).await;
-        }
+        wait(|| (self.right.get_position() - target_position).abs() < elevator::POSITION_TOLERANCE).await;
+
         println!("elevator at target");
     }
 

@@ -1,8 +1,9 @@
+use std::f64::consts::PI;
 use frcrs::limelight::{Limelight, LimelightResults};
 use std::fs::File;
 
 use crate::constants::vision;
-use crate::constants::vision::ROBOT_CENTER_TO_LIMELIGHT_UPPER_INCHES;
+use crate::constants::vision::{ROBOT_CENTER_TO_LIMELIGHT_UPPER_INCHES, TX_FUDGE_FACTOR};
 use frcrs::telemetry::Telemetry;
 use nalgebra::{Quaternion, Rotation2, Vector2, Vector3};
 use serde_json::Value;
@@ -20,6 +21,7 @@ use crate::constants::pose_estimation::{
 };
 use crate::swerve::odometry::PoseEstimate;
 use std::net::SocketAddr;
+use frcrs::alliance_station;
 use tokio::time::Instant;
 
 #[derive(Clone)]
@@ -80,12 +82,12 @@ impl Vision {
         self.drivetrain_angle = dt_angle;
         self.last_update_time = Instant::now();
 
-        if self.limelight
-            .update_robot_orientation(-dt_angle.get::<radian>()) // Why do we use clockwise positive
-            .await
-            .is_err() {
-            eprintln!("Failed to update robot orientation on limelight")
-        }
+        // if self.limelight
+        //     .update_robot_orientation(-dt_angle.get::<radian>()) // Why do we use clockwise positive
+        //     .await
+        //     .is_err() {
+        //     eprintln!("Failed to update robot orientation on limelight")
+        // }
 
         if !self.results.Fiducial.is_empty() {
             if self.results.Fiducial[0].fID != -1 && self.results.Fiducial[0].fID != self.saved_id {
@@ -146,7 +148,9 @@ impl Vision {
                 let pitch_to_tag: Angle = Angle::new::<degree>(
                     vision::LIMELIGHT_UPPER_PITCH_DEGREES + self.get_ty().get::<degree>(),
                 );
-                Some(Length::new::<inch>(height_diff) / f64::tan(pitch_to_tag.get::<radian>()))
+                let mut dist = Length::new::<inch>(height_diff) / f64::tan(pitch_to_tag.get::<radian>());
+                dist += (dist * TX_FUDGE_FACTOR * self.get_tx().get::<degree>().abs());
+                Some(dist)
             }
             None => None,
         }
@@ -203,7 +207,8 @@ impl Vision {
     pub fn get_position_from_tag_2d(&self) -> Option<Vector2<Length>> {
         let id = self.get_id();
         let dist = self.get_dist()?;
-        let drivetrain_angle = Angle::new::<radian>(-self.drivetrain_angle.get::<radian>());
+
+        let drivetrain_angle = -self.drivetrain_angle;
 
         //println!("dist: {}", dist.get::<meter>());
 

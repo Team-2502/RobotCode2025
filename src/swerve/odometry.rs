@@ -11,6 +11,7 @@ use uom::si::{
     f64::{Angle, Length},
     length::meter,
 };
+use crate::constants::{HALF_FIELD_LENGTH_METERS, HALF_FIELD_WIDTH_METERS};
 
 #[derive(Default, Clone)]
 pub struct ModuleReturn {
@@ -86,6 +87,23 @@ impl Odometry {
     pub fn set_abs(&mut self, position: Vector2<Length>) {
         self.robot_pose_estimate.set_absolute(position);
         self.robot_pose_estimate.figure_of_merit = Length::new::<meter>(START_POSITION_FOM);
+    }
+
+    /// Set position, mirrored for red
+    pub fn set(&mut self, position: Vector2<Length>) {
+        self.robot_pose_estimate.figure_of_merit = Length::new::<meter>(START_POSITION_FOM);
+
+        if alliance_station().red() {
+            let half_width = Length::new::<meter>(HALF_FIELD_WIDTH_METERS);
+            let half_length = Length::new::<meter>(HALF_FIELD_LENGTH_METERS);
+
+            self.robot_pose_estimate.set_absolute(Vector2::new(
+                half_width - position.x + half_width,
+                half_length - position.y + half_length
+            ));
+        } else {
+            self.robot_pose_estimate.set_absolute(position);
+        }
     }
 
     pub fn calculate(
