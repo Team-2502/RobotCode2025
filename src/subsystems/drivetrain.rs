@@ -6,7 +6,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::ops::{Add, Sub};
 use std::time::Duration;
 
-use frcrs::ctre::{talon_encoder_tick, CanCoder, ControlMode, Pigeon, Talon};
+use frcrs::ctre::{talon_encoder_tick, CanCoder, ControlMode, Pigeon, Talon, CanRange};
 
 use crate::constants::drivetrain::{BL_OFFSET_DEGREES, BR_OFFSET_DEGREES, FL_OFFSET_DEGREES, FR_OFFSET_DEGREES, LINEUP_2D_TX_FWD_KP, LINEUP_2D_TX_STR_KP, LINEUP_2D_TY_FWD_KP, LINEUP_DRIVE_IE, LINEUP_DRIVE_KD, LINEUP_DRIVE_KI, LINEUP_DRIVE_KP, PIGEON_OFFSET, SWERVE_DRIVE_IE, SWERVE_DRIVE_KD, SWERVE_DRIVE_KI, SWERVE_DRIVE_KP, SWERVE_ROTATIONS_TO_INCHES, SWERVE_TURN_KP, SWERVE_TURN_RATIO, TARGET_TX_LEFT, TARGET_TX_RIGHT, TARGET_TY_LEFT, TARGET_TY_RIGHT, TX_ACCEPTABLE_ERROR, TY_ACCEPTABLE_ERROR, YAW_ACCEPTABLE_ERROR};
 use crate::constants::robotmap::swerve::*;
@@ -72,6 +72,9 @@ pub struct Drivetrain {
     br_drive: Talon,
     br_turn: Talon,
     br_encoder: CanCoder,
+
+    right_laser: CanRange, //from robot perspective
+    left_laser: CanRange,
 
     kinematics: Swerve,
     pub odometry: Odometry,
@@ -173,6 +176,9 @@ impl Drivetrain {
             br_drive,
             br_turn,
             br_encoder,
+
+            right_laser: CanRange::new(RIGHT_LINEUP_LASER, Some("can0".to_owned())),
+            left_laser: CanRange::new(LEFT_LINEUP_LASER, Some("can0".to_owned())),
 
             kinematics: Swerve::rectangle(Length::new::<inch>(21.5), Length::new::<inch>(21.5)),
             odometry: Odometry::new(),
@@ -287,6 +293,9 @@ impl Drivetrain {
                 .get::<meter>(),
         )
         .await;
+        Telemetry::put_number("left laser", self.left_laser.get_distance().get::<meter>()).await;
+        Telemetry::put_number("right laser", self.right_laser.get_distance().get::<meter>()).await;
+
     }
 
     pub fn update_odo_absolute(&mut self, pose: Vector2<Length>) {
