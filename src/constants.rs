@@ -39,8 +39,7 @@ pub mod robotmap {
     }
 
     pub mod climber {
-        pub const RAISE: i32 = 1;
-        pub const GRAB: i32 = 0;
+        pub const CLIMBER_MOTOR_ID: i32 = 20;
     }
 
     pub mod led {
@@ -70,7 +69,7 @@ pub mod drivetrain {
     use std::f64::consts::PI;
 
     pub const FR_OFFSET_DEGREES: f64 = 0.081299 * 360.;
-    pub const FL_OFFSET_DEGREES: f64 = 0.079102 * 360.;
+    pub const FL_OFFSET_DEGREES: f64 = 0.0983 * 360.;
     pub const BR_OFFSET_DEGREES: f64 = -0.056641 * 360.;
     pub const BL_OFFSET_DEGREES: f64 = 0.170898 * 360.;
 
@@ -134,6 +133,10 @@ pub mod indexer {
     pub const L3_SPEED: f64 = -0.4;
     pub const L4_SPEED: f64 = -0.4;
 }
+pub mod climber {
+    pub const CLIMB_SPEED: f64 = 0.3;
+    pub const FALL_SPEED: f64 = -0.3;
+}
 pub mod joystick_map {
     // Joystick IDs (set in driver station)
     pub const RIGHT_DRIVE: i32 = 0;
@@ -147,8 +150,6 @@ pub mod joystick_map {
     pub const RESET_HEADING: usize = 5;
     pub const CLIMB: usize = 2;
     pub const CLIMB_FALL: usize = 6;
-    pub const CLIMBER_GRAB: usize = 8;
-    pub const CLIMBER_RAISE: usize = 9;
 
     //Left drive
     pub const SLOW_MODE: usize = 1;
