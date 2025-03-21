@@ -22,6 +22,9 @@ pub mod robotmap {
         pub const BR_DRIVE: i32 = 7;
         pub const BR_TURN: i32 = 8;
         pub const BR_ENCODER: i32 = 16;
+
+        pub const RIGHT_LINEUP_LASER:i32 = 18;
+        pub const LEFT_LINEUP_LASER:i32 = 19;
     }
 
     pub mod elevator {
@@ -32,7 +35,7 @@ pub mod robotmap {
     pub mod indexer {
         pub const MOTOR: i32 = 12;
         pub const LASER_CAN: i32 = 0; // Cant save can id
-
+        pub const INDEXER_775_MOTOR: i32 = 17;
     }
 
     pub mod climber {
@@ -119,7 +122,7 @@ pub mod elevator {
     pub const BOTTOM: f64 = 0.25; // unit is rotations
     pub const L2: f64 = 1.5; // unit is rotations
     pub const L3: f64 = 13.; // unit is rotations
-    pub const L4: f64 = 39.5; // unit is rotations
+    pub const L4: f64 = 45.15; // unit is rotations
     pub const ELEVATOR_TRAPEZOID_DT_MS: u64 = 50; // sleep.await this long in between updating the elevator trapezoidal when running its async function
     pub const POSITION_TOLERANCE: f64 = 0.25; // unit is rotations. finish elevator async move when within this distance of target
 }
