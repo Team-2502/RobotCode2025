@@ -122,18 +122,18 @@ pub mod pose_estimation {
 }
 pub mod elevator {
     pub const BOTTOM: f64 = 0.25; // unit is rotations
-    pub const L2: f64 = 1.5; // unit is rotations
+    pub const L2: f64 = 0.05; // unit is rotations
     pub const L3: f64 = 13.; // unit is rotations
-    pub const L4: f64 = 45.15; // unit is rotations
+    pub const L4: f64 = 42.9; // unit is rotations
     pub const ELEVATOR_TRAPEZOID_DT_MS: u64 = 50; // sleep.await this long in between updating the elevator trapezoidal when running its async function
     pub const POSITION_TOLERANCE: f64 = 0.25; // unit is rotations. finish elevator async move when within this distance of target
 }
 pub mod indexer {
     pub const LASER_TRIP_DISTANCE_MM: i32 = 2;
-    pub const LASERCAN_DEBOUNCE_TIME_SECONDS: f64 = 0.3;
+    pub const INDEXER_LASER_DEBOUNCE_TIME_SECONDS: f64 = 0.08;
     pub const INTAKE_SPEED: f64 = -0.25;
     pub const BOTTOM_SPEED: f64 = -0.35;
-    pub const L2_SPEED: f64 = -0.4;
+    pub const L2_SPEED: f64 = -0.2;
     pub const L3_SPEED: f64 = -0.4;
     pub const L4_SPEED: f64 = -0.4;
 }

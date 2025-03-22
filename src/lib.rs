@@ -343,7 +343,7 @@ pub fn score(
     let elevator_at_target = elevator.run_to_target_trapezoid();
 
     if elevator_at_target && drivetrain_aligned {
-        if indexer.get_laser_dist() < constants::indexer::LASER_TRIP_DISTANCE_MM {
+        if indexer.is_laser_tripped() {
             let indexer_speed = match elevator_position {
                 ElevatorPosition::Bottom => BOTTOM_SPEED,
                 ElevatorPosition::L2 => L2_SPEED,

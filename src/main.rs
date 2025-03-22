@@ -209,8 +209,7 @@ async fn teleop(robot: &mut Ferris) {
                     elevator.set_target(ElevatorPosition::Bottom);
                     elevator.run_to_target_trapezoid();
 
-                    if indexer.get_laser_dist() > constants::indexer::LASER_TRIP_DISTANCE_MM
-                        || indexer.get_laser_dist() == -1
+                    if !indexer.is_laser_tripped()
                     {
                         indexer.set_speed(INTAKE_SPEED);
                     } else {

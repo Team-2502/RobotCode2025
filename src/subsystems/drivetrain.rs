@@ -208,10 +208,10 @@ impl Drivetrain {
         /// default is:
         // side_distance: Length::new::<inch>(13. / 2.),
         // forward_distance: Length::new::<inch>(16.275),
-        lineup_locations.insert(17, LineupLocation {
-            side_distance: Length::new::<inch>(13. / 2.),
-            forward_distance: Length::new::<inch>(16.),
-        });
+        // lineup_locations.insert(17, LineupLocation {
+        //     side_distance: Length::new::<inch>(13. / 2.),
+        //     forward_distance: Length::new::<inch>(16.),
+        // });
 
         Self {
             pigeon: Pigeon::new(PIGEON, Some("can0".to_owned())),
@@ -353,9 +353,9 @@ impl Drivetrain {
         Telemetry::put_number("left laser", self.left_laser.get_distance().get::<meter>()).await;
         Telemetry::put_number("right laser", self.right_laser.get_distance().get::<meter>()).await;
         let left_laser_tripped: String = if self.left_laser_debouncer.calculate(self.left_laser.get_distance().get::<meter>() < REEF_SENSOR_TARGET_DISTANCE_METERS && self.left_laser.get_distance().get::<meter>() > 0.) { "true".parse().unwrap() } else { "false".parse().unwrap() };
-        Telemetry::put_string("left_laser_tripped", left_laser_tripped).await;
+        Telemetry::put_string("left laser tripped", left_laser_tripped).await;
         let left_laser_tripped: String = if self.right_laser_debouncer.calculate(self.right_laser.get_distance().get::<meter>() < REEF_SENSOR_TARGET_DISTANCE_METERS && self.right_laser.get_distance().get::<meter>() > 0.) { "true".parse().unwrap() } else { "false".parse().unwrap() };
-        Telemetry::put_string("left_laser_tripped", left_laser_tripped).await;
+        Telemetry::put_string("right laser tripped", left_laser_tripped).await;
 
     }
 

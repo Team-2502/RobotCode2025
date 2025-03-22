@@ -144,7 +144,7 @@ pub async fn async_score(
     };
     indexer.set_speed(indexer_speed);
 
-    wait(|| indexer.get_laser_dist() > LASER_TRIP_DISTANCE_MM || indexer.get_laser_dist() == -1).await;
+    wait(|| !indexer.is_laser_tripped()).await;
 
     sleep(Duration::from_secs_f64(0.2)).await;
     indexer.stop();
@@ -242,14 +242,14 @@ pub async fn blue_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::error
         elevator.run_to_target_trapezoid();
 
         indexer.set_speed(INTAKE_SPEED);
-        wait(|| indexer.get_laser_dist() < LASER_TRIP_DISTANCE_MM && indexer.get_laser_dist() != -1).await;
+        wait(|| indexer.is_laser_tripped()).await;
         indexer.stop();
 
         elevator.set_target(ElevatorPosition::L4);
         elevator.run_to_target_trapezoid();
     });
 
-    let _ = timeout(Duration::from_secs_f64(1.5), async {
+    let _ = timeout(Duration::from_secs_f64(0.5), async {
         loop {
             drivetrain.update_limelight().await;
             drivetrain.post_odo().await;
@@ -275,7 +275,7 @@ pub async fn blue_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::error
 
         indexer.set_speed(INTAKE_SPEED);
 
-        wait(|| indexer.get_laser_dist() < LASER_TRIP_DISTANCE_MM && indexer.get_laser_dist() != -1).await;
+        wait(|| indexer.is_laser_tripped()).await;
 
         indexer.stop();
     });
@@ -286,7 +286,7 @@ pub async fn blue_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::error
         elevator.run_to_target_trapezoid();
     });
 
-    let _ = timeout(Duration::from_secs_f64(1.25), async {
+    let _ = timeout(Duration::from_secs_f64(0.5), async {
         loop {
             drivetrain.update_limelight().await;
             sleep(Duration::from_millis(20)).await;
@@ -370,7 +370,7 @@ async fn blue_mid_left_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::
 
         indexer.set_speed(INTAKE_SPEED);
 
-        wait(|| indexer.get_laser_dist() < LASER_TRIP_DISTANCE_MM && indexer.get_laser_dist() != -1).await;
+        wait(|| indexer.is_laser_tripped()).await;
 
         indexer.stop();
     });
@@ -427,7 +427,7 @@ async fn tush_push_1(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::erro
         elevator.run_to_target_trapezoid();
 
         indexer.set_speed(INTAKE_SPEED);
-        wait(|| indexer.get_laser_dist() < LASER_TRIP_DISTANCE_MM && indexer.get_laser_dist() != -1).await;
+        wait(|| indexer.is_laser_tripped()).await;
         indexer.stop();
 
         elevator.set_target(ElevatorPosition::L4);
