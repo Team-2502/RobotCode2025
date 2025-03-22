@@ -55,12 +55,12 @@ pub const HALF_FIELD_LENGTH_METERS: f64 = 8.05 / 2.;
 pub mod vision {
     use nalgebra::Vector2;
 
-    pub const LIMELIGHT_UPPER_PITCH_DEGREES: f64 = -34.5; //Last measured: -37.0
+    pub const LIMELIGHT_UPPER_PITCH_DEGREES: f64 = -36.4; //Last measured: -37.3 past -37.0
     pub const LIMELIGHT_UPPER_YAW_DEGREES: f64 = 90.; // Counterclockwise positive
     pub const LIMELIGHT_UPPER_HEIGHT_INCHES: f64 = 20.92;
     pub const ROBOT_CENTER_TO_LIMELIGHT_UPPER_INCHES: Vector2<f64> = Vector2::new(11.118, 10.352);
 
-    // Increase distance by 10% for every 20 degrees of absolute value of tx
+    // Increase distance by 13.5% for every 20 degrees of absolute value of tx
     // Set this to 0 for new robots
     pub const TX_FUDGE_FACTOR: f64 = 0.135 / 20.;
 }
@@ -69,7 +69,7 @@ pub mod drivetrain {
     use std::f64::consts::PI;
 
     pub const FR_OFFSET_DEGREES: f64 = 0.081299 * 360.;
-    pub const FL_OFFSET_DEGREES: f64 = 0.0983 * 360.;
+    pub const FL_OFFSET_DEGREES: f64 = 0.0942 * 360.;
     pub const BR_OFFSET_DEGREES: f64 = -0.056641 * 360.;
     pub const BL_OFFSET_DEGREES: f64 = 0.170898 * 360.;
 
@@ -106,6 +106,9 @@ pub mod drivetrain {
     pub const LINEUP_DRIVE_KI: f64 = 10.;
     pub const LINEUP_DRIVE_KD: f64 = 10.;
     pub const LINEUP_DRIVE_IE: f64 = 0.25;
+
+    pub const CANRANGE_DEBOUNCE_TIME_SECONDS: f64 = 0.02;
+    pub const REEF_SENSOR_TARGET_DISTANCE_METERS: f64 = 0.381;
 }
 pub mod pose_estimation {
     pub const ARC_ODOMETRY_MINIMUM_DELTA_THETA_RADIANS: f64 = 0.000001;
@@ -127,6 +130,7 @@ pub mod elevator {
 }
 pub mod indexer {
     pub const LASER_TRIP_DISTANCE_MM: i32 = 2;
+    pub const LASERCAN_DEBOUNCE_TIME_SECONDS: f64 = 0.3;
     pub const INTAKE_SPEED: f64 = -0.25;
     pub const BOTTOM_SPEED: f64 = -0.35;
     pub const L2_SPEED: f64 = -0.4;

@@ -1,3 +1,4 @@
+use std::cmp::PartialEq;
 use std::collections::HashMap;
 use frcrs::alliance_station;
 use std::f64::consts::PI;
@@ -8,7 +9,7 @@ use std::time::Duration;
 
 use frcrs::ctre::{talon_encoder_tick, CanCoder, ControlMode, Pigeon, Talon, CanRange};
 
-use crate::constants::drivetrain::{BL_OFFSET_DEGREES, BR_OFFSET_DEGREES, FL_OFFSET_DEGREES, FR_OFFSET_DEGREES, LINEUP_2D_TX_FWD_KP, LINEUP_2D_TX_STR_KP, LINEUP_2D_TY_FWD_KP, LINEUP_DRIVE_IE, LINEUP_DRIVE_KD, LINEUP_DRIVE_KI, LINEUP_DRIVE_KP, PIGEON_OFFSET, SWERVE_DRIVE_IE, SWERVE_DRIVE_KD, SWERVE_DRIVE_KI, SWERVE_DRIVE_KP, SWERVE_ROTATIONS_TO_INCHES, SWERVE_TURN_KP, SWERVE_TURN_RATIO, TARGET_TX_LEFT, TARGET_TX_RIGHT, TARGET_TY_LEFT, TARGET_TY_RIGHT, TX_ACCEPTABLE_ERROR, TY_ACCEPTABLE_ERROR, YAW_ACCEPTABLE_ERROR};
+use crate::constants::drivetrain::{BL_OFFSET_DEGREES, BR_OFFSET_DEGREES, CANRANGE_DEBOUNCE_TIME_SECONDS, FL_OFFSET_DEGREES, FR_OFFSET_DEGREES, LINEUP_2D_TX_FWD_KP, LINEUP_2D_TX_STR_KP, LINEUP_2D_TY_FWD_KP, LINEUP_DRIVE_IE, LINEUP_DRIVE_KD, LINEUP_DRIVE_KI, LINEUP_DRIVE_KP, PIGEON_OFFSET, REEF_SENSOR_TARGET_DISTANCE_METERS, SWERVE_DRIVE_IE, SWERVE_DRIVE_KD, SWERVE_DRIVE_KI, SWERVE_DRIVE_KP, SWERVE_ROTATIONS_TO_INCHES, SWERVE_TURN_KP, SWERVE_TURN_RATIO, TARGET_TX_LEFT, TARGET_TX_RIGHT, TARGET_TY_LEFT, TARGET_TY_RIGHT, TX_ACCEPTABLE_ERROR, TY_ACCEPTABLE_ERROR, YAW_ACCEPTABLE_ERROR};
 use crate::constants::robotmap::swerve::*;
 use crate::swerve::kinematics::{ModuleState, Swerve};
 use crate::swerve::odometry::{ModuleReturn, Odometry};
@@ -54,6 +55,58 @@ pub struct LineupLocation {
     forward_distance: Length,
 }
 
+#[derive(Copy, Clone)]
+pub enum DebounceType {
+    RISING,
+    FALLING,
+    BOTH
+}
+
+/// https://docs.wpilib.org/en/stable/docs/software/advanced-controls/filters/debouncer.html
+/// but in rust
+pub struct Debouncer {
+    bounce_time: Duration,
+    debounce_type: DebounceType,
+    baseline: bool,
+    prev_time: Instant,
+}
+
+impl Debouncer {
+    pub fn new(bounce_time: Duration, debounce_type: DebounceType) -> Debouncer {
+        Debouncer {
+            bounce_time,
+            debounce_type,
+            baseline: match debounce_type {
+                DebounceType::RISING => false,
+                DebounceType::FALLING => true,
+                DebounceType::BOTH => false,
+            },
+            prev_time: Instant::now(),
+        }
+    }
+    fn reset_timer(&mut self) {
+        self.prev_time = Instant::now();
+    }
+    fn has_elapsed(&self) -> bool {
+        self.prev_time.elapsed() >= self.bounce_time
+    }
+    /// copied line for line from wpilib
+    pub fn calculate(&mut self, input: bool) -> bool{
+        if input == self.baseline {
+            self.reset_timer()
+        }
+        if self.has_elapsed() {
+            if matches!(self.debounce_type, DebounceType::BOTH) {
+                self.baseline = input;
+                self.reset_timer();
+            }
+            input
+        } else {
+            self.baseline
+        }
+    }
+}
+
 pub struct Drivetrain {
     pigeon: Pigeon,
 
@@ -75,6 +128,8 @@ pub struct Drivetrain {
 
     right_laser: CanRange, //from robot perspective
     left_laser: CanRange,
+    right_laser_debouncer: Debouncer,
+    left_laser_debouncer: Debouncer,
 
     kinematics: Swerve,
     pub odometry: Odometry,
@@ -179,6 +234,8 @@ impl Drivetrain {
 
             right_laser: CanRange::new(RIGHT_LINEUP_LASER, Some("can0".to_owned())),
             left_laser: CanRange::new(LEFT_LINEUP_LASER, Some("can0".to_owned())),
+            right_laser_debouncer: Debouncer::new(Duration::from_secs_f64(CANRANGE_DEBOUNCE_TIME_SECONDS), DebounceType::RISING),
+            left_laser_debouncer: Debouncer::new(Duration::from_secs_f64(CANRANGE_DEBOUNCE_TIME_SECONDS), DebounceType::RISING),
 
             kinematics: Swerve::rectangle(Length::new::<inch>(21.5), Length::new::<inch>(21.5)),
             odometry: Odometry::new(),
@@ -265,7 +322,7 @@ impl Drivetrain {
         ]
     }
 
-    pub async fn post_odo(&self) {
+    pub async fn post_odo(&mut self) {
         Telemetry::put_number(
             "odo_x",
             self.odometry
@@ -295,6 +352,10 @@ impl Drivetrain {
         .await;
         Telemetry::put_number("left laser", self.left_laser.get_distance().get::<meter>()).await;
         Telemetry::put_number("right laser", self.right_laser.get_distance().get::<meter>()).await;
+        let left_laser_tripped: String = if self.left_laser_debouncer.calculate(self.left_laser.get_distance().get::<meter>() < REEF_SENSOR_TARGET_DISTANCE_METERS && self.left_laser.get_distance().get::<meter>() > 0.) { "true".parse().unwrap() } else { "false".parse().unwrap() };
+        Telemetry::put_string("left_laser_tripped", left_laser_tripped).await;
+        let left_laser_tripped: String = if self.right_laser_debouncer.calculate(self.right_laser.get_distance().get::<meter>() < REEF_SENSOR_TARGET_DISTANCE_METERS && self.right_laser.get_distance().get::<meter>() > 0.) { "true".parse().unwrap() } else { "false".parse().unwrap() };
+        Telemetry::put_string("left_laser_tripped", left_laser_tripped).await;
 
     }
 
