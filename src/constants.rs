@@ -55,7 +55,7 @@ pub const HALF_FIELD_LENGTH_METERS: f64 = 8.05 / 2.;
 pub mod vision {
     use nalgebra::Vector2;
 
-    pub const LIMELIGHT_UPPER_PITCH_DEGREES: f64 = -35.5; //Last measured 3/27 @ 9:27: -36.8, -37.3, -37.0
+    pub const LIMELIGHT_UPPER_PITCH_DEGREES: f64 = -35.2; //Last measured 3/27 @ 9:27: -36.8, -37.3, -37.0
     pub const LIMELIGHT_UPPER_YAW_DEGREES: f64 = 90.; // Counterclockwise positive
     pub const LIMELIGHT_UPPER_HEIGHT_INCHES: f64 = 20.92;
     pub const ROBOT_CENTER_TO_LIMELIGHT_UPPER_INCHES: Vector2<f64> = Vector2::new(11.118, 10.352);
@@ -130,7 +130,7 @@ pub mod elevator {
     pub const POSITION_TOLERANCE: f64 = 0.25; // unit is rotations. finish elevator async move when within this distance of target
 }
 pub mod indexer {
-    pub const LASER_TRIP_DISTANCE_MM: i32 = 2;
+    pub const LASER_TRIP_DISTANCE_MM: i32 = 10;
     pub const INDEXER_LASER_DEBOUNCE_TIME_SECONDS: f64 = 0.08;
     pub const INTAKE_SPEED: f64 = -0.25;
     pub const BOTTOM_SPEED: f64 = -0.35;

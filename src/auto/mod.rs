@@ -240,13 +240,6 @@ pub async fn blue_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::error
     ));
 
     join!(drive("Blue2", &mut drivetrain, 1), async {
-        elevator.set_target(ElevatorPosition::L2);
-        elevator.run_to_target_trapezoid();
-
-        indexer.set_speed(INTAKE_SPEED);
-        wait(|| indexer.is_laser_tripped()).await;
-        indexer.stop();
-
         elevator.set_target(ElevatorPosition::L4);
         elevator.run_to_target_trapezoid();
     });
@@ -425,13 +418,6 @@ async fn tush_push_1(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::erro
     drive("TushPush1", &mut drivetrain, 1).await?;
 
     join!(drive("TushPush1", &mut drivetrain, 2), async {
-        elevator.set_target(ElevatorPosition::L2);
-        elevator.run_to_target_trapezoid();
-
-        indexer.set_speed(INTAKE_SPEED);
-        wait(|| indexer.is_laser_tripped()).await;
-        indexer.stop();
-
         elevator.set_target(ElevatorPosition::L4);
         elevator.run_to_target_trapezoid();
     });
@@ -445,16 +431,36 @@ async fn tush_push_1(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::erro
         }
     }).await;
 
-    async_score(
-        &mut drivetrain,
-        LineupSide::Right,
-        &mut elevator,
-        &mut indexer,
-        ElevatorPosition::L4,
-        robot.dt,
-        if alliance_station().red() {Some(10)} else { Some(21)}
-    )
-        .await;
+    elevator.set_target(ElevatorPosition::L4);
+
+    join!(
+         timeout(Duration::from_secs_f64(2.), async {
+            loop {
+                drivetrain.update_limelight().await;
+                drivetrain.post_odo().await;
+
+                if drivetrain.lineup(LineupSide::Right,
+                    ElevatorPosition::L4,
+                    robot.dt,
+                    if alliance_station().red() {Some(10)} else { Some(21)}).await
+                {
+                    break;
+                }
+
+                sleep(Duration::from_millis(20)).await;
+            }
+        }),
+        elevator.run_to_target_trapezoid_async()
+    );
+
+    drivetrain.stop();
+    
+    indexer.set_speed(-0.4);
+
+    wait(|| !indexer.is_laser_tripped()).await;
+
+    sleep(Duration::from_secs_f64(1.5)).await;
+    indexer.stop();
 
     Ok(())
 }

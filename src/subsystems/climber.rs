@@ -27,9 +27,9 @@ impl Climber {
     pub fn set(&self, speed: f64){
         self.motor.set(ControlMode::Percent, speed);
     }
-    
+
     pub fn climb(&self) {
-        if self.motor.get_position() < 330. {
+        if self.motor.get_position() < 380. {
             self.set(CLIMB_SPEED);
         } else {
             self.set(0.);
