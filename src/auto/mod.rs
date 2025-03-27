@@ -16,6 +16,7 @@ use uom::si::f64::Angle;
 
 use crate::subsystems::{Drivetrain, Elevator, ElevatorPosition, Indexer, LineupSide};
 use crate::{constants, score, Ferris};
+use crate::constants::elevator::L3_ALGAE;
 use crate::constants::indexer::{BOTTOM_SPEED, INTAKE_SPEED, L2_SPEED, L3_SPEED, L4_SPEED, LASER_TRIP_DISTANCE_MM};
 
 #[derive(Serialize, Deserialize)]
@@ -141,6 +142,7 @@ pub async fn async_score(
         ElevatorPosition::L2 => L2_SPEED,
         ElevatorPosition::L3 => L3_SPEED,
         ElevatorPosition::L4 => L4_SPEED,
+        ElevatorPosition::L3Algae => L3_SPEED
     };
     indexer.set_speed(indexer_speed);
 

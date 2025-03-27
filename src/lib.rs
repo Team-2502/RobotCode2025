@@ -30,6 +30,7 @@ use tokio::runtime::Handle;
 use tokio::task::{spawn_local, AbortHandle};
 use tokio::time::sleep;
 use uom::si::angle::degree;
+use crate::constants::elevator::L3_ALGAE;
 use crate::constants::indexer::{BOTTOM_SPEED, L2_SPEED, L3_SPEED, L4_SPEED};
 
 #[derive(Clone)]
@@ -317,12 +318,7 @@ pub async fn elevator_move_to_target_async(robot: Ferris) {
     println!("Called elevator_move_to_target_async");
     if let Ok(mut elevator) = robot.elevator.try_borrow_mut() {
         //println!("Borrowed elevator");
-        let target_position = match elevator.get_target() {
-            ElevatorPosition::Bottom => elevator::BOTTOM,
-            ElevatorPosition::L2 => elevator::L2,
-            ElevatorPosition::L3 => elevator::L3,
-            ElevatorPosition::L4 => elevator::L4,
-        };
+        let target_position = elevator.get_target().get_position();
         //println!("Error: {}", (elevator.get_position() - target_position).abs());
         //println!("{}", (elevator.get_position() - target_position).abs() > elevator::POSITION_TOLERANCE);
         while (elevator.get_position() - target_position).abs() > elevator::POSITION_TOLERANCE {
@@ -349,6 +345,7 @@ pub fn score(
                 ElevatorPosition::L2 => L2_SPEED,
                 ElevatorPosition::L3 => L3_SPEED,
                 ElevatorPosition::L4 => L4_SPEED,
+                ElevatorPosition::L3Algae => L3_SPEED,
             };
             indexer.set_speed(indexer_speed);
         } else {

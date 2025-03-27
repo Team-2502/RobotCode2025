@@ -18,6 +18,19 @@ pub enum ElevatorPosition {
     L2,
     L3,
     L4,
+    L3Algae,
+}
+
+impl ElevatorPosition {
+    pub fn get_position(&self) -> f64 {
+        match self {
+            ElevatorPosition::Bottom => elevator::BOTTOM,
+            ElevatorPosition::L2 => elevator::L2,
+            ElevatorPosition::L3 => elevator::L3,
+            ElevatorPosition::L4 => elevator::L4,
+            ElevatorPosition::L3Algae => elevator::L3_ALGAE
+        }
+    }
 }
 
 impl Default for Elevator {
@@ -65,12 +78,7 @@ impl Elevator {
     /// Those configuration files have been saved to Documents on the driver station laptop.
     pub fn run_to_target_trapezoid(&mut self) -> bool {
         //load position to run to in rotations from constants.rs
-        let target_position = match self.get_target() {
-            ElevatorPosition::Bottom => elevator::BOTTOM,
-            ElevatorPosition::L2 => elevator::L2,
-            ElevatorPosition::L3 => elevator::L3,
-            ElevatorPosition::L4 => elevator::L4,
-        };
+        let target_position = self.get_target().get_position();
 
         // current implementation is to just set the control mode and call this function every frame
         self.right.set(ControlMode::MotionMagic, target_position);
@@ -95,12 +103,7 @@ impl Elevator {
     }
 
     pub async fn run_to_target_trapezoid_async(&mut self) {
-        let target_position = match self.get_target() {
-            ElevatorPosition::Bottom => elevator::BOTTOM,
-            ElevatorPosition::L2 => elevator::L2,
-            ElevatorPosition::L3 => elevator::L3,
-            ElevatorPosition::L4 => elevator::L4,
-        };
+        let target_position = self.get_target().get_position();
 
         self.right.set(ControlMode::MotionMagic, target_position);
         self.left.follow(&self.right, true);

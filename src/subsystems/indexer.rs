@@ -26,7 +26,7 @@ impl Indexer {
     pub fn new() -> Self {
         let motor = Talon::new(robotmap::indexer::MOTOR, None);
         let laser_can = LaserCan::new(robotmap::indexer::LASER_CAN);
-        let debouncer = Debouncer::new(Duration::from_secs_f64(INDEXER_LASER_DEBOUNCE_TIME_SECONDS), DebounceType::RISING);
+        let debouncer = Debouncer::new(Duration::from_secs_f64(INDEXER_LASER_DEBOUNCE_TIME_SECONDS), DebounceType::FALLING);
 
         Self { motor, laser_can, debouncer }
     }

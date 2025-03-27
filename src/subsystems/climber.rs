@@ -4,6 +4,7 @@ use frcrs::solenoid::{ModuleType, Solenoid};
 use std::time::Duration;
 use frcrs::ctre::{ControlMode, Talon};
 use tokio::time::sleep;
+use crate::constants::climber::CLIMB_SPEED;
 use crate::constants::robotmap;
 
 pub struct Climber {
@@ -25,5 +26,13 @@ impl Climber {
 
     pub fn set(&self, speed: f64){
         self.motor.set(ControlMode::Percent, speed);
+    }
+    
+    pub fn climb(&self) {
+        if self.motor.get_position() < 330. {
+            self.set(CLIMB_SPEED);
+        } else {
+            self.set(0.);
+        }
     }
 }

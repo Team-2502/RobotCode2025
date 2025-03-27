@@ -8,7 +8,7 @@ use std::ops::{Add, Sub};
 use std::time::Duration;
 
 use frcrs::ctre::{talon_encoder_tick, CanCoder, ControlMode, Pigeon, Talon, CanRange};
-
+use frcrs::redux::CanAndGyro;
 use crate::constants::drivetrain::{BL_OFFSET_DEGREES, BR_OFFSET_DEGREES, CANRANGE_DEBOUNCE_TIME_SECONDS, FL_OFFSET_DEGREES, FR_OFFSET_DEGREES, LINEUP_2D_TX_FWD_KP, LINEUP_2D_TX_STR_KP, LINEUP_2D_TY_FWD_KP, LINEUP_DRIVE_IE, LINEUP_DRIVE_KD, LINEUP_DRIVE_KI, LINEUP_DRIVE_KP, PIGEON_OFFSET, REEF_SENSOR_TARGET_DISTANCE_METERS, SWERVE_DRIVE_IE, SWERVE_DRIVE_KD, SWERVE_DRIVE_KI, SWERVE_DRIVE_KP, SWERVE_ROTATIONS_TO_INCHES, SWERVE_TURN_KP, SWERVE_TURN_RATIO, TARGET_TX_LEFT, TARGET_TX_RIGHT, TARGET_TY_LEFT, TARGET_TY_RIGHT, TX_ACCEPTABLE_ERROR, TY_ACCEPTABLE_ERROR, YAW_ACCEPTABLE_ERROR};
 use crate::constants::robotmap::swerve::*;
 use crate::swerve::kinematics::{ModuleState, Swerve};
@@ -108,7 +108,7 @@ impl Debouncer {
 }
 
 pub struct Drivetrain {
-    pigeon: Pigeon,
+    gyro: CanAndGyro,
 
     fr_drive: Talon,
     fr_turn: Talon,
@@ -214,7 +214,7 @@ impl Drivetrain {
         // });
 
         Self {
-            pigeon: Pigeon::new(PIGEON, Some("can0".to_owned())),
+            gyro: CanAndGyro::new(PIGEON),
 
             fr_drive,
             fr_turn,
@@ -587,7 +587,7 @@ impl Drivetrain {
     }
 
     pub fn get_angle(&self) -> Angle {
-        Angle::new::<radian>(-self.pigeon.get_rotation().z + PIGEON_OFFSET)
+        Angle::new::<revolution>(-self.gyro.get_angle() + PIGEON_OFFSET)
     }
 
     pub fn get_offset(&self) -> Angle {
@@ -607,9 +607,9 @@ impl Drivetrain {
         Angle::new::<degree>(difference)
     }
 
-    pub fn reset_angle(&self) {
-        self.pigeon.reset();
-    }
+    // pub fn reset_angle(&self) {
+    //     self.gyro.reset();
+    // }
 
     pub fn reset_heading(&mut self) {
         println!("Resetting heading: {}", self.get_offset_wrapped().get::<degree>());
@@ -649,7 +649,7 @@ impl Drivetrain {
 
             // Give KP boost when close
             if error_position.magnitude().abs() < 0.15 {
-                error_position *= 2.;
+                error_position *= 2.25;
             }
 
             let mut speed = error_position;
@@ -735,6 +735,7 @@ impl Drivetrain {
             ElevatorPosition::L2 => Length::new::<inch>(-9.),
             ElevatorPosition::L3 => Length::new::<inch>(-9.),
             ElevatorPosition::L4 => Length::new::<inch>(-9.),
+            ElevatorPosition::L3Algae => Length::new::<inch>(-9.),
         }; //theoretical is -11.0
 
         let side_multiplier = match side {
