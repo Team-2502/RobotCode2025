@@ -464,3 +464,83 @@ async fn tush_push_1(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::erro
 
     Ok(())
 }
+
+pub async fn right_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::error::Error>> {
+    let mut robot_ref = robot.borrow_mut();
+    let mut drivetrain = robot_ref.drivetrain.deref().borrow_mut();
+    let mut elevator = robot_ref.elevator.deref().borrow_mut();
+    let mut indexer = robot_ref.indexer.deref().borrow_mut();
+
+    drivetrain.reset_heading_offset(
+        if alliance_station().red() {
+            Angle::new::<degree>(180.)
+        } else {
+            Angle::new::<degree>(0.)
+        });
+    drivetrain.odometry.set(Vector2::new(
+        Length::new::<meter>(7.18402099609375),
+        Length::new::<meter>(2.696911096572876),
+    ));
+
+    join!(drive("Right2", &mut drivetrain, 1), async {
+        elevator.set_target(ElevatorPosition::L4);
+        elevator.run_to_target_trapezoid();
+    });
+
+    let _ = timeout(Duration::from_secs_f64(0.5), async {
+        loop {
+            drivetrain.update_limelight().await;
+            drivetrain.post_odo().await;
+
+            sleep(Duration::from_millis(20)).await;
+        }
+    }).await;
+
+    async_score(
+        &mut drivetrain,
+        LineupSide::Right,
+        &mut elevator,
+        &mut indexer,
+        ElevatorPosition::L4,
+        robot_ref.dt,
+        if alliance_station().red() {Some(8)} else { Some(17)}
+    )
+        .await;
+
+    join!(drive("Right2", &mut drivetrain, 3), async {
+        elevator.set_target(ElevatorPosition::Bottom);
+        elevator.run_to_target_trapezoid_async().await;
+
+        indexer.set_speed(INTAKE_SPEED);
+
+        wait(|| indexer.is_laser_tripped()).await;
+
+        indexer.stop();
+    });
+
+    join!(drive("Right2", &mut drivetrain, 4), async {
+        sleep(Duration::from_secs_f64(1.25)).await;
+        elevator.set_target(ElevatorPosition::L4);
+        elevator.run_to_target_trapezoid();
+    });
+
+    let _ = timeout(Duration::from_secs_f64(0.5), async {
+        loop {
+            drivetrain.update_limelight().await;
+            sleep(Duration::from_millis(20)).await;
+        }
+    }).await;
+
+    async_score(
+        &mut drivetrain,
+        LineupSide::Left,
+        &mut elevator,
+        &mut indexer,
+        ElevatorPosition::L4,
+        robot_ref.dt,
+        if alliance_station().red() {Some(8)} else { Some(17)}
+    )
+        .await;
+
+    Ok(())
+}
