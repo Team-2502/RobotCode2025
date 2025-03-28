@@ -649,8 +649,8 @@ impl Drivetrain {
             error_position *= -LINEUP_DRIVE_KP;
 
             // Give KP boost when close
-            if error_position.magnitude().abs() < 0.15 {
-                error_position *= 2.25;
+            if error_position.magnitude().abs() < 0.2 {
+                error_position *= 2.5;
             }
 
             let mut speed = error_position;
