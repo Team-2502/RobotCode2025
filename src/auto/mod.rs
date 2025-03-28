@@ -29,6 +29,7 @@ pub enum Auto {
     RotationTest,
     BlueMidLeft2,
     TushPush1,
+    Right2,
 }
 
 impl Auto {
@@ -42,6 +43,7 @@ impl Auto {
             "RotationTest" => Auto::RotationTest,
             "BlueMidLeft2" => Auto::BlueMidLeft2,
             "TushPush1" => Auto::TushPush1,
+            "Right2" => Auto::Right2,
             _ => Auto::Nothing,
         }
     }
@@ -56,6 +58,7 @@ impl Auto {
             Auto::RotationTest => "RotationTest",
             Auto::BlueMidLeft2 => "BlueMidLeft2",
             Auto::TushPush1 => "TushPush1",
+            Auto::Right2 => "Right2",
             _ => "none",
         }
     }
@@ -70,6 +73,7 @@ impl Auto {
             // Auto::RotationTest,
             Auto::BlueMidLeft2,
             Auto::TushPush1,
+            Auto::Right2,
         ]
     }
 
@@ -96,6 +100,7 @@ impl Auto {
             Auto::RotationTest => rotation_test(Rc::clone(&ferris)).await.expect("Failed running auto"),
             Auto::BlueMidLeft2 => blue_mid_left_2(Rc::clone(&ferris)).await.expect("Failed running auto"),
             Auto::TushPush1 => tush_push_1(Rc::clone(&ferris)).await.expect("Failed running auto"),
+            Auto::Right2 => right_2(Rc::clone(&ferris)).await.expect("Failed running auto"),
         }
     }
 }
