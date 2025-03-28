@@ -161,8 +161,8 @@ async fn teleop(robot: &mut Ferris) {
             if let Ok(mut indexer) = robot.indexer.try_borrow_mut() {
                 drivetrain.update_limelight().await;
                 drivetrain.post_odo().await;
-
-                let drivetrain_aligned = if robot.controllers.right_drive.get(LINEUP_LEFT) {
+                
+                let drivetrain_aligned = robot.debouncer.calculate(if robot.controllers.right_drive.get(LINEUP_LEFT) {
                     drivetrain
                         .lineup(LineupSide::Left, elevator.get_target(), robot.dt, None)
                         .await
@@ -182,12 +182,12 @@ async fn teleop(robot: &mut Ferris) {
                         .await;
 
                     false
-                };
+                });
 
                 if robot.controllers.left_drive.get_pov() != -1 {
                     elevator.set_target(ElevatorPosition::L3Algae);
                     elevator.run_to_target_trapezoid();
-                    
+
                     indexer.set_speed(L3_SPEED);
                 } else if robot.controllers.left_drive.get(SCORE_L2) {
                     score(

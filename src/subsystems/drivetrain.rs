@@ -64,6 +64,7 @@ pub enum DebounceType {
 
 /// https://docs.wpilib.org/en/stable/docs/software/advanced-controls/filters/debouncer.html
 /// but in rust
+#[derive(Clone)]
 pub struct Debouncer {
     bounce_time: Duration,
     debounce_type: DebounceType,
