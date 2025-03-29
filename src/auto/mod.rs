@@ -16,6 +16,7 @@ use uom::si::f64::Angle;
 
 use crate::subsystems::{Drivetrain, Elevator, ElevatorPosition, Indexer, LineupSide};
 use crate::{constants, score, Ferris};
+use crate::constants::elevator::L3_ALGAE;
 use crate::constants::indexer::{BOTTOM_SPEED, INTAKE_SPEED, L2_SPEED, L3_SPEED, L4_SPEED, LASER_TRIP_DISTANCE_MM};
 
 #[derive(Serialize, Deserialize)]
@@ -28,6 +29,7 @@ pub enum Auto {
     RotationTest,
     BlueMidLeft2,
     TushPush1,
+    Right2,
 }
 
 impl Auto {
@@ -41,6 +43,7 @@ impl Auto {
             "RotationTest" => Auto::RotationTest,
             "BlueMidLeft2" => Auto::BlueMidLeft2,
             "TushPush1" => Auto::TushPush1,
+            "Right2" => Auto::Right2,
             _ => Auto::Nothing,
         }
     }
@@ -55,6 +58,7 @@ impl Auto {
             Auto::RotationTest => "RotationTest",
             Auto::BlueMidLeft2 => "BlueMidLeft2",
             Auto::TushPush1 => "TushPush1",
+            Auto::Right2 => "Right2",
             _ => "none",
         }
     }
@@ -69,6 +73,7 @@ impl Auto {
             // Auto::RotationTest,
             Auto::BlueMidLeft2,
             Auto::TushPush1,
+            Auto::Right2,
         ]
     }
 
@@ -95,6 +100,7 @@ impl Auto {
             Auto::RotationTest => rotation_test(Rc::clone(&ferris)).await.expect("Failed running auto"),
             Auto::BlueMidLeft2 => blue_mid_left_2(Rc::clone(&ferris)).await.expect("Failed running auto"),
             Auto::TushPush1 => tush_push_1(Rc::clone(&ferris)).await.expect("Failed running auto"),
+            Auto::Right2 => right_2(Rc::clone(&ferris)).await.expect("Failed running auto"),
         }
     }
 }
@@ -141,10 +147,11 @@ pub async fn async_score(
         ElevatorPosition::L2 => L2_SPEED,
         ElevatorPosition::L3 => L3_SPEED,
         ElevatorPosition::L4 => L4_SPEED,
+        ElevatorPosition::L3Algae => L3_SPEED
     };
     indexer.set_speed(indexer_speed);
 
-    wait(|| indexer.get_laser_dist() > LASER_TRIP_DISTANCE_MM || indexer.get_laser_dist() == -1).await;
+    wait(|| !indexer.is_laser_tripped()).await;
 
     sleep(Duration::from_secs_f64(0.2)).await;
     indexer.stop();
@@ -238,18 +245,11 @@ pub async fn blue_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::error
     ));
 
     join!(drive("Blue2", &mut drivetrain, 1), async {
-        elevator.set_target(ElevatorPosition::L2);
-        elevator.run_to_target_trapezoid();
-
-        indexer.set_speed(INTAKE_SPEED);
-        wait(|| indexer.get_laser_dist() < LASER_TRIP_DISTANCE_MM && indexer.get_laser_dist() != -1).await;
-        indexer.stop();
-
         elevator.set_target(ElevatorPosition::L4);
         elevator.run_to_target_trapezoid();
     });
 
-    let _ = timeout(Duration::from_secs_f64(1.5), async {
+    let _ = timeout(Duration::from_secs_f64(0.5), async {
         loop {
             drivetrain.update_limelight().await;
             drivetrain.post_odo().await;
@@ -275,7 +275,7 @@ pub async fn blue_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::error
 
         indexer.set_speed(INTAKE_SPEED);
 
-        wait(|| indexer.get_laser_dist() < LASER_TRIP_DISTANCE_MM && indexer.get_laser_dist() != -1).await;
+        wait(|| indexer.is_laser_tripped()).await;
 
         indexer.stop();
     });
@@ -286,7 +286,7 @@ pub async fn blue_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::error
         elevator.run_to_target_trapezoid();
     });
 
-    let _ = timeout(Duration::from_secs_f64(1.25), async {
+    let _ = timeout(Duration::from_secs_f64(0.5), async {
         loop {
             drivetrain.update_limelight().await;
             sleep(Duration::from_millis(20)).await;
@@ -370,7 +370,7 @@ async fn blue_mid_left_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::
 
         indexer.set_speed(INTAKE_SPEED);
 
-        wait(|| indexer.get_laser_dist() < LASER_TRIP_DISTANCE_MM && indexer.get_laser_dist() != -1).await;
+        wait(|| indexer.is_laser_tripped()).await;
 
         indexer.stop();
     });
@@ -423,18 +423,76 @@ async fn tush_push_1(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::erro
     drive("TushPush1", &mut drivetrain, 1).await?;
 
     join!(drive("TushPush1", &mut drivetrain, 2), async {
-        elevator.set_target(ElevatorPosition::L2);
-        elevator.run_to_target_trapezoid();
-
-        indexer.set_speed(INTAKE_SPEED);
-        wait(|| indexer.get_laser_dist() < LASER_TRIP_DISTANCE_MM && indexer.get_laser_dist() != -1).await;
-        indexer.stop();
-
         elevator.set_target(ElevatorPosition::L4);
         elevator.run_to_target_trapezoid();
     });
 
     let _ = timeout(Duration::from_secs_f64(1.25), async {
+        loop {
+            drivetrain.update_limelight().await;
+            drivetrain.post_odo().await;
+
+            sleep(Duration::from_millis(20)).await;
+        }
+    }).await;
+
+    elevator.set_target(ElevatorPosition::L4);
+
+    join!(
+         timeout(Duration::from_secs_f64(2.), async {
+            loop {
+                drivetrain.update_limelight().await;
+                drivetrain.post_odo().await;
+
+                if drivetrain.lineup(LineupSide::Right,
+                    ElevatorPosition::L4,
+                    robot.dt,
+                    if alliance_station().red() {Some(10)} else { Some(21)}).await
+                {
+                    break;
+                }
+
+                sleep(Duration::from_millis(20)).await;
+            }
+        }),
+        elevator.run_to_target_trapezoid_async()
+    );
+
+    drivetrain.stop();
+    
+    indexer.set_speed(-0.4);
+
+    wait(|| !indexer.is_laser_tripped()).await;
+
+    sleep(Duration::from_secs_f64(1.5)).await;
+    indexer.stop();
+
+    Ok(())
+}
+
+pub async fn right_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::error::Error>> {
+    let mut robot_ref = robot.borrow_mut();
+    let mut drivetrain = robot_ref.drivetrain.deref().borrow_mut();
+    let mut elevator = robot_ref.elevator.deref().borrow_mut();
+    let mut indexer = robot_ref.indexer.deref().borrow_mut();
+
+    drivetrain.reset_heading_offset(
+        if alliance_station().red() {
+            Angle::new::<degree>(180.)
+        } else {
+            Angle::new::<degree>(0.)
+        });
+    drivetrain.odometry.set(Vector2::new(
+        Length::new::<meter>(7.18402099609375),
+        Length::new::<meter>(2.696911096572876),
+    ));
+
+    join!(drive("Right2", &mut drivetrain, 1), async {
+        elevator.set_target(ElevatorPosition::L4);
+        elevator.run_to_target_trapezoid();
+    });
+
+    let _ = timeout(Duration::from_secs_f64(0.5), async {
         loop {
             drivetrain.update_limelight().await;
             drivetrain.post_odo().await;
@@ -449,8 +507,43 @@ async fn tush_push_1(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::erro
         &mut elevator,
         &mut indexer,
         ElevatorPosition::L4,
-        robot.dt,
-        if alliance_station().red() {Some(10)} else { Some(21)}
+        robot_ref.dt,
+        if alliance_station().red() {Some(8)} else { Some(17)}
+    )
+        .await;
+
+    join!(drive("Right2", &mut drivetrain, 3), async {
+        elevator.set_target(ElevatorPosition::Bottom);
+        elevator.run_to_target_trapezoid_async().await;
+
+        indexer.set_speed(INTAKE_SPEED);
+
+        wait(|| indexer.is_laser_tripped()).await;
+
+        indexer.stop();
+    });
+
+    join!(drive("Right2", &mut drivetrain, 4), async {
+        sleep(Duration::from_secs_f64(1.25)).await;
+        elevator.set_target(ElevatorPosition::L4);
+        elevator.run_to_target_trapezoid();
+    });
+
+    let _ = timeout(Duration::from_secs_f64(0.5), async {
+        loop {
+            drivetrain.update_limelight().await;
+            sleep(Duration::from_millis(20)).await;
+        }
+    }).await;
+
+    async_score(
+        &mut drivetrain,
+        LineupSide::Left,
+        &mut elevator,
+        &mut indexer,
+        ElevatorPosition::L4,
+        robot_ref.dt,
+        if alliance_station().red() {Some(8)} else { Some(17)}
     )
         .await;
 

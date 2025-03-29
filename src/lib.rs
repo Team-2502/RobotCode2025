@@ -7,10 +7,7 @@ pub mod swerve;
 use crate::auto::Auto;
 use crate::constants::elevator;
 use crate::container::control_drivetrain;
-use crate::subsystems::{
-    Climber, Drivetrain, DrivetrainControlState, Elevator, ElevatorPosition, Indexer, LineupSide,
-    Vision,
-};
+use crate::subsystems::{Climber, DebounceType, Debouncer, Drivetrain, DrivetrainControlState, Elevator, ElevatorPosition, Indexer, LineupSide, Vision};
 use constants::joystick_map::*;
 use frcrs::ctre::ControlMode;
 use frcrs::input::Joystick;
@@ -30,6 +27,7 @@ use tokio::runtime::Handle;
 use tokio::task::{spawn_local, AbortHandle};
 use tokio::time::sleep;
 use uom::si::angle::degree;
+use crate::constants::elevator::L3_ALGAE;
 use crate::constants::indexer::{BOTTOM_SPEED, L2_SPEED, L3_SPEED, L4_SPEED};
 
 #[derive(Clone)]
@@ -62,6 +60,8 @@ pub struct Ferris {
     pub climb_handle: Option<AbortHandle>,
 
     pub dt: Duration,
+    
+    pub debouncer: Debouncer,
 }
 
 impl Default for Ferris {
@@ -92,6 +92,8 @@ impl Ferris {
             climb_handle: None,
 
             dt: Duration::from_millis(0),
+            
+            debouncer: Debouncer::new(Duration::from_secs_f64(0.25), DebounceType::RISING),
         }
     }
 
@@ -317,12 +319,7 @@ pub async fn elevator_move_to_target_async(robot: Ferris) {
     println!("Called elevator_move_to_target_async");
     if let Ok(mut elevator) = robot.elevator.try_borrow_mut() {
         //println!("Borrowed elevator");
-        let target_position = match elevator.get_target() {
-            ElevatorPosition::Bottom => elevator::BOTTOM,
-            ElevatorPosition::L2 => elevator::L2,
-            ElevatorPosition::L3 => elevator::L3,
-            ElevatorPosition::L4 => elevator::L4,
-        };
+        let target_position = elevator.get_target().get_position();
         //println!("Error: {}", (elevator.get_position() - target_position).abs());
         //println!("{}", (elevator.get_position() - target_position).abs() > elevator::POSITION_TOLERANCE);
         while (elevator.get_position() - target_position).abs() > elevator::POSITION_TOLERANCE {
@@ -343,12 +340,13 @@ pub fn score(
     let elevator_at_target = elevator.run_to_target_trapezoid();
 
     if elevator_at_target && drivetrain_aligned {
-        if indexer.get_laser_dist() < constants::indexer::LASER_TRIP_DISTANCE_MM {
+        if indexer.is_laser_tripped() {
             let indexer_speed = match elevator_position {
                 ElevatorPosition::Bottom => BOTTOM_SPEED,
                 ElevatorPosition::L2 => L2_SPEED,
                 ElevatorPosition::L3 => L3_SPEED,
                 ElevatorPosition::L4 => L4_SPEED,
+                ElevatorPosition::L3Algae => L3_SPEED,
             };
             indexer.set_speed(indexer_speed);
         } else {

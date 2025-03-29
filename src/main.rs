@@ -15,11 +15,12 @@ use frcrs::telemetry::Telemetry;
 use tokio::task;
 use tokio::task::{AbortHandle, spawn_local};
 use tokio::time::sleep;
-use RobotCode2025::constants::joystick_map::{CLIMB, CLIMB_FALL, CLIMBER_GRAB, CLIMBER_RAISE, INTAKE, LINEUP_LEFT, LINEUP_RIGHT, SCORE_L2, SCORE_L3, SCORE_L4, WHEELS_ZERO};
+use RobotCode2025::constants::joystick_map::{CLIMB, CLIMB_FALL, INTAKE, LINEUP_LEFT, LINEUP_RIGHT, SCORE_L2, SCORE_L3, SCORE_L4, WHEELS_ZERO};
 use RobotCode2025::container::control_drivetrain;
 use RobotCode2025::{constants, Ferris, score, TeleopState};
 use RobotCode2025::auto::Auto;
-use RobotCode2025::constants::indexer::INTAKE_SPEED;
+use RobotCode2025::constants::climber::{CLIMB_SPEED, FALL_SPEED};
+use RobotCode2025::constants::indexer::{INTAKE_SPEED, L3_SPEED};
 use RobotCode2025::subsystems::{Climber, ElevatorPosition, LineupSide};
 
 fn main() {
@@ -42,7 +43,7 @@ fn main() {
 
         Telemetry::put_selector("auto chooser", Auto::names()).await;
 
-        SmartDashboard::start_camera_server();
+        // SmartDashboard::start_camera_server();
 
         let mut last_loop = Instant::now();
 
@@ -161,7 +162,7 @@ async fn teleop(robot: &mut Ferris) {
                 drivetrain.update_limelight().await;
                 drivetrain.post_odo().await;
 
-                let drivetrain_aligned = if robot.controllers.right_drive.get(LINEUP_LEFT) {
+                let drivetrain_aligned = robot.debouncer.calculate(if robot.controllers.right_drive.get(LINEUP_LEFT) {
                     drivetrain
                         .lineup(LineupSide::Left, elevator.get_target(), robot.dt, None)
                         .await
@@ -181,9 +182,16 @@ async fn teleop(robot: &mut Ferris) {
                         .await;
 
                     false
-                };
+                });
 
-                if robot.controllers.left_drive.get(SCORE_L2) {
+                if robot.controllers.right_drive.get_pov() != -1 {
+                    indexer.set_speed(-0.5);
+                } else if robot.controllers.left_drive.get_pov() != -1 {
+                    elevator.set_target(ElevatorPosition::L3Algae);
+                    elevator.run_to_target_trapezoid();
+
+                    indexer.set_speed(L3_SPEED);
+                } else if robot.controllers.left_drive.get(SCORE_L2) {
                     score(
                         drivetrain_aligned,
                         &mut elevator,
@@ -208,8 +216,7 @@ async fn teleop(robot: &mut Ferris) {
                     elevator.set_target(ElevatorPosition::Bottom);
                     elevator.run_to_target_trapezoid();
 
-                    if indexer.get_laser_dist() > constants::indexer::LASER_TRIP_DISTANCE_MM
-                        || indexer.get_laser_dist() == -1
+                    if !indexer.is_laser_tripped()
                     {
                         indexer.set_speed(INTAKE_SPEED);
                     } else {
@@ -227,38 +234,13 @@ async fn teleop(robot: &mut Ferris) {
         }
     }
 
-    if robot.controllers.right_drive.get(CLIMB) {
-        if robot.climb_handle.is_none() {
-            let f = robot.clone();
-            let climb_task = Climber::climb(f);
-            let handle = spawn_local(climb_task).abort_handle();
-            robot.climb_handle = Some(handle);
-        }
-    } else if robot.controllers.right_drive.get(CLIMB_FALL) {
-        if let Some(handle) = robot.climb_handle.take() {
-            handle.abort();
-        }
-
-        if let Ok(mut climber) = robot.climber.try_borrow_mut() {
-            climber.fall()
-        }
-    } else {
-        if let Some(handle) = robot.climb_handle.take() {
-            handle.abort();
-        }
-
-        if let Ok(mut climber) = robot.climber.try_borrow_mut() {
-            if robot.controllers.right_drive.get(CLIMBER_RAISE) {
-                climber.set_raise(true);
-            } else {
-                climber.set_raise(false);
-            }
-
-            if robot.controllers.right_drive.get(CLIMBER_GRAB) {
-                climber.set_grab(true);
-            } else {
-                climber.set_grab(false);
-            }
+    if let Ok(climber) = robot.climber.try_borrow_mut() {
+        if robot.controllers.right_drive.get(CLIMB) {
+            climber.climb();
+        } else if robot.controllers.right_drive.get(CLIMB_FALL) {
+            climber.set(FALL_SPEED);
+        } else {
+            climber.set(0.);
         }
     }
 }

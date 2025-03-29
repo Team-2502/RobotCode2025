@@ -2,11 +2,13 @@ use crate::constants::robotmap::climber::*;
 use crate::Ferris;
 use frcrs::solenoid::{ModuleType, Solenoid};
 use std::time::Duration;
+use frcrs::ctre::{ControlMode, Talon};
 use tokio::time::sleep;
+use crate::constants::climber::CLIMB_SPEED;
+use crate::constants::robotmap;
 
 pub struct Climber {
-    raise: Solenoid,
-    grab: Solenoid,
+    motor: Talon
 }
 
 impl Default for Climber {
@@ -18,47 +20,19 @@ impl Default for Climber {
 impl Climber {
     pub fn new() -> Self {
         Self {
-            raise: Solenoid::new(ModuleType::CTRE, RAISE),
-            grab: Solenoid::new(ModuleType::CTRE, GRAB),
+            motor: Talon::new(CLIMBER_MOTOR_ID, Some("can0".to_string()))
         }
     }
 
-    pub fn toggle_raise(&self) {
-        self.raise.toggle();
+    pub fn set(&self, speed: f64){
+        self.motor.set(ControlMode::Percent, speed);
     }
 
-    pub fn set_raise(&self, engaged: bool) {
-        self.raise.set(engaged);
-    }
-
-    pub fn toggle_grab(&self) {
-        self.grab.toggle();
-    }
-
-    pub fn set_grab(&self, engaged: bool) {
-        self.grab.set(!engaged);
-    }
-
-    pub async fn climb(ferris: Ferris) {
-        if let Ok(climber) = ferris.climber.try_borrow_mut() {
-            climber.set_raise(true);
-            sleep(Duration::from_secs_f64(1.75)).await;
-            climber.set_grab(true);
-            sleep(Duration::from_secs_f64(0.25)).await;
-            climber.set_raise(false);
+    pub fn climb(&self) {
+        if self.motor.get_position() < 380. {
+            self.set(CLIMB_SPEED);
+        } else {
+            self.set(0.);
         }
-    }
-
-    pub fn fall(&self) {
-        self.set_grab(false);
-        self.set_raise(false);
-    }
-
-    pub async fn reverse_climb(&self) {
-        self.set_raise(true);
-        sleep(Duration::from_secs_f64(0.25)).await;
-        self.set_grab(false);
-        sleep(Duration::from_secs_f64(0.25)).await;
-        self.set_raise(false);
     }
 }
