@@ -135,7 +135,7 @@ pub mod indexer {
     pub const INTAKE_SPEED: f64 = -0.45;
     pub const BOTTOM_SPEED: f64 = -0.35;
     pub const L2_SPEED: f64 = -0.4;
-    pub const L3_SPEED: f64 = -0.5;
+    pub const L3_SPEED: f64 = -0.6;
     pub const L4_SPEED: f64 = -0.4;
 }
 pub mod climber {
