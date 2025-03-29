@@ -132,7 +132,7 @@ pub mod elevator {
 pub mod indexer {
     pub const LASER_TRIP_DISTANCE_MM: i32 = 10;
     pub const INDEXER_LASER_DEBOUNCE_TIME_SECONDS: f64 = 0.08;
-    pub const INTAKE_SPEED: f64 = -0.25;
+    pub const INTAKE_SPEED: f64 = -0.45;
     pub const BOTTOM_SPEED: f64 = -0.35;
     pub const L2_SPEED: f64 = -0.4;
     pub const L3_SPEED: f64 = -0.5;
