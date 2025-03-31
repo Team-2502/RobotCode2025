@@ -478,7 +478,7 @@ impl Drivetrain {
             SwerveControlStyle::RobotOriented => {}
         }
 
-        let wheel_speeds = self.kinematics.calculate(transform, -rot);
+        let wheel_speeds = self.kinematics.calculate(transform, rot);
 
         let measured = self.get_speeds();
 
@@ -588,7 +588,7 @@ impl Drivetrain {
     }
 
     pub fn get_angle(&self) -> Angle {
-        Angle::new::<revolution>(-self.gyro.get_angle() + PIGEON_OFFSET)
+        Angle::new::<revolution>(self.gyro.get_angle() + PIGEON_OFFSET)
     }
 
     pub fn get_offset(&self) -> Angle {
@@ -630,7 +630,7 @@ impl Drivetrain {
             let mut error_position =
                 target.position - self.odometry.robot_pose_estimate.get_position_meters();
 
-            let mut dt_angle = (self.get_angle() - self.offset).get::<degree>();
+            let mut dt_angle = self.get_offset().get::<degree>();
 
             dt_angle = (dt_angle + 180.) % 360. - 180.;
             if dt_angle < -180. {
@@ -639,7 +639,7 @@ impl Drivetrain {
 
             let dt_angle = Angle::new::<degree>(dt_angle);
 
-            let mut error_angle = (-target.angle - dt_angle).get::<radian>();
+            let mut error_angle = (target.angle - dt_angle).get::<radian>();
 
             if error_position.abs().max() < LINEUP_DRIVE_IE {
                 i += error_position;

@@ -68,7 +68,7 @@ impl Swerve {
     ///
     /// positive x is right
     /// positive y is forward
-    /// positive rotation is clockwise
+    /// positive rotation is counterclockwise
     pub fn calculate(&self, transform: Vector2<f64>, rotation: f64) -> WheelSpeeds {
         let center_of_rotation = Vector2::zeros(); // relative to center of robot
         let rotation_transform = Rotation2::new(-FRAC_PI_2); // 90 degrees

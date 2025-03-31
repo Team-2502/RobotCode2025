@@ -106,7 +106,7 @@ pub async fn follow_path_segment(
         };
 
 
-        let mut angle = -setpoint.heading;
+        let mut angle = setpoint.heading;
         // let mut angle_radians: f64 = setpoint.heading.get::<radian>();
         let position = Vector2::new(setpoint.x.get::<meter>(), setpoint.y.get::<meter>());
 
