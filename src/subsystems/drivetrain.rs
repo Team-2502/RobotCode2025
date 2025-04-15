@@ -7,9 +7,9 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::ops::{Add, Sub};
 use std::time::Duration;
 
-use frcrs::ctre::{talon_encoder_tick, CanCoder, ControlMode, Pigeon, Talon, CanRange};
+use frcrs::ctre::{talon_encoder_tick, CanCoder, ControlMode, Talon, CanRange};
 use frcrs::redux::CanAndGyro;
-use crate::constants::drivetrain::{BL_OFFSET_DEGREES, BR_OFFSET_DEGREES, CANRANGE_DEBOUNCE_TIME_SECONDS, FL_OFFSET_DEGREES, FR_OFFSET_DEGREES, LINEUP_2D_TX_FWD_KP, LINEUP_2D_TX_STR_KP, LINEUP_2D_TY_FWD_KP, LINEUP_DRIVE_IE, LINEUP_DRIVE_KD, LINEUP_DRIVE_KI, LINEUP_DRIVE_KP, PIGEON_OFFSET, REEF_SENSOR_TARGET_DISTANCE_METERS, SWERVE_DRIVE_IE, SWERVE_DRIVE_KD, SWERVE_DRIVE_KI, SWERVE_DRIVE_KP, SWERVE_ROTATIONS_TO_INCHES, SWERVE_TURN_KP, SWERVE_TURN_RATIO, TARGET_TX_LEFT, TARGET_TX_RIGHT, TARGET_TY_LEFT, TARGET_TY_RIGHT, TX_ACCEPTABLE_ERROR, TY_ACCEPTABLE_ERROR, YAW_ACCEPTABLE_ERROR};
+use crate::constants::drivetrain::{BL_OFFSET_DEGREES, BR_OFFSET_DEGREES, CANRANGE_DEBOUNCE_TIME_SECONDS, FL_OFFSET_DEGREES, FR_OFFSET_DEGREES, LINEUP_2D_TX_FWD_KP, LINEUP_2D_TX_STR_KP, LINEUP_2D_TY_FWD_KP, LINEUP_DRIVE_IE, LINEUP_DRIVE_KD, LINEUP_DRIVE_KI, LINEUP_DRIVE_KP, GYRO_OFFSET, REEF_SENSOR_TARGET_DISTANCE_METERS, SWERVE_DRIVE_IE, SWERVE_DRIVE_KD, SWERVE_DRIVE_KI, SWERVE_DRIVE_KP, SWERVE_ROTATIONS_TO_INCHES, SWERVE_TURN_KP, SWERVE_TURN_RATIO, TARGET_TX_LEFT, TARGET_TX_RIGHT, TARGET_TY_LEFT, TARGET_TY_RIGHT, TX_ACCEPTABLE_ERROR, TY_ACCEPTABLE_ERROR, YAW_ACCEPTABLE_ERROR};
 use crate::constants::robotmap::swerve::*;
 use crate::swerve::kinematics::{ModuleState, Swerve};
 use crate::swerve::odometry::{ModuleReturn, Odometry};
@@ -215,7 +215,7 @@ impl Drivetrain {
         // });
 
         Self {
-            gyro: CanAndGyro::new(PIGEON),
+            gyro: CanAndGyro::new(GYRO),
 
             fr_drive,
             fr_turn,
@@ -473,11 +473,13 @@ impl Drivetrain {
         let mut transform = Vector2::new(-str, fwd);
         match style {
             SwerveControlStyle::FieldOriented => {
-                transform = Rotation2::new(self.get_offset_wrapped().get::<radian>()) * transform;
+                transform = Rotation2::new(-self.get_offset_wrapped().get::<radian>()) * transform;
             }
             SwerveControlStyle::RobotOriented => {}
         }
 
+        println!("x: {}", transform.x);
+        println!("y: {}", transform.y);
         let wheel_speeds = self.kinematics.calculate(transform, rot);
 
         let measured = self.get_speeds();
@@ -588,7 +590,7 @@ impl Drivetrain {
     }
 
     pub fn get_angle(&self) -> Angle {
-        Angle::new::<revolution>(self.gyro.get_angle() + PIGEON_OFFSET)
+        Angle::new::<revolution>(self.gyro.get_angle() + GYRO_OFFSET)
     }
 
     pub fn get_offset(&self) -> Angle {

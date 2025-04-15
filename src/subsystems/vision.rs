@@ -208,7 +208,7 @@ impl Vision {
         let id = self.get_id();
         let dist = self.get_dist()?;
 
-        let drivetrain_angle = -self.drivetrain_angle;
+        let drivetrain_angle = self.drivetrain_angle;
 
         //println!("dist: {}", dist.get::<meter>());
 

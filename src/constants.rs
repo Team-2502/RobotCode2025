@@ -5,7 +5,7 @@ pub const FPS_LIMIT: f64 = 250.;
 
 pub mod robotmap {
     pub mod swerve {
-        pub const PIGEON: i32 = 9;
+        pub const GYRO: i32 = 9;
 
         pub const FR_DRIVE: i32 = 1;
         pub const FR_TURN: i32 = 2;
@@ -73,7 +73,7 @@ pub mod drivetrain {
     pub const BR_OFFSET_DEGREES: f64 = -0.056641 * 360.;
     pub const BL_OFFSET_DEGREES: f64 = 0.170898 * 360.;
 
-    pub const PIGEON_OFFSET: f64 = -0.4;
+    pub const GYRO_OFFSET: f64 = -0.4;
 
     pub const SWERVE_TURN_KP: f64 = 0.6;
 

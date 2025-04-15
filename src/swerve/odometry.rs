@@ -284,7 +284,7 @@ impl Odometry {
             .collect();
 
         // Rotate all by the drivetrain angle to get from robot-relative coordinates to field-relative coordinates
-        let drivetrain_angle_rotation = Rotation2::new(-drivetrain_angle.get::<radian>()); // -1 * drivetrain angle because we use clockwise positive and the Rotation2 * Vector2 math assumes CCW+
+        let drivetrain_angle_rotation = Rotation2::new(drivetrain_angle.get::<radian>()); // -1 * drivetrain angle because we use clockwise positive and the Rotation2 * Vector2 math assumes CCW+
         delta_positions = delta_positions
             .clone()
             .iter()
