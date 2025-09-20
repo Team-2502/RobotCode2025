@@ -4,7 +4,7 @@ use frcrs::solenoid::{ModuleType, Solenoid};
 use std::time::Duration;
 use frcrs::ctre::{ControlMode, Talon};
 use tokio::time::sleep;
-use crate::constants::climber::CLIMB_SPEED;
+use crate::constants::climber::{CLIMBER_CURRENT_THRESHOLD, CLIMB_SPEED};
 use crate::constants::robotmap;
 
 pub struct Climber {
@@ -34,5 +34,12 @@ impl Climber {
         } else {
             self.set(0.);
         }
+    }
+
+    pub fn climb_safe(&self) {
+        while self.motor.get_current() < CLIMBER_CURRENT_THRESHOLD {
+            self.set(CLIMB_SPEED);
+        }
+        self.set(0.);
     }
 }

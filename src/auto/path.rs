@@ -17,7 +17,7 @@ use uom::si::{
     time::{millisecond, second},
     velocity::meter_per_second,
 };
-use wpi_trajectory::Path;
+use frcrs::trajectory::Path;
 
 use crate::subsystems::{calculate_relative_target, SwerveControlStyle};
 use crate::{

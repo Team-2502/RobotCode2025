@@ -13,7 +13,6 @@ dependencies = [
  "serde_json",
  "tokio",
  "uom",
- "wpi-trajectory",
 ]
 
 [[package]]
@@ -265,8 +264,8 @@ dependencies = [
 
 [[package]]
 name = "frcrs"
-version = "0.1.1"
-source = "git+https://github.com/Team-2502/frcrs.git#c9f6a11d47524c38daacd9cbdfa7be0c86502290"
+version = "0.1.2"
+source = "git+https://github.com/Team-2502/frcrs.git?branch=test#0020706bc7f5c908814bf7c85c6e7e2a9a9ef3a2"
 dependencies = [
  "async-trait",
  "axum",
@@ -278,6 +277,7 @@ dependencies = [
  "mime_guess",
  "nalgebra",
  "once_cell",
+ "ordered-float",
  "prometheus",
  "reqwest",
  "serde",
@@ -928,9 +928,9 @@ checksum = "1261fe7e33c73b354eab43b1273a57c8f967d0391e80353e51f764ac02cf6775"
 
 [[package]]
 name = "ordered-float"
-version = "4.6.0"
+version = "5.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7bb71e1b3fa6ca1c61f383464aaf2bb0e2f8e772a1f01d486832464de363b951"
+checksum = "e2c1f9f56e534ac6a9b8a4600bdf0f530fb393b5f393e7b4d03489c3cf0c3f01"
 dependencies = [
  "num-traits",
 ]
@@ -1947,17 +1947,6 @@ checksum = "524e57b2c537c0f9b1e69f1965311ec12182b4122e45035b1508cd24d2adadb1"
 dependencies = [
  "cfg-if",
  "windows-sys 0.48.0",
-]
-
-[[package]]
-name = "wpi-trajectory"
-version = "0.1.0"
-source = "git+https://github.com/Sha-dos/trajectory-rs#03f65440cff3ba912c7b7f12723a234a305ed927"
-dependencies = [
- "ordered-float",
- "serde",
- "serde_json",
- "uom",
 ]
 
 [[package]]

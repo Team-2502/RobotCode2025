@@ -141,6 +141,7 @@ pub mod indexer {
 pub mod climber {
     pub const CLIMB_SPEED: f64 = 0.5;
     pub const FALL_SPEED: f64 = -0.3;
+    pub const CLIMBER_CURRENT_THRESHOLD: f64 = 1.;
 }
 pub mod joystick_map {
     // Joystick IDs (set in driver station)

@@ -723,8 +723,8 @@ impl Drivetrain {
         let lineup_location = match self.lineup_locations.get(&tag_id) {
             None => {
                 LineupLocation {
-                    side_distance: Length::new::<inch>(13. / 2.),
-                    forward_distance: Length::new::<inch>(16.275),
+                    side_distance: Length::new::<inch>(12. / 2.),
+                    forward_distance: Length::new::<inch>(14.775),
                 }
             }
             Some(l) => { *l }
@@ -743,10 +743,17 @@ impl Drivetrain {
 
         let side_multiplier = match side {
             LineupSide::Left => -1.0,
-            LineupSide::Right => 1.0,
+            LineupSide::Right => -1.0,
         };
+
+        let y_offset = match side{
+            LineupSide::Right => Length::new::<inch>(-3.562992),
+            LineupSide::Left => Length::new::<inch>(11.),
+        };
+
         side_distance *= side_multiplier;
-        side_distance += elevator_position;
+        //side_distance += elevator_position;
+        side_distance += -y_offset;
 
         let perpendicular_yaw = yaw + std::f64::consts::PI / 2.0;
 
