@@ -1,10 +1,10 @@
+use crate::auto::wait;
 use crate::constants;
 use crate::constants::{elevator, robotmap};
 use frcrs::ctre::{ControlMode, Talon};
 use std::fmt::Display;
 use std::time::Duration;
 use tokio::time::sleep;
-use crate::auto::wait;
 
 pub struct Elevator {
     left: Talon,
@@ -28,7 +28,7 @@ impl ElevatorPosition {
             ElevatorPosition::L2 => elevator::L2,
             ElevatorPosition::L3 => elevator::L3,
             ElevatorPosition::L4 => elevator::L4,
-            ElevatorPosition::L3Algae => elevator::L3_ALGAE
+            ElevatorPosition::L3Algae => elevator::L3_ALGAE,
         }
     }
 }
@@ -108,7 +108,8 @@ impl Elevator {
         self.right.set(ControlMode::MotionMagic, target_position);
         self.left.follow(&self.right, true);
 
-        wait(|| (self.right.get_position() - target_position).abs() < elevator::POSITION_TOLERANCE).await;
+        wait(|| (self.right.get_position() - target_position).abs() < elevator::POSITION_TOLERANCE)
+            .await;
 
         println!("elevator at target");
     }

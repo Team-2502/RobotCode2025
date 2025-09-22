@@ -1,24 +1,32 @@
+use frcrs::alliance_station;
 use std::cmp::PartialEq;
 use std::collections::HashMap;
-use frcrs::alliance_station;
 use std::f64::consts::PI;
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::ops::{Add, Sub};
 use std::time::Duration;
 
-use frcrs::ctre::{talon_encoder_tick, CanCoder, ControlMode, Talon, CanRange};
-use frcrs::redux::CanAndGyro;
-use crate::constants::drivetrain::{BL_OFFSET_DEGREES, BR_OFFSET_DEGREES, CANRANGE_DEBOUNCE_TIME_SECONDS, FL_OFFSET_DEGREES, FR_OFFSET_DEGREES, LINEUP_2D_TX_FWD_KP, LINEUP_2D_TX_STR_KP, LINEUP_2D_TY_FWD_KP, LINEUP_DRIVE_IE, LINEUP_DRIVE_KD, LINEUP_DRIVE_KI, LINEUP_DRIVE_KP, GYRO_OFFSET, REEF_SENSOR_TARGET_DISTANCE_METERS, SWERVE_DRIVE_IE, SWERVE_DRIVE_KD, SWERVE_DRIVE_KI, SWERVE_DRIVE_KP, SWERVE_ROTATIONS_TO_INCHES, SWERVE_TURN_KP, SWERVE_TURN_RATIO, TARGET_TX_LEFT, TARGET_TX_RIGHT, TARGET_TY_LEFT, TARGET_TY_RIGHT, TX_ACCEPTABLE_ERROR, TY_ACCEPTABLE_ERROR, YAW_ACCEPTABLE_ERROR};
+use crate::constants::drivetrain::{
+    BL_OFFSET_DEGREES, BR_OFFSET_DEGREES, CANRANGE_DEBOUNCE_TIME_SECONDS, FL_OFFSET_DEGREES,
+    FR_OFFSET_DEGREES, GYRO_OFFSET, LINEUP_2D_TX_FWD_KP, LINEUP_2D_TX_STR_KP, LINEUP_2D_TY_FWD_KP,
+    LINEUP_DRIVE_IE, LINEUP_DRIVE_KD, LINEUP_DRIVE_KI, LINEUP_DRIVE_KP,
+    REEF_SENSOR_TARGET_DISTANCE_METERS, SWERVE_DRIVE_IE, SWERVE_DRIVE_KD, SWERVE_DRIVE_KI,
+    SWERVE_DRIVE_KP, SWERVE_ROTATIONS_TO_INCHES, SWERVE_TURN_KP, SWERVE_TURN_RATIO, TARGET_TX_LEFT,
+    TARGET_TX_RIGHT, TARGET_TY_LEFT, TARGET_TY_RIGHT, TX_ACCEPTABLE_ERROR, TY_ACCEPTABLE_ERROR,
+    YAW_ACCEPTABLE_ERROR,
+};
 use crate::constants::robotmap::swerve::*;
 use crate::swerve::kinematics::{ModuleState, Swerve};
 use crate::swerve::odometry::{ModuleReturn, Odometry};
+use frcrs::ctre::{talon_encoder_tick, CanCoder, CanRange, ControlMode, Talon};
+use frcrs::redux::CanAndGyro;
 
 use frcrs::telemetry::Telemetry;
 use nalgebra::{Quaternion, Rotation2, Vector2};
 use serde::Deserialize;
 use serde::Serialize;
-use tokio::time::{Instant, timeout};
+use tokio::time::{timeout, Instant};
 
 use crate::constants;
 use crate::constants::vision::ROBOT_CENTER_TO_LIMELIGHT_UPPER_INCHES;
@@ -59,7 +67,7 @@ pub struct LineupLocation {
 pub enum DebounceType {
     RISING,
     FALLING,
-    BOTH
+    BOTH,
 }
 
 /// https://docs.wpilib.org/en/stable/docs/software/advanced-controls/filters/debouncer.html
@@ -92,7 +100,7 @@ impl Debouncer {
         self.prev_time.elapsed() >= self.bounce_time
     }
     /// copied line for line from wpilib
-    pub fn calculate(&mut self, input: bool) -> bool{
+    pub fn calculate(&mut self, input: bool) -> bool {
         if input == self.baseline {
             self.reset_timer()
         }
@@ -141,7 +149,7 @@ pub struct Drivetrain {
 
     abs_offsets: [Angle; 4],
 
-    lineup_locations: HashMap<i32, LineupLocation>
+    lineup_locations: HashMap<i32, LineupLocation>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -213,7 +221,6 @@ impl Drivetrain {
         //     side_distance: Length::new::<inch>(13. / 2.),
         //     forward_distance: Length::new::<inch>(16.),
         // });
-
         Self {
             gyro: CanAndGyro::new(GYRO),
 
@@ -235,8 +242,14 @@ impl Drivetrain {
 
             right_laser: CanRange::new(RIGHT_LINEUP_LASER, Some("can0".to_owned())),
             left_laser: CanRange::new(LEFT_LINEUP_LASER, Some("can0".to_owned())),
-            right_laser_debouncer: Debouncer::new(Duration::from_secs_f64(CANRANGE_DEBOUNCE_TIME_SECONDS), DebounceType::RISING),
-            left_laser_debouncer: Debouncer::new(Duration::from_secs_f64(CANRANGE_DEBOUNCE_TIME_SECONDS), DebounceType::RISING),
+            right_laser_debouncer: Debouncer::new(
+                Duration::from_secs_f64(CANRANGE_DEBOUNCE_TIME_SECONDS),
+                DebounceType::RISING,
+            ),
+            left_laser_debouncer: Debouncer::new(
+                Duration::from_secs_f64(CANRANGE_DEBOUNCE_TIME_SECONDS),
+                DebounceType::RISING,
+            ),
 
             kinematics: Swerve::rectangle(Length::new::<inch>(21.5), Length::new::<inch>(21.5)),
             odometry: Odometry::new(),
@@ -252,11 +265,14 @@ impl Drivetrain {
     }
 
     pub async fn update_limelight(&mut self) {
-        let _ = timeout(Duration::from_millis(10), self.limelight
-            .update(
+        let _ = timeout(
+            Duration::from_millis(10),
+            self.limelight.update(
                 self.get_offset_wrapped(),
                 self.odometry.robot_pose_estimate.get_position(),
-            )).await;
+            ),
+        )
+        .await;
         Telemetry::put_number(
             "limelight upper fom",
             self.limelight.get_figure_of_merit().get::<meter>(),
@@ -352,12 +368,29 @@ impl Drivetrain {
         )
         .await;
         Telemetry::put_number("left laser", self.left_laser.get_distance().get::<meter>()).await;
-        Telemetry::put_number("right laser", self.right_laser.get_distance().get::<meter>()).await;
-        let left_laser_tripped: String = if self.left_laser_debouncer.calculate(self.left_laser.get_distance().get::<meter>() < REEF_SENSOR_TARGET_DISTANCE_METERS && self.left_laser.get_distance().get::<meter>() > 0.) { "true".parse().unwrap() } else { "false".parse().unwrap() };
+        Telemetry::put_number(
+            "right laser",
+            self.right_laser.get_distance().get::<meter>(),
+        )
+        .await;
+        let left_laser_tripped: String = if self.left_laser_debouncer.calculate(
+            self.left_laser.get_distance().get::<meter>() < REEF_SENSOR_TARGET_DISTANCE_METERS
+                && self.left_laser.get_distance().get::<meter>() > 0.,
+        ) {
+            "true".parse().unwrap()
+        } else {
+            "false".parse().unwrap()
+        };
         Telemetry::put_string("left laser tripped", left_laser_tripped).await;
-        let left_laser_tripped: String = if self.right_laser_debouncer.calculate(self.right_laser.get_distance().get::<meter>() < REEF_SENSOR_TARGET_DISTANCE_METERS && self.right_laser.get_distance().get::<meter>() > 0.) { "true".parse().unwrap() } else { "false".parse().unwrap() };
+        let left_laser_tripped: String = if self.right_laser_debouncer.calculate(
+            self.right_laser.get_distance().get::<meter>() < REEF_SENSOR_TARGET_DISTANCE_METERS
+                && self.right_laser.get_distance().get::<meter>() > 0.,
+        ) {
+            "true".parse().unwrap()
+        } else {
+            "false".parse().unwrap()
+        };
         Telemetry::put_string("right laser tripped", left_laser_tripped).await;
-
     }
 
     pub fn update_odo_absolute(&mut self, pose: Vector2<Length>) {
@@ -615,7 +648,10 @@ impl Drivetrain {
     // }
 
     pub fn reset_heading(&mut self) {
-        println!("Resetting heading: {}", self.get_offset_wrapped().get::<degree>());
+        println!(
+            "Resetting heading: {}",
+            self.get_offset_wrapped().get::<degree>()
+        );
 
         self.offset = self.get_angle();
     }
@@ -624,7 +660,13 @@ impl Drivetrain {
         self.offset = self.get_angle() + offset;
     }
 
-    pub async fn lineup(&mut self, side: LineupSide, target_level: ElevatorPosition, dt: Duration, use_tag: Option<i32>) -> bool {
+    pub async fn lineup(
+        &mut self,
+        side: LineupSide,
+        target_level: ElevatorPosition,
+        dt: Duration,
+        use_tag: Option<i32>,
+    ) -> bool {
         let mut last_error = Vector2::zeros();
         let mut i = Vector2::zeros();
 
@@ -672,9 +714,7 @@ impl Drivetrain {
             Telemetry::put_number("target_x", target.position.x).await;
             Telemetry::put_number("target_y", target.position.y).await;
             Telemetry::put_number("target_angle", target.angle.get::<radian>()).await;
-            if error_position.magnitude().abs() < 0.015
-                && error_angle.abs() < 0.015
-            {
+            if error_position.magnitude().abs() < 0.015 && error_angle.abs() < 0.015 {
                 self.stop();
                 // self.set_speeds(0., 0.1, 0., SwerveControlStyle::RobotOriented);
                 // println!("dt at position");
@@ -724,10 +764,11 @@ impl Drivetrain {
             None => {
                 LineupLocation {
                     side_distance: Length::new::<inch>(12. / 2.),
-                    forward_distance: Length::new::<inch>(14.775),
+                    forward_distance: Length::new::<inch>(17.),
+                    //how close to reef we get the lower the closer
                 }
             }
-            Some(l) => { *l }
+            Some(l) => *l,
         };
 
         let mut side_distance = lineup_location.side_distance;
@@ -746,9 +787,10 @@ impl Drivetrain {
             LineupSide::Right => -1.0,
         };
 
-        let y_offset = match side{
+        let y_offset = match side {
             LineupSide::Right => Length::new::<inch>(-3.562992),
             LineupSide::Left => Length::new::<inch>(11.),
+            //adding makes it more left subtracting more right offset on poles
         };
 
         side_distance *= side_multiplier;
@@ -928,13 +970,15 @@ pub fn calculate_relative_target(current: f64, target: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
     use nalgebra::{Quaternion, Vector2, Vector3};
+    use std::collections::HashMap;
     use std::f64::consts::PI;
     use std::ops::{Add, Sub};
 
     use crate::subsystems::drivetrain::{calculate_relative_target, quaternion_to_yaw};
-    use crate::subsystems::{ElevatorPosition, FieldPosition, LineupLocation, LineupSide, LineupTarget};
+    use crate::subsystems::{
+        ElevatorPosition, FieldPosition, LineupLocation, LineupSide, LineupTarget,
+    };
     use uom::si::angle::{degree, radian};
     use uom::si::f32::Angle;
     use uom::si::f64::Length;
@@ -965,19 +1009,20 @@ mod tests {
 
         let mut lineup_locations = HashMap::new();
 
-        lineup_locations.insert(17, LineupLocation {
-            side_distance: Length::new::<inch>(13. / 2.),
-            forward_distance: Length::new::<inch>(20.275),
-        });
+        lineup_locations.insert(
+            17,
+            LineupLocation {
+                side_distance: Length::new::<inch>(13. / 2.),
+                forward_distance: Length::new::<inch>(20.275),
+            },
+        );
 
         let lineup_location = match lineup_locations.get(&17) {
-            None => {
-                LineupLocation {
-                    side_distance: Length::new::<inch>(13. / 2.),
-                    forward_distance: Length::new::<inch>(16.275),
-                }
-            }
-            Some(l) => { *l }
+            None => LineupLocation {
+                side_distance: Length::new::<inch>(13. / 2.),
+                forward_distance: Length::new::<inch>(16.275),
+            },
+            Some(l) => *l,
         };
 
         let mut side_distance = lineup_location.side_distance;

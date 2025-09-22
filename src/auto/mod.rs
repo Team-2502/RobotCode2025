@@ -1,23 +1,25 @@
 mod path;
 
 use crate::auto::path::drive;
+use frcrs::alliance_station;
 use nalgebra::Vector2;
 use serde::{Deserialize, Serialize};
 use std::cell::{RefCell, RefMut};
 use std::ops::Deref;
 use std::rc::Rc;
 use std::time::Duration;
-use frcrs::alliance_station;
 use tokio::join;
-use tokio::time::{sleep, Instant, timeout};
-use uom::si::{f64::Length, length::meter};
+use tokio::time::{sleep, timeout, Instant};
 use uom::si::angle::degree;
 use uom::si::f64::Angle;
+use uom::si::{f64::Length, length::meter};
 
+use crate::constants::elevator::L3_ALGAE;
+use crate::constants::indexer::{
+    BOTTOM_SPEED, INTAKE_SPEED, L2_SPEED, L3_SPEED, L4_SPEED, LASER_TRIP_DISTANCE_MM,
+};
 use crate::subsystems::{Drivetrain, Elevator, ElevatorPosition, Indexer, LineupSide};
 use crate::{constants, score, Ferris};
-use crate::constants::elevator::L3_ALGAE;
-use crate::constants::indexer::{BOTTOM_SPEED, INTAKE_SPEED, L2_SPEED, L3_SPEED, L4_SPEED, LASER_TRIP_DISTANCE_MM};
 
 #[derive(Serialize, Deserialize)]
 pub enum Auto {
@@ -90,25 +92,45 @@ impl Auto {
                 println!("No auto was selected!");
             }
             Auto::BlueTriangle => {
-                blue_triangle(Rc::clone(&ferris)).await.expect("Failed running auto");
+                blue_triangle(Rc::clone(&ferris))
+                    .await
+                    .expect("Failed running auto");
             }
             Auto::Blue180 => {
-                blue_180(Rc::clone(&ferris)).await.expect("Failed running auto");
+                blue_180(Rc::clone(&ferris))
+                    .await
+                    .expect("Failed running auto");
             }
-            Auto::BlueLong => blue_long(Rc::clone(&ferris)).await.expect("Failed running auto"),
-            Auto::Blue2 => blue_2(Rc::clone(&ferris)).await.expect("Failed running auto"),
-            Auto::RotationTest => rotation_test(Rc::clone(&ferris)).await.expect("Failed running auto"),
-            Auto::BlueMidLeft2 => blue_mid_left_2(Rc::clone(&ferris)).await.expect("Failed running auto"),
-            Auto::TushPush1 => tush_push_1(Rc::clone(&ferris)).await.expect("Failed running auto"),
-            Auto::Right2 => right_2(Rc::clone(&ferris)).await.expect("Failed running auto"),
+            Auto::BlueLong => blue_long(Rc::clone(&ferris))
+                .await
+                .expect("Failed running auto"),
+            Auto::Blue2 => blue_2(Rc::clone(&ferris))
+                .await
+                .expect("Failed running auto"),
+            Auto::RotationTest => rotation_test(Rc::clone(&ferris))
+                .await
+                .expect("Failed running auto"),
+            Auto::BlueMidLeft2 => blue_mid_left_2(Rc::clone(&ferris))
+                .await
+                .expect("Failed running auto"),
+            Auto::TushPush1 => tush_push_1(Rc::clone(&ferris))
+                .await
+                .expect("Failed running auto"),
+            Auto::Right2 => right_2(Rc::clone(&ferris))
+                .await
+                .expect("Failed running auto"),
         }
     }
 }
 
 pub async fn wait<F>(mut condition: F)
-where F: FnMut() -> bool {
+where
+    F: FnMut() -> bool,
+{
     loop {
-        if condition() { return };
+        if condition() {
+            return;
+        };
         sleep(Duration::from_millis(20)).await;
     }
 }
@@ -130,7 +152,10 @@ pub async fn async_score(
                 drivetrain.update_limelight().await;
                 drivetrain.post_odo().await;
 
-                if drivetrain.lineup(lineup_side, elevator_position, dt, use_tag).await {
+                if drivetrain
+                    .lineup(lineup_side, elevator_position, dt, use_tag)
+                    .await
+                {
                     break;
                 }
 
@@ -147,7 +172,7 @@ pub async fn async_score(
         ElevatorPosition::L2 => L2_SPEED,
         ElevatorPosition::L3 => L3_SPEED,
         ElevatorPosition::L4 => L4_SPEED,
-        ElevatorPosition::L3Algae => L3_SPEED
+        ElevatorPosition::L3Algae => L3_SPEED,
     };
     indexer.set_speed(indexer_speed);
 
@@ -209,12 +234,11 @@ pub async fn blue_long(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::er
     let mut elevator = robot_ref.elevator.deref().borrow_mut();
     let mut indexer = robot_ref.indexer.deref().borrow_mut();
 
-    drivetrain.reset_heading_offset(
-        if alliance_station().red() {
-            Angle::new::<degree>(180.)
-        } else {
-            Angle::new::<degree>(0.)
-        });
+    drivetrain.reset_heading_offset(if alliance_station().red() {
+        Angle::new::<degree>(180.)
+    } else {
+        Angle::new::<degree>(0.)
+    });
 
     drivetrain.odometry.set(Vector2::new(
         Length::new::<meter>(7.5),
@@ -233,12 +257,11 @@ pub async fn blue_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::error
     let mut elevator = robot_ref.elevator.deref().borrow_mut();
     let mut indexer = robot_ref.indexer.deref().borrow_mut();
 
-    drivetrain.reset_heading_offset(
-        if alliance_station().red() {
-            Angle::new::<degree>(0.)
-        } else {
-            Angle::new::<degree>(180.)
-        });
+    drivetrain.reset_heading_offset(if alliance_station().red() {
+        Angle::new::<degree>(0.)
+    } else {
+        Angle::new::<degree>(180.)
+    });
     drivetrain.odometry.set(Vector2::new(
         Length::new::<meter>(7.215517520904541),
         Length::new::<meter>(5.439107418060303),
@@ -256,7 +279,8 @@ pub async fn blue_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::error
 
             sleep(Duration::from_millis(20)).await;
         }
-    }).await;
+    })
+    .await;
 
     async_score(
         &mut drivetrain,
@@ -265,7 +289,11 @@ pub async fn blue_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::error
         &mut indexer,
         ElevatorPosition::L4,
         robot_ref.dt,
-        if alliance_station().red() {Some(6)} else { Some(19)}
+        if alliance_station().red() {
+            Some(6)
+        } else {
+            Some(19)
+        },
     )
     .await;
 
@@ -291,7 +319,8 @@ pub async fn blue_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::error
             drivetrain.update_limelight().await;
             sleep(Duration::from_millis(20)).await;
         }
-    }).await;
+    })
+    .await;
 
     async_score(
         &mut drivetrain,
@@ -300,7 +329,11 @@ pub async fn blue_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::error
         &mut indexer,
         ElevatorPosition::L4,
         robot_ref.dt,
-        if alliance_station().red() {Some(6)} else { Some(19)}
+        if alliance_station().red() {
+            Some(6)
+        } else {
+            Some(19)
+        },
     )
     .await;
 
@@ -335,24 +368,22 @@ async fn blue_mid_left_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::
 
     drivetrain.odometry.set_abs(Vector2::new(
         Length::new::<meter>(7.2230658531188965),
-        Length::new::<meter>(5.444962978363037)
+        Length::new::<meter>(5.444962978363037),
     ));
 
-    join!(
-        drive("BlueHighMid2", &mut drivetrain, 1),
-        async {
-            sleep(Duration::from_secs_f64(0.5)).await;
-            elevator.set_target(ElevatorPosition::L4);
-            elevator.run_to_target_trapezoid();
-        }
-    );
+    join!(drive("BlueHighMid2", &mut drivetrain, 1), async {
+        sleep(Duration::from_secs_f64(0.5)).await;
+        elevator.set_target(ElevatorPosition::L4);
+        elevator.run_to_target_trapezoid();
+    });
 
     let _ = timeout(Duration::from_secs_f64(0.5), async {
         loop {
             drivetrain.update_limelight().await;
             sleep(Duration::from_millis(20)).await;
         }
-    }).await;
+    })
+    .await;
 
     async_score(
         &mut drivetrain,
@@ -362,7 +393,8 @@ async fn blue_mid_left_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::
         ElevatorPosition::L4,
         robot_ref.dt,
         None,
-    ).await;
+    )
+    .await;
 
     join!(drive("BlueHighMid2", &mut drivetrain, 3), async {
         elevator.set_target(ElevatorPosition::Bottom);
@@ -386,7 +418,8 @@ async fn blue_mid_left_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::
             drivetrain.update_limelight().await;
             sleep(Duration::from_millis(20)).await;
         }
-    }).await;
+    })
+    .await;
 
     async_score(
         &mut drivetrain,
@@ -397,7 +430,7 @@ async fn blue_mid_left_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::
         robot_ref.dt,
         None,
     )
-        .await;
+    .await;
 
     Ok(())
 }
@@ -408,16 +441,15 @@ async fn tush_push_1(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::erro
     let mut elevator = robot.elevator.deref().borrow_mut();
     let mut indexer = robot.indexer.deref().borrow_mut();
 
-    drivetrain.reset_heading_offset(
-        if alliance_station().red() {
-            Angle::new::<degree>(-90.)
-        } else {
-            Angle::new::<degree>(90.)
-        });
+    drivetrain.reset_heading_offset(if alliance_station().red() {
+        Angle::new::<degree>(-90.)
+    } else {
+        Angle::new::<degree>(90.)
+    });
 
     drivetrain.odometry.set(Vector2::new(
         Length::new::<meter>(7.16530704498291),
-        Length::new::<meter>(4.919252395629883)
+        Length::new::<meter>(4.919252395629883),
     ));
 
     drive("TushPush1", &mut drivetrain, 1).await?;
@@ -434,20 +466,29 @@ async fn tush_push_1(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::erro
 
             sleep(Duration::from_millis(20)).await;
         }
-    }).await;
+    })
+    .await;
 
     elevator.set_target(ElevatorPosition::L4);
 
     join!(
-         timeout(Duration::from_secs_f64(2.), async {
+        timeout(Duration::from_secs_f64(2.), async {
             loop {
                 drivetrain.update_limelight().await;
                 drivetrain.post_odo().await;
 
-                if drivetrain.lineup(LineupSide::Right,
-                    ElevatorPosition::L4,
-                    robot.dt,
-                    if alliance_station().red() {Some(10)} else { Some(21)}).await
+                if drivetrain
+                    .lineup(
+                        LineupSide::Right,
+                        ElevatorPosition::L4,
+                        robot.dt,
+                        if alliance_station().red() {
+                            Some(10)
+                        } else {
+                            Some(21)
+                        },
+                    )
+                    .await
                 {
                     break;
                 }
@@ -459,7 +500,7 @@ async fn tush_push_1(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::erro
     );
 
     drivetrain.stop();
-    
+
     indexer.set_speed(-0.4);
 
     wait(|| !indexer.is_laser_tripped()).await;
@@ -476,12 +517,11 @@ pub async fn right_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::erro
     let mut elevator = robot_ref.elevator.deref().borrow_mut();
     let mut indexer = robot_ref.indexer.deref().borrow_mut();
 
-    drivetrain.reset_heading_offset(
-        if alliance_station().red() {
-            Angle::new::<degree>(180.)
-        } else {
-            Angle::new::<degree>(0.)
-        });
+    drivetrain.reset_heading_offset(if alliance_station().red() {
+        Angle::new::<degree>(180.)
+    } else {
+        Angle::new::<degree>(0.)
+    });
     drivetrain.odometry.set(Vector2::new(
         Length::new::<meter>(7.18402099609375),
         Length::new::<meter>(2.696911096572876),
@@ -499,7 +539,8 @@ pub async fn right_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::erro
 
             sleep(Duration::from_millis(20)).await;
         }
-    }).await;
+    })
+    .await;
 
     async_score(
         &mut drivetrain,
@@ -508,9 +549,13 @@ pub async fn right_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::erro
         &mut indexer,
         ElevatorPosition::L4,
         robot_ref.dt,
-        if alliance_station().red() {Some(8)} else { Some(17)}
+        if alliance_station().red() {
+            Some(8)
+        } else {
+            Some(17)
+        },
     )
-        .await;
+    .await;
 
     join!(drive("Right2", &mut drivetrain, 3), async {
         elevator.set_target(ElevatorPosition::Bottom);
@@ -534,7 +579,8 @@ pub async fn right_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::erro
             drivetrain.update_limelight().await;
             sleep(Duration::from_millis(20)).await;
         }
-    }).await;
+    })
+    .await;
 
     async_score(
         &mut drivetrain,
@@ -543,9 +589,13 @@ pub async fn right_2(robot: Rc<RefCell<Ferris>>) -> Result<(), Box<dyn std::erro
         &mut indexer,
         ElevatorPosition::L4,
         robot_ref.dt,
-        if alliance_station().red() {Some(8)} else { Some(17)}
+        if alliance_station().red() {
+            Some(8)
+        } else {
+            Some(17)
+        },
     )
-        .await;
+    .await;
 
     Ok(())
 }
