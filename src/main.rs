@@ -1,27 +1,29 @@
 #![warn(non_snake_case)]
 
+use frcrs::input::{RobotMode, RobotState};
+use frcrs::networktables::{NetworkTable, SmartDashboard};
+use frcrs::telemetry::Telemetry;
+use frcrs::{init_hal, observe_user_program_starting, refresh_data, Robot};
 use std::cell::RefCell;
 use std::ops::Deref;
 use std::process::exit;
 use std::rc::Rc;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use std::time::SystemTime;
-use tokio::time::{Duration, Instant};
-use frcrs::{init_hal, observe_user_program_starting, refresh_data, Robot};
-use frcrs::input::{RobotMode, RobotState};
-use frcrs::networktables::{NetworkTable, SmartDashboard};
-use frcrs::telemetry::Telemetry;
 use tokio::task;
-use tokio::task::{AbortHandle, spawn_local};
+use tokio::task::{spawn_local, AbortHandle};
 use tokio::time::sleep;
-use RobotCode2025::constants::joystick_map::{CLIMB, CLIMB_FALL, INTAKE, LINEUP_LEFT, LINEUP_RIGHT, SCORE_L2, SCORE_L3, SCORE_L4, WHEELS_ZERO};
-use RobotCode2025::container::control_drivetrain;
-use RobotCode2025::{constants, Ferris, score, TeleopState};
+use tokio::time::{Duration, Instant};
 use RobotCode2025::auto::Auto;
 use RobotCode2025::constants::climber::{CLIMB_SPEED, FALL_SPEED};
 use RobotCode2025::constants::indexer::{INTAKE_SPEED, L3_SPEED};
+use RobotCode2025::constants::joystick_map::{
+    CLIMB, CLIMB_FALL, INTAKE, LINEUP_LEFT, LINEUP_RIGHT, SCORE_L2, SCORE_L3, SCORE_L4, WHEELS_ZERO,
+};
+use RobotCode2025::container::control_drivetrain;
 use RobotCode2025::subsystems::{Climber, ElevatorPosition, LineupSide};
+use RobotCode2025::{constants, score, Ferris, TeleopState};
 
 fn main() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
@@ -162,27 +164,30 @@ async fn teleop(robot: &mut Ferris) {
                 drivetrain.update_limelight().await;
                 drivetrain.post_odo().await;
 
-                let drivetrain_aligned = robot.debouncer.calculate(if robot.controllers.right_drive.get(LINEUP_LEFT) {
-                    drivetrain
-                        .lineup(LineupSide::Left, elevator.get_target(), robot.dt, None)
-                        .await
-                } else if robot.controllers.right_drive.get(LINEUP_RIGHT) {
-                    drivetrain
-                        .lineup(LineupSide::Right, elevator.get_target(), robot.dt, None)
-                        .await
-                } else if robot.controllers.operator.get(WHEELS_ZERO) {
-                    drivetrain.set_wheels_zero();
-                    false
-                } else {
-                    control_drivetrain(
-                        &mut drivetrain,
-                        &mut robot.controllers,
-                        drivetrain_state,
-                    )
-                        .await;
+                let drivetrain_aligned =
+                    robot
+                        .debouncer
+                        .calculate(if robot.controllers.right_drive.get(LINEUP_LEFT) {
+                            drivetrain
+                                .lineup(LineupSide::Left, elevator.get_target(), robot.dt, None)
+                                .await
+                        } else if robot.controllers.right_drive.get(LINEUP_RIGHT) {
+                            drivetrain
+                                .lineup(LineupSide::Right, elevator.get_target(), robot.dt, None)
+                                .await
+                        } else if robot.controllers.operator.get(WHEELS_ZERO) {
+                            drivetrain.set_wheels_zero();
+                            false
+                        } else {
+                            control_drivetrain(
+                                &mut drivetrain,
+                                &mut robot.controllers,
+                                drivetrain_state,
+                            )
+                            .await;
 
-                    false
-                });
+                            false
+                        });
 
                 if robot.controllers.right_drive.get_pov() != -1 {
                     indexer.set_speed(-0.5);
@@ -216,8 +221,7 @@ async fn teleop(robot: &mut Ferris) {
                     elevator.set_target(ElevatorPosition::Bottom);
                     elevator.run_to_target_trapezoid();
 
-                    if !indexer.is_laser_tripped()
-                    {
+                    if !indexer.is_laser_tripped() {
                         indexer.set_speed(INTAKE_SPEED);
                     } else {
                         indexer.stop();

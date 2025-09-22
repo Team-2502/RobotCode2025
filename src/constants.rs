@@ -5,7 +5,7 @@ pub const FPS_LIMIT: f64 = 250.;
 
 pub mod robotmap {
     pub mod swerve {
-        pub const PIGEON: i32 = 9;
+        pub const GYRO: i32 = 9;
 
         pub const FR_DRIVE: i32 = 1;
         pub const FR_TURN: i32 = 2;
@@ -23,8 +23,8 @@ pub mod robotmap {
         pub const BR_TURN: i32 = 8;
         pub const BR_ENCODER: i32 = 16;
 
-        pub const RIGHT_LINEUP_LASER:i32 = 18;
-        pub const LEFT_LINEUP_LASER:i32 = 19;
+        pub const RIGHT_LINEUP_LASER: i32 = 18;
+        pub const LEFT_LINEUP_LASER: i32 = 19;
     }
 
     pub mod elevator {
@@ -44,7 +44,7 @@ pub mod robotmap {
 
     pub mod led {
         pub const PORT: i32 = 1;
-        pub const COUNT: i32 = 0;
+        pub const COUNT: i32 = 10;
     }
 }
 
@@ -73,7 +73,7 @@ pub mod drivetrain {
     pub const BR_OFFSET_DEGREES: f64 = -0.056641 * 360.;
     pub const BL_OFFSET_DEGREES: f64 = 0.170898 * 360.;
 
-    pub const PIGEON_OFFSET: f64 = -0.4;
+    pub const GYRO_OFFSET: f64 = -0.4;
 
     pub const SWERVE_TURN_KP: f64 = 0.6;
 
@@ -141,6 +141,7 @@ pub mod indexer {
 pub mod climber {
     pub const CLIMB_SPEED: f64 = 0.5;
     pub const FALL_SPEED: f64 = -0.3;
+    pub const CLIMBER_CURRENT_THRESHOLD: f64 = 1.;
 }
 pub mod joystick_map {
     // Joystick IDs (set in driver station)

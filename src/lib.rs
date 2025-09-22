@@ -6,8 +6,14 @@ pub mod swerve;
 
 use crate::auto::Auto;
 use crate::constants::elevator;
+use crate::constants::elevator::L3_ALGAE;
+use crate::constants::indexer::{BOTTOM_SPEED, L2_SPEED, L3_SPEED, L4_SPEED};
 use crate::container::control_drivetrain;
-use crate::subsystems::{Climber, DebounceType, Debouncer, Drivetrain, DrivetrainControlState, Elevator, ElevatorPosition, Indexer, LineupSide, Vision};
+use crate::subsystems::{
+    Climber, DebounceType, Debouncer, Drivetrain, DrivetrainControlState, Elevator,
+    ElevatorPosition, Indexer, LineupSide, Vision,
+};
+use axum::response::IntoResponse;
 use constants::joystick_map::*;
 use frcrs::ctre::ControlMode;
 use frcrs::input::Joystick;
@@ -21,14 +27,11 @@ use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::time::Instant;
-use axum::response::IntoResponse;
 use tokio::runtime::Handle;
 use tokio::task::{spawn_local, AbortHandle};
 use tokio::time::sleep;
+use tokio::time::Instant;
 use uom::si::angle::degree;
-use crate::constants::elevator::L3_ALGAE;
-use crate::constants::indexer::{BOTTOM_SPEED, L2_SPEED, L3_SPEED, L4_SPEED};
 
 #[derive(Clone)]
 pub struct Controllers {
@@ -60,7 +63,7 @@ pub struct Ferris {
     pub climb_handle: Option<AbortHandle>,
 
     pub dt: Duration,
-    
+
     pub debouncer: Debouncer,
 }
 
@@ -92,7 +95,7 @@ impl Ferris {
             climb_handle: None,
 
             dt: Duration::from_millis(0),
-            
+
             debouncer: Debouncer::new(Duration::from_secs_f64(0.25), DebounceType::RISING),
         }
     }
