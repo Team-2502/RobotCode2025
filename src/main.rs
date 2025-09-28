@@ -25,7 +25,6 @@ use RobotCode2025::container::control_drivetrain;
 use RobotCode2025::subsystems::{Climber, ElevatorPosition, LineupSide, Odometry};
 use RobotCode2025::{constants, score, Ferris, TeleopState};
 
-
 fn main() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let local = task::LocalSet::new();
@@ -166,9 +165,7 @@ async fn teleop(robot: &mut Ferris) {
                 let (x, y) = drivetrain.update_localization();
                 Telemetry::put_number("loc_x", x).await;
                 Telemetry::put_number("loc_y", y).await;
-            }
-            else {
-                
+            } else {
             }
         }
 

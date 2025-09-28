@@ -10,7 +10,6 @@ pub use drivetrain::*;
 pub use elevator::*;
 pub use indexer::*;
 pub use vision::*;
-use crate::auto::Auto;
 
 pub enum Odometry {
     Localized,
@@ -27,10 +26,7 @@ impl Odometry {
     }
 
     pub fn iterator() -> Vec<Self> {
-        vec![
-            Odometry::Localized,
-            Odometry::Normal,
-        ]
+        vec![Odometry::Localized, Odometry::Normal]
     }
     pub fn names() -> Vec<String> {
         Self::iterator()
@@ -38,5 +34,4 @@ impl Odometry {
             .map(|a| a.name().to_owned())
             .collect()
     }
-
 }

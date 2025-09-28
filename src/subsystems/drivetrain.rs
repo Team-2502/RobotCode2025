@@ -951,7 +951,7 @@ impl Drivetrain {
             (0.0, 0.0)
         }
     }
-    
+
     pub fn get_localization_estimate(&self) -> Option<PoseEstimate> {
         if self.has_initialized {
             Some(self.odometry.robot_pose_estimate.clone())
@@ -994,8 +994,6 @@ pub fn calculate_relative_target(current: f64, target: f64) -> f64 {
     } else {
         target_relative
     }
-
-
 }
 
 #[cfg(test)]
