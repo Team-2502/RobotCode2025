@@ -8,7 +8,7 @@ use std::time::Duration;
 use tokio::time::sleep;
 
 pub struct Climber {
-    motor: Talon,
+    pub motor: Talon,
 }
 
 impl Default for Climber {

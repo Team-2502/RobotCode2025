@@ -404,6 +404,11 @@ impl Odometry {
             figure_of_merit: Length::new::<meter>(min_sensor_fom_meters),
         }
     }
+
+    pub fn reset_pose(&mut self, new_position: Vector2<Length>) {
+        self.robot_pose_estimate.position = new_position;
+        self.robot_pose_estimate.figure_of_merit = Length::new::<meter>(0.0);
+    }
 }
 #[cfg(test)]
 mod tests {

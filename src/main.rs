@@ -22,8 +22,9 @@ use RobotCode2025::constants::joystick_map::{
     CLIMB, CLIMB_FALL, INTAKE, LINEUP_LEFT, LINEUP_RIGHT, SCORE_L2, SCORE_L3, SCORE_L4, WHEELS_ZERO,
 };
 use RobotCode2025::container::control_drivetrain;
-use RobotCode2025::subsystems::{Climber, ElevatorPosition, LineupSide};
+use RobotCode2025::subsystems::{Climber, ElevatorPosition, LineupSide, Odometry};
 use RobotCode2025::{constants, score, Ferris, TeleopState};
+
 
 fn main() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
@@ -44,6 +45,7 @@ fn main() {
         NetworkTable::init();
 
         Telemetry::put_selector("auto chooser", Auto::names()).await;
+        Telemetry::put_selector("odo chooser", Odometry::names()).await;
 
         // SmartDashboard::start_camera_server();
 
@@ -159,6 +161,17 @@ async fn teleop(robot: &mut Ferris) {
     } = *robot.teleop_state.deref().borrow_mut();
 
     if let Ok(mut drivetrain) = robot.drivetrain.try_borrow_mut() {
+        if let Some(selected_odo) = Telemetry::get_selection("odo chooser").await {
+            if selected_odo == "localized" {
+                let (x, y) = drivetrain.update_localization();
+                Telemetry::put_number("loc_x", x).await;
+                Telemetry::put_number("loc_y", y).await;
+            }
+            else {
+                
+            }
+        }
+
         if let Ok(mut elevator) = robot.elevator.try_borrow_mut() {
             if let Ok(mut indexer) = robot.indexer.try_borrow_mut() {
                 drivetrain.update_limelight().await;
@@ -246,5 +259,6 @@ async fn teleop(robot: &mut Ferris) {
         } else {
             climber.set(0.);
         }
+        Telemetry::put_number("climber_current", climber.motor.get_current()).await;
     }
 }

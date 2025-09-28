@@ -18,7 +18,7 @@ use crate::constants::drivetrain::{
 };
 use crate::constants::robotmap::swerve::*;
 use crate::swerve::kinematics::{ModuleState, Swerve};
-use crate::swerve::odometry::{ModuleReturn, Odometry};
+use crate::swerve::odometry::{ModuleReturn, Odometry, PoseEstimate};
 use frcrs::ctre::{talon_encoder_tick, CanCoder, CanRange, ControlMode, Talon};
 use frcrs::redux::CanAndGyro;
 
@@ -150,6 +150,8 @@ pub struct Drivetrain {
     abs_offsets: [Angle; 4],
 
     lineup_locations: HashMap<i32, LineupLocation>,
+
+    has_initialized: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -214,6 +216,8 @@ impl Drivetrain {
 
         let mut lineup_locations = HashMap::new();
 
+        let mut has_initialized = false;
+
         /// default is:
         // side_distance: Length::new::<inch>(13. / 2.),
         // forward_distance: Length::new::<inch>(16.275),
@@ -261,6 +265,8 @@ impl Drivetrain {
             abs_offsets,
 
             lineup_locations,
+
+            has_initialized,
         }
     }
 
@@ -931,6 +937,28 @@ impl Drivetrain {
     //         false
     //     }
     // }
+
+    pub fn update_localization(&mut self) -> (f64, f64) {
+        if let Some(tag_pose) = self.limelight.get_botpose_orb() {
+            self.odometry.reset_pose(tag_pose);
+            self.has_initialized = true;
+        }
+
+        if self.has_initialized {
+            let pose = self.odometry.robot_pose_estimate.get_position();
+            (pose.x.get::<meter>(), pose.y.get::<meter>())
+        } else {
+            (0.0, 0.0)
+        }
+    }
+    
+    pub fn get_localization_estimate(&self) -> Option<PoseEstimate> {
+        if self.has_initialized {
+            Some(self.odometry.robot_pose_estimate.clone())
+        } else {
+            None
+        }
+    }
 }
 
 fn quaternion_to_yaw(quaternion: Quaternion<f64>) -> f64 {
@@ -966,6 +994,8 @@ pub fn calculate_relative_target(current: f64, target: f64) -> f64 {
     } else {
         target_relative
     }
+
+
 }
 
 #[cfg(test)]

@@ -11,7 +11,7 @@ use crate::constants::indexer::{BOTTOM_SPEED, L2_SPEED, L3_SPEED, L4_SPEED};
 use crate::container::control_drivetrain;
 use crate::subsystems::{
     Climber, DebounceType, Debouncer, Drivetrain, DrivetrainControlState, Elevator,
-    ElevatorPosition, Indexer, LineupSide, Vision,
+    ElevatorPosition, Indexer, LineupSide,
 };
 use axum::response::IntoResponse;
 use constants::joystick_map::*;
