@@ -15,6 +15,7 @@ use tokio::task;
 use tokio::task::{spawn_local, AbortHandle};
 use tokio::time::sleep;
 use tokio::time::{Duration, Instant};
+use uom::si::angle::{degree, radian};
 use RobotCode2025::auto::Auto;
 use RobotCode2025::constants::climber::{CLIMB_SPEED, FALL_SPEED};
 use RobotCode2025::constants::indexer::{INTAKE_SPEED, L3_SPEED};
@@ -162,12 +163,14 @@ async fn teleop(robot: &mut Ferris) {
     if let Ok(mut drivetrain) = robot.drivetrain.try_borrow_mut() {
         if let Some(selected_odo) = Telemetry::get_selection("odo chooser").await {
             if selected_odo == "localized" {
-                let (x, y) = drivetrain.update_localization();
+                let (x, y, angle) = drivetrain.update_localization();
                 Telemetry::put_number("loc_x", x).await;
                 Telemetry::put_number("loc_y", y).await;
-            } else {
+                Telemetry::put_number("loc_angle", angle.get::<radian>()).await;
             }
         }
+
+        Telemetry::put_number("yaw_lime", drivetrain.limelight.get_yaw().get::<radian>()).await;
 
         if let Ok(mut elevator) = robot.elevator.try_borrow_mut() {
             if let Ok(mut indexer) = robot.indexer.try_borrow_mut() {

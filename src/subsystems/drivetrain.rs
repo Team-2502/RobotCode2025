@@ -150,8 +150,6 @@ pub struct Drivetrain {
     abs_offsets: [Angle; 4],
 
     lineup_locations: HashMap<i32, LineupLocation>,
-
-    has_initialized: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -216,8 +214,6 @@ impl Drivetrain {
 
         let mut lineup_locations = HashMap::new();
 
-        let mut has_initialized = false;
-
         /// default is:
         // side_distance: Length::new::<inch>(13. / 2.),
         // forward_distance: Length::new::<inch>(16.275),
@@ -265,8 +261,6 @@ impl Drivetrain {
             abs_offsets,
 
             lineup_locations,
-
-            has_initialized,
         }
     }
 
@@ -938,26 +932,34 @@ impl Drivetrain {
     //     }
     // }
 
-    pub fn update_localization(&mut self) -> (f64, f64) {
+    pub fn update_localization(&mut self) -> (f64, f64, Angle) {
         if let Some(tag_pose) = self.limelight.get_botpose_orb() {
             self.odometry.reset_pose(tag_pose);
-            self.has_initialized = true;
+            self.offset = self.limelight.get_yaw();
+            (tag_pose[0].get::<meter>(), tag_pose[1].get::<meter>(), self.limelight.get_yaw())
         }
-
-        if self.has_initialized {
+        else {
             let pose = self.odometry.robot_pose_estimate.get_position();
-            (pose.x.get::<meter>(), pose.y.get::<meter>())
-        } else {
-            (0.0, 0.0)
+            (pose.x.get::<meter>(), pose.y.get::<meter>(), self.get_offset_wrapped())
         }
     }
 
-    pub fn get_localization_estimate(&self) -> Option<PoseEstimate> {
-        if self.has_initialized {
-            Some(self.odometry.robot_pose_estimate.clone())
-        } else {
-            None
-        }
+    // pub fn update_localization_yaw(&mut self) -> Angle {
+    //     if let Some(angle) = self.limelight.get_yaw() {
+    //         self.offset = angle;
+    //         angle
+    //     }
+    //     else {
+    //         self.get_offset()
+    //     }
+    // }
+
+    // pub fn get_localization_estimate(&self) -> Option<PoseEstimate> {
+    //         Some(self.odometry.robot_pose_estimate.clone())
+    // }
+
+    pub fn get_yaw_(&self) -> Angle {
+        self.limelight.get_yaw()
     }
 }
 

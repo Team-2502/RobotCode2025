@@ -14,6 +14,7 @@ nalgebra = "0.32.3"
 #wpi-trajectory = { git = "https://github.com/Sha-dos/trajectory-rs" }
 #wpi-trajectory = { path = "../trajectory-rs" }
 axum = "0.7.4"
+radians = "0.3.1"
 # limelightlib-rust = { git = "https://github.com/LimelightVision/limelightlib-rust.git" }
 
 [deploy]

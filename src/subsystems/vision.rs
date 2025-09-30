@@ -23,6 +23,7 @@ use crate::swerve::odometry::PoseEstimate;
 use frcrs::alliance_station;
 use std::net::SocketAddr;
 use tokio::time::Instant;
+use uom::num_traits::real::Real;
 
 #[derive(Clone)]
 pub struct Vision {
@@ -308,5 +309,9 @@ impl Vision {
             Length::new::<meter>(self.results.botpose_wpiblue[0]),
             Length::new::<meter>(self.results.botpose_wpiblue[1]),
         )
+    }
+
+    pub fn get_yaw(&self) -> Angle {
+        Angle::new::<radian>(self.results.botpose_wpiblue[5])
     }
 }
