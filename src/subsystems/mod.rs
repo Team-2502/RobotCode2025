@@ -12,21 +12,21 @@ pub use indexer::*;
 pub use vision::*;
 
 pub enum Odometry {
-    Localized,
     Normal,
+    Localized,
 }
 
 impl Odometry {
     pub fn name(&self) -> &'static str {
         match self {
-            Odometry::Localized => "localized",
             Odometry::Normal => "normal",
+            Odometry::Localized => "localized",
             _ => "none",
         }
     }
 
     pub fn iterator() -> Vec<Self> {
-        vec![Odometry::Localized, Odometry::Normal]
+        vec![Odometry::Normal, Odometry::Localized]
     }
     pub fn names() -> Vec<String> {
         Self::iterator()
