@@ -935,7 +935,7 @@ impl Drivetrain {
     pub fn update_localization(&mut self) -> (f64, f64, Angle) {
         if let Some(tag_pose) = self.limelight.get_botpose_orb() {
             self.odometry.reset_pose(tag_pose);
-            self.offset = self.limelight.get_yaw();
+            self.offset = self.limelight.get_yaw() - self.get_angle();
             (tag_pose[0].get::<meter>(), tag_pose[1].get::<meter>(), self.limelight.get_yaw())
         }
         else {
