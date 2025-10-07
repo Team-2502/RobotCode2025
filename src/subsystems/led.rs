@@ -105,14 +105,22 @@ impl LedSubsystem {
     }
 
     async fn fom_leds(&self, led: &mut Led) {
-        let fom = self
+        let fom_raw = self
             .limelight
             .get_figure_of_merit()
-            .get::<uom::si::length::meter>() as f64
-            * 10.;
-        let fom_int = fom.round() as i32;
-        for i in (1..=robotmap::led::COUNT) {
-            led.set_rgb(i, 0, 255, 0);
+            .get::<uom::si::length::meter>();
+
+        let fom_scaled = (fom_raw * 10.0).clamp(1.0, 10.0);
+        let fom_int = fom_scaled.round() as i32;
+        let total_leds = robotmap::led::COUNT;
+        let leds_to_light = (fom_int * total_leds) / 10;
+
+        for i in 1..=total_leds {
+            if i <= leds_to_light {
+                led.set_rgb(i, 0, 255, 0);
+            } else {
+                led.set_rgb(i, 0, 0, 0);
+            }
         }
     }
 }
