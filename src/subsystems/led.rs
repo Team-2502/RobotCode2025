@@ -105,7 +105,11 @@ impl LedSubsystem {
     }
 
     async fn fom_leds(&self, led: &mut Led) {
-        let fom = self.limelight.get_figure_of_merit().get::<uom::si::length::meter>() as f64 * 10.;
+        let fom = self
+            .limelight
+            .get_figure_of_merit()
+            .get::<uom::si::length::meter>() as f64
+            * 10.;
         let fom_int = fom.round() as i32;
         for i in (1..=robotmap::led::COUNT) {
             led.set_rgb(i, 0, 255, 0);
