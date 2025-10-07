@@ -936,11 +936,18 @@ impl Drivetrain {
         if let Some(tag_pose) = self.limelight.get_botpose_orb() {
             self.odometry.reset_pose(tag_pose);
             self.offset = self.limelight.get_yaw() - self.get_angle();
-            (tag_pose[0].get::<meter>(), tag_pose[1].get::<meter>(), self.limelight.get_yaw())
-        }
-        else {
+            (
+                tag_pose[0].get::<meter>(),
+                tag_pose[1].get::<meter>(),
+                self.limelight.get_yaw(),
+            )
+        } else {
             let pose = self.odometry.robot_pose_estimate.get_position();
-            (pose.x.get::<meter>(), pose.y.get::<meter>(), self.get_offset_wrapped())
+            (
+                pose.x.get::<meter>(),
+                pose.y.get::<meter>(),
+                self.get_offset_wrapped(),
+            )
         }
     }
 

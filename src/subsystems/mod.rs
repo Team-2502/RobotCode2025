@@ -9,6 +9,7 @@ pub use climber::*;
 pub use drivetrain::*;
 pub use elevator::*;
 pub use indexer::*;
+pub use led::*;
 pub use vision::*;
 
 pub enum Odometry {

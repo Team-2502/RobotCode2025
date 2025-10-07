@@ -11,7 +11,7 @@ use crate::constants::indexer::{BOTTOM_SPEED, L2_SPEED, L3_SPEED, L4_SPEED};
 use crate::container::control_drivetrain;
 use crate::subsystems::{
     Climber, DebounceType, Debouncer, Drivetrain, DrivetrainControlState, Elevator,
-    ElevatorPosition, Indexer, LineupSide,
+    ElevatorPosition, Indexer, LedStatus, LedSubsystem, LineupSide,
 };
 use axum::response::IntoResponse;
 use constants::joystick_map::*;
@@ -65,6 +65,8 @@ pub struct Ferris {
     pub dt: Duration,
 
     pub debouncer: Debouncer,
+
+    pub leds: Rc<RefCell<LedSubsystem>>,
 }
 
 impl Default for Ferris {
@@ -97,6 +99,8 @@ impl Ferris {
             dt: Duration::from_millis(0),
 
             debouncer: Debouncer::new(Duration::from_secs_f64(0.25), DebounceType::RISING),
+
+            leds: Rc::new(RefCell::new(LedSubsystem::init())),
         }
     }
 
@@ -337,6 +341,7 @@ pub fn score(
     elevator: &mut Elevator,
     indexer: &mut Indexer,
     elevator_position: ElevatorPosition,
+    robot: &Ferris,
 ) {
     // println!("dt_aligned: {}", drivetrain_aligned);
     elevator.set_target(elevator_position);
@@ -351,6 +356,11 @@ pub fn score(
                 ElevatorPosition::L4 => L4_SPEED,
                 ElevatorPosition::L3Algae => L3_SPEED,
             };
+
+            if let Ok(mut leds) = robot.leds.try_borrow_mut() {
+                leds.set_state(LedStatus::LinedUp)
+            }
+
             indexer.set_speed(indexer_speed);
         } else {
             indexer.stop();
