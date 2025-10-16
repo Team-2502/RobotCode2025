@@ -24,10 +24,11 @@ use frcrs::redux::CanAndGyro;
 
 use frcrs::telemetry::Telemetry;
 use nalgebra::{Quaternion, Rotation2, Vector2};
+use radians::Radians;
 use serde::Deserialize;
 use serde::Serialize;
 use tokio::time::{timeout, Instant};
-
+use uom::num_traits::real::Real;
 use crate::constants;
 use crate::constants::vision::ROBOT_CENTER_TO_LIMELIGHT_UPPER_INCHES;
 use crate::subsystems::{ElevatorPosition, Vision};
@@ -511,8 +512,8 @@ impl Drivetrain {
             SwerveControlStyle::RobotOriented => {}
         }
 
-        println!("x: {}", transform.x);
-        println!("y: {}", transform.y);
+        // println!("x: {}", transform.x);
+        // println!("y: {}", transform.y);
         let wheel_speeds = self.kinematics.calculate(transform, rot);
 
         let measured = self.get_speeds();
@@ -626,6 +627,10 @@ impl Drivetrain {
         Angle::new::<revolution>(self.gyro.get_angle() + GYRO_OFFSET)
     }
 
+    // pub fn get_angle_raw(&self) -> Angle {
+    //     Angle::new::<radian>(self.gyro.get_angle())
+    // }
+
     pub fn get_offset(&self) -> Angle {
         let mut difference = (self.get_angle() - self.offset).get::<degree>();
 
@@ -644,7 +649,7 @@ impl Drivetrain {
     }
 
     // pub fn reset_angle(&self) {
-    //     self.gyro.reset();
+    //     self.gyro.set_angle(0.0, 1.0);
     // }
 
     pub fn reset_heading(&mut self) {
@@ -714,13 +719,15 @@ impl Drivetrain {
             Telemetry::put_number("target_x", target.position.x).await;
             Telemetry::put_number("target_y", target.position.y).await;
             Telemetry::put_number("target_angle", target.angle.get::<radian>()).await;
-            if error_position.magnitude().abs() < 0.015 && error_angle.abs() < 0.015 {
+            if error_position.magnitude().abs() < 0.02 && error_angle.abs() < 0.02 {
                 self.stop();
                 // self.set_speeds(0., 0.1, 0., SwerveControlStyle::RobotOriented);
-                // println!("dt at position");
+                println!("dt at position");
                 true
             } else {
-                // println!("dt not at position");
+                println!("dt not at position");
+                println!("err pos: {}", error_position.magnitude().abs());
+                println!("err angle: {}", error_angle.abs());
                 self.set_speeds(
                     speed.x,
                     speed.y,
@@ -935,7 +942,11 @@ impl Drivetrain {
     pub fn update_localization(&mut self) -> (f64, f64, Angle) {
         if let Some(tag_pose) = self.limelight.get_botpose_orb() {
             self.odometry.reset_pose(tag_pose);
-            self.offset = self.limelight.get_yaw() - self.get_angle();
+            self.offset = self.limelight.get_yaw(); //- self.get_angle();
+            if alliance_station().red() {
+                self.offset += Angle::new::<radian>(PI);
+            }
+            self.offset -= Angle::new::<radian>(PI/2.);
             (
                 tag_pose[0].get::<meter>(),
                 tag_pose[1].get::<meter>(),

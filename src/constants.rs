@@ -43,7 +43,7 @@ pub mod robotmap {
     }
 
     pub mod led {
-        pub const PORT: i32 = 1;
+        pub const PORT: i32 = 9;
         pub const COUNT: i32 = 10;
     }
 }

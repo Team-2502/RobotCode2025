@@ -39,7 +39,7 @@ impl LedSubsystem {
             led,
             handle: None,
             current_state: LedStatus::Disabled,
-            limelight: limelight,
+            limelight,
         }
     }
 

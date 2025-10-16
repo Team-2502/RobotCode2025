@@ -65,8 +65,6 @@ pub struct Ferris {
     pub dt: Duration,
 
     pub debouncer: Debouncer,
-
-    pub leds: Rc<RefCell<LedSubsystem>>,
 }
 
 impl Default for Ferris {
@@ -99,8 +97,6 @@ impl Ferris {
             dt: Duration::from_millis(0),
 
             debouncer: Debouncer::new(Duration::from_secs_f64(0.25), DebounceType::RISING),
-
-            leds: Rc::new(RefCell::new(LedSubsystem::init())),
         }
     }
 
@@ -348,6 +344,7 @@ pub fn score(
     let elevator_at_target = elevator.run_to_target_trapezoid();
 
     if elevator_at_target && drivetrain_aligned {
+        println!("laser {}", indexer.is_laser_tripped());
         if indexer.is_laser_tripped() {
             let indexer_speed = match elevator_position {
                 ElevatorPosition::Bottom => BOTTOM_SPEED,
@@ -356,10 +353,6 @@ pub fn score(
                 ElevatorPosition::L4 => L4_SPEED,
                 ElevatorPosition::L3Algae => L3_SPEED,
             };
-
-            if let Ok(mut leds) = robot.leds.try_borrow_mut() {
-                leds.set_state(LedStatus::LinedUp)
-            }
 
             indexer.set_speed(indexer_speed);
         } else {

@@ -45,6 +45,10 @@ fn main() {
 
         NetworkTable::init();
 
+        // let table = NetworkTable::get_table("test");
+        // let number_entry = table.get_entry("number");
+        // number_entry.set_float(42.0);
+
         SmartDashboard::start_camera_server();
 
         Telemetry::put_selector("auto chooser", Auto::names()).await;
@@ -75,7 +79,7 @@ fn main() {
                         ferris.stop();
                     } else {
                         println!("FAILED TO GET FERRIS TO STOP");
-                        // exit(1);
+                        //exit(1);
                     }
                     println!("Watchdog triggered: Motors stopped");
                 }
@@ -99,11 +103,7 @@ fn main() {
                 } else {
                     println!("Didnt borrow ferris");
                 }
-                if let Ok(mut robot) = ferris.try_borrow_mut() {
-                    if let Ok(mut leds) = robot.leds.try_borrow_mut() {
-                        leds.set_state(LedStatus::Disabled)
-                    }
-                }
+
             }
 
             if state.enabled() && state.teleop() {
@@ -167,109 +167,114 @@ async fn teleop(robot: &mut Ferris) {
     } = *robot.teleop_state.deref().borrow_mut();
 
     if let Ok(mut drivetrain) = robot.drivetrain.try_borrow_mut() {
-        if let Ok(mut leds) = robot.leds.try_borrow_mut() {
-            if let Some(selected_odo) = Telemetry::get_selection("odo chooser").await {
-                if selected_odo == "localized" {
-                    let (x, y, angle) = drivetrain.update_localization();
-                    Telemetry::put_number("loc_x", x).await;
-                    Telemetry::put_number("loc_y", y).await;
-                    Telemetry::put_number("loc_angle", angle.get::<radian>()).await;
-                }
+        if let Some(selected_odo) = Telemetry::get_selection("odo chooser").await {
+            if selected_odo == "localized" {
+                    // let (x, y, angle) = drivetrain.update_localization();
+                    // Telemetry::put_number("loc_x", x).await;
+                    // Telemetry::put_number("loc_y", y).await;
+                    // Telemetry::put_number("loc_angle", angle.get::<radian>()).await;
             }
+        }
 
-            Telemetry::put_number("yaw_lime", drivetrain.limelight.get_yaw().get::<radian>()).await;
+        Telemetry::put_number("yaw_lime", drivetrain.limelight.get_yaw().get::<radian>()).await;
 
-            if let Ok(mut elevator) = robot.elevator.try_borrow_mut() {
-                if let Ok(mut indexer) = robot.indexer.try_borrow_mut() {
-                    drivetrain.update_limelight().await;
-                    drivetrain.post_odo().await;
+        if let Ok(mut elevator) = robot.elevator.try_borrow_mut() {
+            if let Ok(mut indexer) = robot.indexer.try_borrow_mut() {
+                drivetrain.update_limelight().await;
+                drivetrain.post_odo().await;
 
-                    let drivetrain_aligned = robot.debouncer.calculate(
-                        if robot.controllers.right_drive.get(LINEUP_LEFT) {
-                            drivetrain
-                                .lineup(LineupSide::Left, elevator.get_target(), robot.dt, None)
-                                .await
-                        } else if robot.controllers.right_drive.get(LINEUP_RIGHT) {
-                            drivetrain
-                                .lineup(LineupSide::Right, elevator.get_target(), robot.dt, None)
-                                .await
-                        } else if robot.controllers.operator.get(WHEELS_ZERO) {
-                            drivetrain.set_wheels_zero();
-                            false
-                        } else {
-                            control_drivetrain(
-                                &mut drivetrain,
-                                &mut robot.controllers,
-                                drivetrain_state,
-                            )
-                            .await;
-
-                            false
-                        },
-                    );
-
-                    if robot.controllers.right_drive.get_pov() != -1 {
-                        indexer.set_speed(-0.5);
-                    } else if robot.controllers.left_drive.get_pov() != -1 {
-                        elevator.set_target(ElevatorPosition::L3Algae);
-                        elevator.run_to_target_trapezoid();
-
-                        indexer.set_speed(L3_SPEED);
-                    } else if robot.controllers.left_drive.get(SCORE_L2) {
-                        score(
-                            drivetrain_aligned,
-                            &mut elevator,
-                            &mut indexer,
-                            ElevatorPosition::L2,
-                            robot,
-                        )
-                    } else if robot.controllers.left_drive.get(SCORE_L3) {
-                        score(
-                            drivetrain_aligned,
-                            &mut elevator,
-                            &mut indexer,
-                            ElevatorPosition::L3,
-                            robot,
-                        )
-                    } else if robot.controllers.left_drive.get(SCORE_L4) {
-                        score(
-                            drivetrain_aligned,
-                            &mut elevator,
-                            &mut indexer,
-                            ElevatorPosition::L4,
-                            robot,
-                        )
-                    } else if robot.controllers.right_drive.get(INTAKE) {
-                        elevator.set_target(ElevatorPosition::Bottom);
-                        elevator.run_to_target_trapezoid();
-
-                        if !indexer.is_laser_tripped() {
-                            indexer.set_speed(INTAKE_SPEED);
-                        } else {
-                            indexer.stop();
-                            leds.set_state(LedStatus::GotCoral)
-                        }
-                    } else if robot.controllers.left_drive.get(14) {
-                        elevator.set_speed(1.);
-                    } else if robot.controllers.left_drive.get(15) {
-                        elevator.set_speed(-1.)
+                let drivetrain_aligned = robot.debouncer.calculate(
+                    if robot.controllers.right_drive.get(LINEUP_LEFT) {
+                        drivetrain
+                            .lineup(LineupSide::Left, elevator.get_target(), robot.dt, None)
+                            .await
+                    } else if robot.controllers.right_drive.get(LINEUP_RIGHT) {
+                        drivetrain
+                            .lineup(LineupSide::Right, elevator.get_target(), robot.dt, None)
+                            .await
+                    } else if robot.controllers.operator.get(WHEELS_ZERO) {
+                        drivetrain.set_wheels_zero();
+                        false
                     } else {
-                        elevator.stop();
+                        control_drivetrain(
+                            &mut drivetrain,
+                            &mut robot.controllers,
+                            drivetrain_state,
+                        ).await;
+
+                        false
+                    },
+                );
+
+                if robot.controllers.right_drive.get_pov() != -1 {
+                    indexer.set_speed(-0.5);
+                } else if robot.controllers.left_drive.get_pov() != -1 {
+                    elevator.set_target(ElevatorPosition::L3Algae);
+                    elevator.run_to_target_trapezoid();
+
+                    indexer.set_speed(L3_SPEED);
+                } else if robot.controllers.left_drive.get(SCORE_L2) {
+                    score(
+                        drivetrain_aligned,
+                        &mut elevator,
+                        &mut indexer,
+                        ElevatorPosition::L2,
+                        robot,
+                    )
+                } else if robot.controllers.left_drive.get(SCORE_L3) {
+                    score(
+                        drivetrain_aligned,
+                        &mut elevator,
+                        &mut indexer,
+                        ElevatorPosition::L3,
+                        robot,
+                    )
+                } else if robot.controllers.left_drive.get(SCORE_L4) {
+                    score(
+                        drivetrain_aligned,
+                        &mut elevator,
+                        &mut indexer,
+                        ElevatorPosition::L4,
+                        robot,
+                    )
+                } else if robot.controllers.right_drive.get(INTAKE) {
+                    elevator.set_target(ElevatorPosition::Bottom);
+                    elevator.run_to_target_trapezoid();
+
+                    if !indexer.is_laser_tripped() {
+                        indexer.set_speed(INTAKE_SPEED);
+                    } else {
                         indexer.stop();
                     }
+                } else if robot.controllers.left_drive.get(14) {
+                    elevator.set_speed(1.);
+                } else if robot.controllers.left_drive.get(15) {
+                    elevator.set_speed(-1.)
+                } else {
+                    elevator.stop();
+                    indexer.stop();
                 }
             }
         }
 
-        if let Ok(climber) = robot.climber.try_borrow_mut() {
-            if robot.controllers.right_drive.get(CLIMB) {
-                climber.climb();
-            } else if robot.controllers.right_drive.get(CLIMB_FALL) {
-                climber.set(FALL_SPEED);
-            } else {
-                climber.set(0.);
-            }
-            Telemetry::put_number("climber_current", climber.motor.get_current()).await;
-        }
+
+        // Climber
+
+        // if let Ok(climber) = robot.climber.try_borrow_mut() {
+        //     if robot.controllers.right_drive.get(CLIMB) {
+        //         climber.climb();
+        //     } else if robot.controllers.right_drive.get(CLIMB_FALL) {
+        //         climber.set(FALL_SPEED);
+        //     } else {
+        //         climber.set(0.);
+        //     }
+        //     Telemetry::put_number("climber_current", climber.motor.get_current()).await;
+        // }
+
+
+
+        // if robot.controllers.left_drive.get(5) {
+        //     drivetrain.reset_angle();
+        // }
     }
 }

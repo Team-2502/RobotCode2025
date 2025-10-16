@@ -31,6 +31,7 @@ pub async fn control_drivetrain(
     controllers: &mut Controllers,
     state: &mut DrivetrainControlState,
 ) {
+    //println!("raw (radians): {:?}", drivetrain.get_angle_raw());
     let right_drive = &mut controllers.right_drive;
     let left_drive = &mut controllers.left_drive;
 

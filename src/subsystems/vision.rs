@@ -299,7 +299,6 @@ impl Vision {
             LIMELIGHT_INACCURACY_PER_ANGULAR_VELOCITY * angular_velocity_rad_per_sec.abs();
         fom_meters +=
             LIMELIGHT_INACCURACY_PER_LINEAR_VELOCITY * linear_velocity_meters_per_sec.abs();
-        //fom_meters += LIMELIGHT_INACCURACY_PER_DEGREE_TX * self.get_tx().get::<degree>().abs();
         fom_meters += LIMELIGHT_BASE_FOM;
         Length::new::<meter>(fom_meters)
     }

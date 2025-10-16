@@ -43,3 +43,12 @@ deploy: $(OUT)
 .PHONY: deploy-static
 deploy-static:
 	cd javastub; ./gradlew deployfrcStaticFileDeployroborio
+
+# just deploys robotcode
+.PHONY: deploy-scp-no-build
+deploy-scp-no-build:
+	ssh lvuser@10.$(TEAM).2 /usr/local/frc/bin/frcKillRobot.sh
+	ssh lvuser@10.$(TEAM).2 rm $(LIB)
+	scp $(OUT) lvuser@10.$(TEAM).2:
+	ssh lvuser@10.$(TEAM).2 /usr/local/frc/bin/frcRunRobot.sh
+	ssh lvuser@10.$(TEAM).2 chmod 755 $(LIB)

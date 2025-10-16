@@ -88,8 +88,6 @@ pub async fn follow_path_segment(
         let dt = now - last_loop;
         last_loop = now;
 
-        //println!("x: {}, y: {}", drivetrain.odometry.position.x, drivetrain.odometry.position.y);
-
         let elapsed = start.elapsed().as_secs_f64() + start_time;
 
         // Exit if we've reached the end time for this segment
