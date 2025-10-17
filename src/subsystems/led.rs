@@ -1,16 +1,16 @@
+use crate::constants::robotmap;
+use ::frcrs::led::Led;
 use std::cell::RefCell;
 use std::cmp::PartialEq;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use crate::constants::robotmap;
-use ::frcrs::led::Led;
-use tokio::task::{AbortHandle, spawn_local};
+use tokio::task::{spawn_local, AbortHandle};
 use tokio::time::sleep;
 
 #[derive(Clone, PartialEq)]
 pub enum LedStatus {
-    Disabled
+    Disabled,
 }
 
 #[derive(Clone)]

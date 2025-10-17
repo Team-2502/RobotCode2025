@@ -23,8 +23,8 @@ pub mod robotmap {
         pub const BR_TURN: i32 = 8;
         pub const BR_ENCODER: i32 = 16;
 
-        pub const RIGHT_LINEUP_LASER:i32 = 18;
-        pub const LEFT_LINEUP_LASER:i32 = 19;
+        pub const RIGHT_LINEUP_LASER: i32 = 18;
+        pub const LEFT_LINEUP_LASER: i32 = 19;
     }
 
     pub mod elevator {
@@ -44,7 +44,7 @@ pub mod robotmap {
 
     pub mod led {
         pub const PORT: i32 = 1;
-        pub const COUNT: i32 = 0;
+        pub const COUNT: i32 = 8;
     }
 }
 

@@ -1,15 +1,16 @@
+use frcrs::alliance_station;
+use frcrs::input::RobotState;
 use frcrs::telemetry::Telemetry;
 use std::f64::consts::PI;
 use std::ops::{Add, Neg};
 use std::time::Duration;
-use frcrs::alliance_station;
-use frcrs::input::RobotState;
 use tokio::fs::File;
 
+use frcrs::trajectory::Path;
 use nalgebra::Vector2;
 use tokio::io::AsyncReadExt;
 use tokio::time::{sleep, Instant};
-use uom::si::angle::{Angle, degree};
+use uom::si::angle::{degree, Angle};
 use uom::si::{
     angle::radian,
     f64::{Length, Time},
@@ -17,8 +18,8 @@ use uom::si::{
     time::{millisecond, second},
     velocity::meter_per_second,
 };
-use wpi_trajectory::Path;
 
+use crate::constants::{HALF_FIELD_LENGTH_METERS, HALF_FIELD_WIDTH_METERS};
 use crate::subsystems::{calculate_relative_target, SwerveControlStyle};
 use crate::{
     constants::drivetrain::{
@@ -27,7 +28,6 @@ use crate::{
     },
     subsystems::Drivetrain,
 };
-use crate::constants::{HALF_FIELD_LENGTH_METERS, HALF_FIELD_WIDTH_METERS};
 
 // TODO: Test
 pub async fn drive(
@@ -78,7 +78,7 @@ pub async fn follow_path_segment(
         let state = RobotState::get();
 
         if !state.enabled() {
-            break
+            break;
         }
 
         drivetrain.update_limelight().await;
@@ -100,11 +100,11 @@ pub async fn follow_path_segment(
         let setpoint = if red {
             path.get(Time::new::<second>(elapsed)).mirror(
                 Length::new::<meter>(HALF_FIELD_WIDTH_METERS),
-                Length::new::<meter>(HALF_FIELD_LENGTH_METERS))
+                Length::new::<meter>(HALF_FIELD_LENGTH_METERS),
+            )
         } else {
             path.get(Time::new::<second>(elapsed))
         };
-
 
         let mut angle = -setpoint.heading;
         // let mut angle_radians: f64 = setpoint.heading.get::<radian>();
@@ -122,7 +122,10 @@ pub async fn follow_path_segment(
         //     angle_radians -= (PI * 2.);
         // }
 
-        angle = Angle::new::<degree>(calculate_relative_target(drivetrain.get_offset().get::<degree>(), angle.get::<degree>()));
+        angle = Angle::new::<degree>(calculate_relative_target(
+            drivetrain.get_offset().get::<degree>(),
+            angle.get::<degree>(),
+        ));
 
         let mut error_position = position
             - drivetrain
@@ -162,7 +165,6 @@ pub async fn follow_path_segment(
         let speed_s = speed;
         speed += (speed - last_error) * SWERVE_DRIVE_KD * dt.as_secs_f64();
         last_error = speed_s;
-
 
         drivetrain.set_speeds(
             speed.x,

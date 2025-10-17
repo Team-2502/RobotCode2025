@@ -3,6 +3,7 @@ use std::ops::Sub;
 use crate::constants::pose_estimation::{
     ARC_ODOMETRY_MINIMUM_DELTA_THETA_RADIANS, DRIFT_RATIO, MIN_FOM, START_POSITION_FOM,
 };
+use crate::constants::{HALF_FIELD_LENGTH_METERS, HALF_FIELD_WIDTH_METERS};
 use frcrs::alliance_station;
 use frcrs::networktables::SmartDashboard;
 use nalgebra::{Rotation2, Vector2};
@@ -11,7 +12,6 @@ use uom::si::{
     f64::{Angle, Length},
     length::meter,
 };
-use crate::constants::{HALF_FIELD_LENGTH_METERS, HALF_FIELD_WIDTH_METERS};
 
 #[derive(Default, Clone)]
 pub struct ModuleReturn {
@@ -99,7 +99,7 @@ impl Odometry {
 
             self.robot_pose_estimate.set_absolute(Vector2::new(
                 half_width - position.x + half_width,
-                half_length - position.y + half_length
+                half_length - position.y + half_length,
             ));
         } else {
             self.robot_pose_estimate.set_absolute(position);
@@ -403,6 +403,11 @@ impl Odometry {
             ),
             figure_of_merit: Length::new::<meter>(min_sensor_fom_meters),
         }
+    }
+
+    pub fn reset_pose(&mut self, new_position: Vector2<Length>) {
+        self.robot_pose_estimate.position = new_position;
+        self.robot_pose_estimate.figure_of_merit = Length::new::<meter>(0.0);
     }
 }
 #[cfg(test)]

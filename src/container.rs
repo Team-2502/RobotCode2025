@@ -2,8 +2,8 @@ use crate::constants::drivetrain::SWERVE_TURN_KP;
 use crate::constants::joystick_map::*;
 use crate::subsystems::{Drivetrain, DrivetrainControlState, SwerveControlStyle};
 use crate::Controllers;
-use frcrs::{alliance_station, deadzone};
 use frcrs::input::RobotState;
+use frcrs::{alliance_station, deadzone};
 use nalgebra::ComplexField;
 use uom::si::angle::{degree, radian};
 

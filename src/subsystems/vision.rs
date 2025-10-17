@@ -1,5 +1,5 @@
-use std::f64::consts::PI;
 use frcrs::limelight::{Limelight, LimelightResults};
+use std::f64::consts::PI;
 use std::fs::File;
 
 use crate::constants::vision;
@@ -20,8 +20,8 @@ use crate::constants::pose_estimation::{
     LIMELIGHT_INACCURACY_PER_DEGREE_TX, LIMELIGHT_INACCURACY_PER_LINEAR_VELOCITY,
 };
 use crate::swerve::odometry::PoseEstimate;
-use std::net::SocketAddr;
 use frcrs::alliance_station;
+use std::net::SocketAddr;
 use tokio::time::Instant;
 
 #[derive(Clone)]
@@ -148,7 +148,8 @@ impl Vision {
                 let pitch_to_tag: Angle = Angle::new::<degree>(
                     vision::LIMELIGHT_UPPER_PITCH_DEGREES + self.get_ty().get::<degree>(),
                 );
-                let mut dist = Length::new::<inch>(height_diff) / f64::tan(pitch_to_tag.get::<radian>());
+                let mut dist =
+                    Length::new::<inch>(height_diff) / f64::tan(pitch_to_tag.get::<radian>());
                 dist += (dist * TX_FUDGE_FACTOR * self.get_tx().get::<degree>().abs());
                 Some(dist)
             }
@@ -307,5 +308,9 @@ impl Vision {
             Length::new::<meter>(self.results.botpose_wpiblue[0]),
             Length::new::<meter>(self.results.botpose_wpiblue[1]),
         )
+    }
+
+    pub fn get_yaw(&self) -> Angle {
+        Angle::new::<radian>(self.results.botpose_wpiblue[5])
     }
 }
